@@ -1,0 +1,202 @@
+================================================================================
+                          API REQUIREMENTS - ONELINK APPLICATION
+================================================================================
+
+📋 DAFTAR LENGKAP API YANG DIBUTUHKAN UNTUK MELENGKAPI MOCKUP ONELINK
+
+================================================================================
+🔐 1. AUTHENTICATION & USER MANAGEMENT
+================================================================================
+
+✅ SUDAH ADA:
+- POST /api/auth/login                # Phone + OTP login
+- POST /api/auth/otp                  # Verify OTP
+
+🔄 PERLU DIKEMBANGKAN:
+- POST /api/auth/refresh-token        # Refresh expired token
+- POST /api/auth/logout               # Logout user  
+- PUT /api/user/profile               # Update user profile
+- GET /api/user/profile               # Get user profile details
+- POST /api/user/change-password      # Change password
+- POST /api/user/upload-avatar        # Upload profile picture
+
+================================================================================
+📋 2. SURAT JALAN & PICKUP MANAGEMENT
+================================================================================
+
+✅ SUDAH ADA:
+- GET /api/surat_jalan               # Get surat jalan with filters
+
+🔄 PERLU DIKEMBANGKAN:
+- GET /api/surat_jalan/{id}          # Detail surat jalan
+- PUT /api/surat_jalan/{id}/status   # Update status (pickup/done/cancelled)
+- POST /api/surat_jalan/{id}/start   # Start pickup process
+- POST /api/surat_jalan/{id}/complete # Complete pickup
+- POST /api/surat_jalan/{id}/upload  # Upload photos/documents
+- GET /api/surat_jalan/statistics    # Dashboard statistics
+
+PICKUP PROCESS APIS:
+- POST /api/pickup/start             # Start pickup process
+- PUT /api/pickup/{id}/location      # Update GPS location
+- PUT /api/pickup/{id}/quantity      # Update quantity collected
+- POST /api/pickup/{id}/photo        # Upload pickup photos
+- POST /api/pickup/{id}/signature    # Upload signature
+- POST /api/pickup/{id}/complete     # Complete pickup
+
+================================================================================
+🗓️ 3. CALENDAR & SCHEDULING
+================================================================================
+
+❌ BELUM ADA - PERLU DIBUAT:
+- GET /api/calendar/schedule         # Get scheduled pickups by date range
+- POST /api/calendar/reschedule      # Reschedule pickup
+- GET /api/calendar/available-slots  # Get available time slots
+- PUT /api/calendar/{id}/schedule    # Update schedule time
+- DELETE /api/calendar/{id}          # Cancel scheduled pickup
+
+================================================================================
+🔔 4. NOTIFICATIONS
+================================================================================
+
+❌ BELUM ADA - PERLU DIBUAT:
+- GET /api/notifications             # Get user notifications
+- PUT /api/notifications/{id}/read   # Mark as read
+- POST /api/notifications/fcm-token  # Update FCM token
+- DELETE /api/notifications/{id}     # Delete notification
+- PUT /api/notifications/read-all    # Mark all as read
+- GET /api/notifications/count       # Unread count
+
+PUSH NOTIFICATION TRIGGERS:
+- POST /api/notifications/send       # Send notification (admin)
+
+================================================================================
+📸 5. QR SCANNER & LOCATION
+================================================================================
+
+🔄 PERLU DIKEMBANGKAN:
+- GET /api/locations/qr/{qr_code}    # Get location by QR code
+- POST /api/locations/verify         # Verify location data
+- GET /api/locations/nearby          # Get nearby pickup locations
+- POST /api/locations/add            # Add new pickup location
+- PUT /api/locations/{id}            # Update location info
+
+================================================================================
+🗺️ 6. NAVIGATION & GPS
+================================================================================
+
+🔄 PERLU DIKEMBANGKAN:
+- GET /api/navigation/route          # Get optimized route
+- POST /api/navigation/track         # Track driver location
+- PUT /api/navigation/{id}/status    # Update navigation status
+- GET /api/navigation/directions     # Get turn-by-turn directions
+
+================================================================================
+📊 7. ANALYTICS & REPORTING
+================================================================================
+
+❌ BELUM ADA - PERLU DIBUAT:
+- GET /api/analytics/dashboard       # Dashboard statistics
+- GET /api/analytics/performance     # Driver performance metrics
+- GET /api/analytics/monthly         # Monthly reports
+- GET /api/analytics/revenue         # Revenue reports
+- GET /api/analytics/volume          # Volume statistics
+
+================================================================================
+📁 8. FILE MANAGEMENT
+================================================================================
+
+❌ BELUM ADA - PERLU DIBUAT:
+- POST /api/files/upload             # Upload general files
+- POST /api/files/pickup-photos      # Upload pickup photos
+- POST /api/files/signatures         # Upload signatures
+- POST /api/files/documents          # Upload documents
+- DELETE /api/files/{id}             # Delete file
+
+================================================================================
+⚙️ 9. APP CONFIGURATION
+================================================================================
+
+❌ BELUM ADA - PERLU DIBUAT:
+- GET /api/config/app                # App configuration
+- GET /api/config/version            # Version check
+- GET /api/config/settings           # User settings
+- PUT /api/config/settings           # Update settings
+- GET /api/config/help               # Help & FAQ data
+
+================================================================================
+🌐 10. INTEGRATION APIS
+================================================================================
+
+🔄 PERLU DIKEMBANGKAN:
+
+WHATSAPP INTEGRATION:
+- POST /api/whatsapp/send            # Send WhatsApp message
+- POST /api/whatsapp/notify          # WhatsApp notifications
+
+GOOGLE MAPS INTEGRATION:
+- GET /api/maps/geocode              # Address to coordinates
+- GET /api/maps/directions           # Google Directions API wrapper
+- GET /api/maps/places               # Places search
+
+FCM PUSH NOTIFICATIONS:
+- POST /api/fcm/send                 # Send push notification
+- PUT /api/fcm/token                 # Update FCM token
+
+================================================================================
+📈 PRIORITAS PENGEMBANGAN
+================================================================================
+
+🔥 HIGH PRIORITY (Critical for MVP):
+1. Pickup Process APIs              - Untuk melengkapi flow penjemputan
+2. Notification APIs                - Untuk komunikasi real-time
+3. File Upload APIs                 - Untuk foto dan signature
+4. User Profile APIs                - Untuk manajemen profil
+
+🔶 MEDIUM PRIORITY (Enhancement):
+1. Calendar APIs                    - Untuk fitur penjadwalan
+2. Navigation APIs                  - Untuk optimasi rute
+3. Analytics APIs                   - Untuk dashboard insights
+
+🔸 LOW PRIORITY (Future Features):
+1. Integration APIs                 - WhatsApp, advanced maps
+2. Advanced Configuration           - App customization
+3. Advanced Analytics               - Detailed reporting
+
+================================================================================
+🛠️ REKOMENDASI IMPLEMENTASI
+================================================================================
+
+PHASE 1 - CORE FEATURES (Week 1-2):
+- Pickup process completion APIs
+- Basic notification system  
+- File upload for photos/signatures
+- User profile management
+
+PHASE 2 - ENHANCED UX (Week 3-4):
+- Calendar scheduling APIs
+- Advanced notification features
+- Navigation optimization
+- Analytics dashboard
+
+PHASE 3 - ADVANCED FEATURES (Week 5-6):
+- Integration APIs (WhatsApp, Maps)
+- Advanced reporting
+- App configuration management
+
+================================================================================
+📝 NOTES
+================================================================================
+
+✅ Status Legend:
+- ✅ SUDAH ADA: API sudah diimplementasi dan berfungsi
+- 🔄 PERLU DIKEMBANGKAN: API basic ada tapi perlu enhancement
+- ❌ BELUM ADA: API belum ada sama sekali, perlu dibuat dari nol
+
+🎯 Total API Endpoints Diperlukan: ~50 endpoints
+📊 Progress Saat Ini: ~4% (2/50 endpoints sudah lengkap)
+
+================================================================================
+Generated on: December 16, 2025
+Application: OneLink - Waste Oil Collection Management
+Status: API Requirements Analysis Complete
+================================================================================

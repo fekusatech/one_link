@@ -1,0 +1,838 @@
+# 📱 Flutter Supplier Management Integration - Complete Implementation Guide
+
+## 🎯 Project Overview
+Integrate existing Flutter supplier management mockup with REST API endpoints. Create a complete supplier registration and management system with cascading dropdowns for geographic data.
+
+## 🔌 API Base URL & Authentication
+```dart
+const String baseURL = 'http://erp.test';
+// or for production: 'https://erp.greenenergiutama.co.id'
+
+// Headers untuk semua request
+Map<String, String> headers = {
+  'Content-Type': 'application/json',
+  'Accept': 'application/json',
+};
+```
+
+## 🚀 Required API Integration Points
+
+### **1. Master Data Loading (Page Load)**
+Hit these endpoints when supplier form loads:
+
+```dart
+// Load all dropdown options in one call
+GET /api-supplier/dropdown-options
+
+// Or load individually:
+GET /api-supplier/jenis-supplier        // Supplier types
+GET /api-supplier/kategori-supplier     // Supplier categories  
+GET /api-supplier/employees             // PIC/RO employees
+GET /api-supplier/provinces             // All provinces
+GET /api-supplier/satuan                // Units for pricing
+GET /api-supplier/banks                 // Bank list
+```
+
+### **2. Geographic Cascading Dropdowns**
+```dart
+// When province selected -> load cities
+GET /api-supplier/cities/{province_id}
+
+// When city selected -> load districts  
+GET /api-supplier/districts/{city_id}
+
+// When district selected -> load villages
+GET /api-supplier/villages/{district_id}
+```
+
+### **3. Account Validation (Optional)**
+```dart
+// Validate bank account using BIFast
+POST /api-supplier/validate-account
+Body: {
+  "nomor_rek": "1234567890",
+  "bank": "014",  // Bank code
+  "nama_rek": "John Doe"
+}
+```
+
+### **4. Supplier Operations**
+```dart
+// Create new supplier
+POST /api-supplier/create
+
+// Get supplier list with filters
+GET /api-supplier/list?page=1&limit=25&search=keyword
+
+// Get supplier detail
+GET /api-supplier/detail/{id}
+
+// Update supplier
+PUT /api-supplier/update/{id}
+
+// Toggle supplier status
+PUT /api-supplier/toggle-status/{id}
+```
+
+## 📋 Complete Data Model Classes
+
+### **1. Base Response Model**
+```dart
+class ApiResponse<T> {
+  final bool status;
+  final String message;
+  final T? data;
+  final Map<String, dynamic>? errors;
+
+  ApiResponse({
+    required this.status,
+    required this.message,
+    this.data,
+    this.errors,
+  });
+
+  factory ApiResponse.fromJson(Map<String, dynamic> json, T Function(dynamic)? fromJsonT) {
+    return ApiResponse<T>(
+      status: json['status'] ?? false,
+      message: json['message'] ?? '',
+      data: json['data'] != null && fromJsonT != null ? fromJsonT(json['data']) : json['data'],
+      errors: json['errors'],
+    );
+  }
+}
+```
+
+### **2. Dropdown Models**
+```dart
+class JenisSupplier {
+  final int id;
+  final String name;
+  final String? prefix;
+
+  JenisSupplier({required this.id, required this.name, this.prefix});
+
+  factory JenisSupplier.fromJson(Map<String, dynamic> json) {
+    return JenisSupplier(
+      id: int.parse(json['id'].toString()),
+      name: json['name'] ?? '',
+      prefix: json['prefix'],
+    );
+  }
+}
+
+class KategoriSupplier {
+  final int id;
+  final String name;
+  final String? keterangan;
+
+  KategoriSupplier({required this.id, required this.name, this.keterangan});
+
+  factory KategoriSupplier.fromJson(Map<String, dynamic> json) {
+    return KategoriSupplier(
+      id: int.parse(json['id'].toString()),
+      name: json['name'] ?? '',
+      keterangan: json['keterangan'],
+    );
+  }
+}
+
+class Province {
+  final int id;
+  final String name;
+
+  Province({required this.id, required this.name});
+
+  factory Province.fromJson(Map<String, dynamic> json) {
+    return Province(
+      id: int.parse(json['id'].toString()),
+      name: json['name'] ?? '',
+    );
+  }
+}
+
+class City {
+  final int id;
+  final String name;
+  final int idProvinsi;
+
+  City({required this.id, required this.name, required this.idProvinsi});
+
+  factory City.fromJson(Map<String, dynamic> json) {
+    return City(
+      id: int.parse(json['id'].toString()),
+      name: json['name'] ?? '',
+      idProvinsi: int.parse(json['id_provinsi'].toString()),
+    );
+  }
+}
+
+class District {
+  final int id;
+  final String name;
+  final int idKota;
+
+  District({required this.id, required this.name, required this.idKota});
+
+  factory District.fromJson(Map<String, dynamic> json) {
+    return District(
+      id: int.parse(json['id'].toString()),
+      name: json['name'] ?? '',
+      idKota: int.parse(json['id_kota'].toString()),
+    );
+  }
+}
+
+class Village {
+  final int id;
+  final String name;
+  final int idKecamatan;
+
+  Village({required this.id, required this.name, required this.idKecamatan});
+
+  factory Village.fromJson(Map<String, dynamic> json) {
+    return Village(
+      id: int.parse(json['id'].toString()),
+      name: json['name'] ?? '',
+      idKecamatan: int.parse(json['id_kecamatan'].toString()),
+    );
+  }
+}
+
+class Employee {
+  final int id;
+  final String name;
+  final String? position;
+
+  Employee({required this.id, required this.name, this.position});
+
+  factory Employee.fromJson(Map<String, dynamic> json) {
+    return Employee(
+      id: int.parse(json['id'].toString()),
+      name: json['name'] ?? '',
+      position: json['position'],
+    );
+  }
+}
+
+class Bank {
+  final int id;
+  final String namaBank;
+  final String kodeBank;
+
+  Bank({required this.id, required this.namaBank, required this.kodeBank});
+
+  factory Bank.fromJson(Map<String, dynamic> json) {
+    return Bank(
+      id: int.parse(json['id'].toString()),
+      namaBank: json['nama_bank'] ?? '',
+      kodeBank: json['kode_bank'] ?? '',
+    );
+  }
+}
+
+class Satuan {
+  final int id;
+  final String name;
+  final String? short;
+
+  Satuan({required this.id, required this.name, this.short});
+
+  factory Satuan.fromJson(Map<String, dynamic> json) {
+    return Satuan(
+      id: int.parse(json['id'].toString()),
+      name: json['name'] ?? '',
+      short: json['short'],
+    );
+  }
+}
+```
+
+### **3. Supplier Model**
+```dart
+class Supplier {
+  final int? id;
+  final String? kodePoo;
+  final String jenis;
+  final int picId;
+  final String name;
+  final String karyawan;
+  final String phone;
+  final String jabatan;
+  final int? kategoriId;
+  final String? jenisUco;
+  final double? price;
+  final int? priceSatuanId;
+  final int? provinsiId;
+  final int? kotaId;
+  final int? kecamatanId;
+  final int? desaId;
+  final String? alamat;
+  final String? gps;
+  final String namaRek;
+  final String nomorRek;
+  final int bankRekId;
+  final String? siklus;
+  final int? poin;
+
+  Supplier({
+    this.id,
+    this.kodePoo,
+    required this.jenis,
+    required this.picId,
+    required this.name,
+    required this.karyawan,
+    required this.phone,
+    required this.jabatan,
+    this.kategoriId,
+    this.jenisUco,
+    this.price,
+    this.priceSatuanId,
+    this.provinsiId,
+    this.kotaId,
+    this.kecamatanId,
+    this.desaId,
+    this.alamat,
+    this.gps,
+    required this.namaRek,
+    required this.nomorRek,
+    required this.bankRekId,
+    this.siklus,
+    this.poin,
+  });
+
+  Map<String, dynamic> toJson() {
+    return {
+      'jenis': jenis,
+      'pic': picId,
+      'name': name,
+      'karyawan': karyawan,
+      'phone': phone,
+      'jabatan': jabatan,
+      'kategori': kategoriId,
+      'jenis_uco': jenisUco,
+      'price': price?.toString(),
+      'price_satuan': priceSatuanId,
+      'provinsi_id': provinsiId,
+      'kota_id': kotaId,
+      'kecamatan_id': kecamatanId,
+      'desa_id': desaId,
+      'alamat': alamat,
+      'gps': gps,
+      'nama_rek': namaRek,
+      'nomor_rek': nomorRek,
+      'bank_rek': bankRekId,
+      'siklus': siklus,
+      'poin': poin,
+    };
+  }
+}
+```
+
+## 🔧 API Service Implementation
+
+### **1. Base API Service**
+```dart
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+
+class ApiService {
+  static const String baseURL = 'http://erp.test';
+  
+  static Map<String, String> get headers => {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+  };
+
+  static Future<ApiResponse<T>> _handleResponse<T>(
+    http.Response response,
+    T Function(dynamic) fromJson,
+  ) async {
+    try {
+      final Map<String, dynamic> data = json.decode(response.body);
+      return ApiResponse.fromJson(data, fromJson);
+    } catch (e) {
+      return ApiResponse<T>(
+        status: false,
+        message: 'Error parsing response: $e',
+      );
+    }
+  }
+
+  static Future<ApiResponse<List<T>>> _handleListResponse<T>(
+    http.Response response,
+    T Function(Map<String, dynamic>) fromJson,
+  ) async {
+    try {
+      final Map<String, dynamic> data = json.decode(response.body);
+      if (data['status'] == true && data['data'] is List) {
+        final List<T> items = (data['data'] as List)
+            .map((item) => fromJson(item as Map<String, dynamic>))
+            .toList();
+        return ApiResponse<List<T>>(
+          status: data['status'],
+          message: data['message'],
+          data: items,
+        );
+      }
+      return ApiResponse<List<T>>(
+        status: data['status'] ?? false,
+        message: data['message'] ?? 'Unknown error',
+      );
+    } catch (e) {
+      return ApiResponse<List<T>>(
+        status: false,
+        message: 'Error parsing response: $e',
+      );
+    }
+  }
+}
+```
+
+### **2. Supplier API Service**
+```dart
+class SupplierApiService extends ApiService {
+  
+  // Get all dropdown options
+  static Future<ApiResponse<Map<String, dynamic>>> getDropdownOptions() async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseURL/api-supplier/dropdown-options'),
+        headers: headers,
+      );
+      return _handleResponse(response, (data) => data as Map<String, dynamic>);
+    } catch (e) {
+      return ApiResponse(status: false, message: 'Network error: $e');
+    }
+  }
+
+  // Get provinces
+  static Future<ApiResponse<List<Province>>> getProvinces() async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseURL/api-supplier/provinces'),
+        headers: headers,
+      );
+      return _handleListResponse(response, Province.fromJson);
+    } catch (e) {
+      return ApiResponse(status: false, message: 'Network error: $e');
+    }
+  }
+
+  // Get cities by province
+  static Future<ApiResponse<List<City>>> getCities(int provinceId) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseURL/api-supplier/cities/$provinceId'),
+        headers: headers,
+      );
+      return _handleListResponse(response, City.fromJson);
+    } catch (e) {
+      return ApiResponse(status: false, message: 'Network error: $e');
+    }
+  }
+
+  // Get districts by city
+  static Future<ApiResponse<List<District>>> getDistricts(int cityId) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseURL/api-supplier/districts/$cityId'),
+        headers: headers,
+      );
+      return _handleListResponse(response, District.fromJson);
+    } catch (e) {
+      return ApiResponse(status: false, message: 'Network error: $e');
+    }
+  }
+
+  // Get villages by district
+  static Future<ApiResponse<List<Village>>> getVillages(int districtId) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseURL/api-supplier/villages/$districtId'),
+        headers: headers,
+      );
+      return _handleListResponse(response, Village.fromJson);
+    } catch (e) {
+      return ApiResponse(status: false, message: 'Network error: $e');
+    }
+  }
+
+  // Create supplier
+  static Future<ApiResponse<Map<String, dynamic>>> createSupplier(Supplier supplier) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseURL/api-supplier/create'),
+        headers: headers,
+        body: json.encode(supplier.toJson()),
+      );
+      return _handleResponse(response, (data) => data as Map<String, dynamic>);
+    } catch (e) {
+      return ApiResponse(status: false, message: 'Network error: $e');
+    }
+  }
+
+  // Validate bank account
+  static Future<ApiResponse<Map<String, dynamic>>> validateAccount({
+    required String nomorRek,
+    required String bank,
+    required String namaRek,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseURL/api-supplier/validate-account'),
+        headers: headers,
+        body: json.encode({
+          'nomor_rek': nomorRek,
+          'bank': bank,
+          'nama_rek': namaRek,
+        }),
+      );
+      return _handleResponse(response, (data) => data as Map<String, dynamic>);
+    } catch (e) {
+      return ApiResponse(status: false, message: 'Network error: $e');
+    }
+  }
+}
+```
+
+## 🎯 Form State Management (Provider/Bloc)
+
+### **Using Provider Pattern:**
+```dart
+class SupplierFormProvider extends ChangeNotifier {
+  // Dropdown data
+  List<JenisSupplier> _jenisSupplier = [];
+  List<KategoriSupplier> _kategoriSupplier = [];
+  List<Employee> _employees = [];
+  List<Bank> _banks = [];
+  List<Satuan> _satuan = [];
+  List<Province> _provinces = [];
+  List<City> _cities = [];
+  List<District> _districts = [];
+  List<Village> _villages = [];
+
+  // Selected values
+  JenisSupplier? selectedJenis;
+  KategoriSupplier? selectedKategori;
+  Employee? selectedPic;
+  Province? selectedProvince;
+  City? selectedCity;
+  District? selectedDistrict;
+  Village? selectedVillage;
+  Bank? selectedBank;
+  Satuan? selectedSatuan;
+
+  // Loading states
+  bool _isLoadingMaster = false;
+  bool _isLoadingCities = false;
+  bool _isLoadingDistricts = false;
+  bool _isLoadingVillages = false;
+  bool _isSubmitting = false;
+
+  // Getters
+  List<JenisSupplier> get jenisSupplier => _jenisSupplier;
+  List<Province> get provinces => _provinces;
+  List<City> get cities => _cities;
+  bool get isLoadingMaster => _isLoadingMaster;
+  bool get isSubmitting => _isSubmitting;
+
+  // Load initial data
+  Future<void> loadMasterData() async {
+    _isLoadingMaster = true;
+    notifyListeners();
+
+    final response = await SupplierApiService.getDropdownOptions();
+    
+    if (response.status && response.data != null) {
+      final data = response.data!;
+      
+      _jenisSupplier = (data['jenis_supplier'] as List?)
+          ?.map((item) => JenisSupplier.fromJson(item))
+          .toList() ?? [];
+          
+      _kategoriSupplier = (data['kategori_supplier'] as List?)
+          ?.map((item) => KategoriSupplier.fromJson(item))
+          .toList() ?? [];
+          
+      _employees = (data['employees'] as List?)
+          ?.map((item) => Employee.fromJson(item))
+          .toList() ?? [];
+          
+      _provinces = (data['provinces'] as List?)
+          ?.map((item) => Province.fromJson(item))
+          .toList() ?? [];
+          
+      _banks = (data['banks'] as List?)
+          ?.map((item) => Bank.fromJson(item))
+          .toList() ?? [];
+          
+      _satuan = (data['satuan'] as List?)
+          ?.map((item) => Satuan.fromJson(item))
+          .toList() ?? [];
+    }
+
+    _isLoadingMaster = false;
+    notifyListeners();
+  }
+
+  // Handle province selection
+  Future<void> onProvinceChanged(Province? province) async {
+    selectedProvince = province;
+    selectedCity = null;
+    selectedDistrict = null;
+    selectedVillage = null;
+    _cities.clear();
+    _districts.clear();
+    _villages.clear();
+    
+    if (province != null) {
+      _isLoadingCities = true;
+      notifyListeners();
+      
+      final response = await SupplierApiService.getCities(province.id);
+      if (response.status && response.data != null) {
+        _cities = response.data!;
+      }
+      
+      _isLoadingCities = false;
+    }
+    
+    notifyListeners();
+  }
+
+  // Handle city selection
+  Future<void> onCityChanged(City? city) async {
+    selectedCity = city;
+    selectedDistrict = null;
+    selectedVillage = null;
+    _districts.clear();
+    _villages.clear();
+    
+    if (city != null) {
+      _isLoadingDistricts = true;
+      notifyListeners();
+      
+      final response = await SupplierApiService.getDistricts(city.id);
+      if (response.status && response.data != null) {
+        _districts = response.data!;
+      }
+      
+      _isLoadingDistricts = false;
+    }
+    
+    notifyListeners();
+  }
+
+  // Handle district selection
+  Future<void> onDistrictChanged(District? district) async {
+    selectedDistrict = district;
+    selectedVillage = null;
+    _villages.clear();
+    
+    if (district != null) {
+      _isLoadingVillages = true;
+      notifyListeners();
+      
+      final response = await SupplierApiService.getVillages(district.id);
+      if (response.status && response.data != null) {
+        _villages = response.data!;
+      }
+      
+      _isLoadingVillages = false;
+    }
+    
+    notifyListeners();
+  }
+
+  // Submit supplier
+  Future<bool> submitSupplier(Supplier supplier) async {
+    _isSubmitting = true;
+    notifyListeners();
+    
+    final response = await SupplierApiService.createSupplier(supplier);
+    
+    _isSubmitting = false;
+    notifyListeners();
+    
+    return response.status;
+  }
+}
+```
+
+## 🖼️ UI Implementation Example
+
+### **Dropdown Widget:**
+```dart
+class CustomDropdown<T> extends StatelessWidget {
+  final String label;
+  final List<T> items;
+  final T? value;
+  final String Function(T) getTitle;
+  final void Function(T?) onChanged;
+  final bool isLoading;
+
+  const CustomDropdown({
+    Key? key,
+    required this.label,
+    required this.items,
+    this.value,
+    required this.getTitle,
+    required this.onChanged,
+    this.isLoading = false,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: Theme.of(context).textTheme.labelMedium),
+        const SizedBox(height: 8),
+        isLoading
+            ? const LinearProgressIndicator()
+            : DropdownButtonFormField<T>(
+                value: value,
+                decoration: const InputDecoration(
+                  border: OutlineInputBorder(),
+                  contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                ),
+                items: items.map((item) {
+                  return DropdownMenuItem<T>(
+                    value: item,
+                    child: Text(getTitle(item)),
+                  );
+                }).toList(),
+                onChanged: onChanged,
+                hint: Text('Pilih $label'),
+              ),
+      ],
+    );
+  }
+}
+```
+
+### **Form Integration:**
+```dart
+class SupplierFormPage extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return ChangeNotifierProvider(
+      create: (_) => SupplierFormProvider()..loadMasterData(),
+      child: Scaffold(
+        appBar: AppBar(title: Text('Tambah Supplier')),
+        body: Consumer<SupplierFormProvider>(
+          builder: (context, provider, _) {
+            if (provider.isLoadingMaster) {
+              return Center(child: CircularProgressIndicator());
+            }
+            
+            return SingleChildScrollView(
+              padding: EdgeInsets.all(16),
+              child: Column(
+                children: [
+                  // Jenis Supplier
+                  CustomDropdown<JenisSupplier>(
+                    label: 'Jenis Supplier',
+                    items: provider.jenisSupplier,
+                    value: provider.selectedJenis,
+                    getTitle: (item) => item.name,
+                    onChanged: (value) => provider.selectedJenis = value,
+                  ),
+                  
+                  SizedBox(height: 16),
+                  
+                  // Province
+                  CustomDropdown<Province>(
+                    label: 'Provinsi',
+                    items: provider.provinces,
+                    value: provider.selectedProvince,
+                    getTitle: (item) => item.name,
+                    onChanged: provider.onProvinceChanged,
+                  ),
+                  
+                  SizedBox(height: 16),
+                  
+                  // City
+                  CustomDropdown<City>(
+                    label: 'Kota/Kabupaten',
+                    items: provider.cities,
+                    value: provider.selectedCity,
+                    getTitle: (item) => item.name,
+                    onChanged: provider.onCityChanged,
+                    isLoading: provider._isLoadingCities,
+                  ),
+                  
+                  // Add more fields...
+                  
+                  SizedBox(height: 32),
+                  
+                  // Submit Button
+                  ElevatedButton(
+                    onPressed: provider.isSubmitting ? null : () {
+                      // Build Supplier object and submit
+                    },
+                    child: provider.isSubmitting 
+                        ? CircularProgressIndicator()
+                        : Text('Simpan Supplier'),
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+```
+
+## 🔄 Required Dependencies
+```yaml
+dependencies:
+  flutter:
+    sdk: flutter
+  http: ^1.1.0
+  provider: ^6.1.1  # or bloc/cubit
+  shared_preferences: ^2.2.2
+```
+
+## ✅ Implementation Checklist
+
+1. **Setup API Service** - Create base API service dengan error handling
+2. **Create Models** - Implement semua data model classes  
+3. **Master Data Loading** - Load dropdown options saat form load
+4. **Cascading Dropdowns** - Province → City → District → Village
+5. **Form Validation** - Validate required fields sebelum submit
+6. **Account Validation** - Optional BIFast account validation
+7. **Submit Handler** - Create supplier dengan proper error handling
+8. **Loading States** - Show loading indicators untuk UX yang baik
+9. **Error Handling** - Handle network errors dan API errors
+10. **Success Feedback** - Show success message setelah supplier berhasil dibuat
+
+Hit API endpoints sesuai sequence di atas dan supplier management system siap digunakan! 🚀
+
+## 🔗 API Endpoints Summary
+
+### Core Endpoints:
+- GET  /api-supplier/dropdown-options      → All master data
+- GET  /api-supplier/provinces             → All provinces  
+- GET  /api-supplier/cities/{province_id}  → Cities by province
+- GET  /api-supplier/districts/{city_id}   → Districts by city
+- GET  /api-supplier/villages/{district_id} → Villages by district
+- POST /api-supplier/create                → Create new supplier
+- POST /api-supplier/validate-account      → Validate bank account
+
+### Additional Endpoints:
+- GET /api-supplier/jenis-supplier         → Supplier types
+- GET /api-supplier/kategori-supplier      → Supplier categories
+- GET /api-supplier/employees              → Employee/PIC list
+- GET /api-supplier/satuan                 → Units for pricing
+- GET /api-supplier/banks                  → Bank list
+- GET /api-supplier/list                   → Supplier list with pagination
+- GET /api-supplier/detail/{id}            → Supplier detail
+- PUT /api-supplier/update/{id}            → Update supplier
+- PUT /api-supplier/toggle-status/{id}     → Enable/disable supplier
+
+Status: ✅ All endpoints tested and working
+Database: ✅ All models aligned with actual database schema
+Geographic Data: ✅ Cascading dropdowns working (Province → City → District → Village)
