@@ -6,7 +6,7 @@ Integrate existing Flutter supplier management mockup with REST API endpoints. C
 ## 🔌 API Base URL & Authentication
 ```dart
 const String baseURL = 'http://erp.test';
-// or for production: 'https://erp.greenenergiutama.co.id'
+// or for production: 'https://greenenergiutama.co.id'
 
 // Headers untuk semua request
 Map<String, String> headers = {

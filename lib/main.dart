@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'dart:io';
 import 'package:provider/provider.dart';
 import 'constants/app_colors.dart';
 import 'screens/splash_screen.dart';
@@ -12,11 +14,28 @@ import 'screens/sales_dashboard_screen.dart';
 import 'screens/add_supplier_screen_simple.dart';
 import 'screens/supplier_list_screen.dart';
 import 'screens/role_selection_screen.dart';
+import 'screens/mandatory_gps_consent_screen.dart';
 import 'providers/supplier_form_provider.dart';
 import 'providers/supplier_list_provider.dart';
+import 'services/gps_enforcement_service.dart';
+import 'services/user_storage.dart';
 
-void main() {
+import 'config/app_config.dart';
+
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  HttpOverrides.global = MyHttpOverrides();
+  await AppConfig.init();
   runApp(const MyApp());
+}
+
+class MyHttpOverrides extends HttpOverrides {
+  @override
+  HttpClient createHttpClient(SecurityContext? context) {
+    return super.createHttpClient(context)
+      ..badCertificateCallback =
+          (X509Certificate cert, String host, int port) => true;
+  }
 }
 
 class MyApp extends StatelessWidget {
@@ -44,7 +63,11 @@ class MyApp extends StatelessWidget {
         '/login': (context) => const LoginScreen(),
         '/phone-input': (context) => const PhoneInputScreen(),
         '/otp': (context) => const OtpScreen(),
+        '/mandatory-gps': (context) => const MandatoryGpsConsentScreen(),
+        '/main': (context) => const AppMainRouter(),
         '/dashboard': (context) => const DashboardScreen(),
+        '/driver-dashboard': (context) =>
+            const DashboardScreen(), // Driver uses same dashboard
         '/sales-dashboard': (context) => const SalesDashboardScreen(),
         '/navigation': (context) => const NavigationScreen(),
         '/pickup-process': (context) => const PickupProcessScreen(),
@@ -56,7 +79,126 @@ class MyApp extends StatelessWidget {
           create: (_) => SupplierListProvider(),
           child: const SupplierListScreen(),
         ),
+        '/exit': (context) => const AppExitHandler(),
       },
+    );
+  }
+}
+
+// Router to handle main app navigation based on role and GPS consent
+class AppMainRouter extends StatelessWidget {
+  const AppMainRouter({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<String>(
+      future: _determineMainRoute(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Scaffold(
+            backgroundColor: AppColors.background,
+            body: Center(
+              child: CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(
+                  AppColors.primaryGreen,
+                ),
+              ),
+            ),
+          );
+        }
+
+        final route = snapshot.data ?? '/dashboard';
+
+        // Navigate to appropriate screen based on user role
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          Navigator.of(context).pushReplacementNamed(route);
+        });
+
+        return const SizedBox.shrink();
+      },
+    );
+  }
+
+  Future<String> _determineMainRoute() async {
+    try {
+      final user = await UserStorage.getUser();
+
+      if (user == null) {
+        return '/login';
+      }
+
+      // Check if GPS consent is given and start enforcement
+      final hasGpsConsent = await UserStorage.hasMandatoryGpsConsent();
+      if (hasGpsConsent) {
+        // Start GPS enforcement service
+        GpsEnforcementService.instance.startEnforcement();
+        print('GPS enforcement service started');
+      }
+
+      // Determine dashboard based on user groups/role
+      final groups = user['groups'] as List<dynamic>?;
+      if (groups != null && groups.isNotEmpty) {
+        // Use RoleManagementService logic (simplified)
+        for (var group in groups) {
+          final role = group['name'].toString().toLowerCase();
+
+          if (role.contains('cro') ||
+              role.contains('roe') ||
+              role.contains('ro ') ||
+              role.startsWith('ro') ||
+              role.endsWith('ro') ||
+              role.contains('sales')) {
+            return '/sales-dashboard';
+          } else if (role.contains('driver') || role.contains('drv')) {
+            return '/driver-dashboard';
+          }
+        }
+      }
+
+      return '/dashboard'; // Default dashboard
+    } catch (e) {
+      return '/login';
+    }
+  }
+}
+
+// Handle app exit when user denies GPS consent
+class AppExitHandler extends StatefulWidget {
+  const AppExitHandler({super.key});
+
+  @override
+  State<AppExitHandler> createState() => _AppExitHandlerState();
+}
+
+class _AppExitHandlerState extends State<AppExitHandler> {
+  @override
+  void initState() {
+    super.initState();
+    _exitApp();
+  }
+
+  void _exitApp() {
+    // Close app gracefully
+    SystemNavigator.pop();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return const Scaffold(
+      backgroundColor: AppColors.background,
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.exit_to_app, size: 64, color: AppColors.textSecondary),
+            SizedBox(height: 16),
+            Text(
+              'Menutup aplikasi...',
+              style: TextStyle(color: AppColors.textSecondary, fontSize: 16),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

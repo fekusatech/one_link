@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:mobile_scanner/mobile_scanner.dart';
 import '../constants/app_colors.dart';
 import '../constants/app_text_styles.dart';
 
@@ -17,9 +18,13 @@ class _QRScannerScreenState extends State<QRScannerScreen>
   bool _isScanning = true;
   bool _flashOn = false;
 
+  // QR Scanner variables
+  MobileScannerController? _scannerController;
+
   @override
   void initState() {
     super.initState();
+    _scannerController = MobileScannerController();
     _animationController = AnimationController(
       duration: const Duration(seconds: 2),
       vsync: this,
@@ -33,35 +38,28 @@ class _QRScannerScreenState extends State<QRScannerScreen>
   @override
   void dispose() {
     _animationController.dispose();
+    _scannerController?.dispose();
     super.dispose();
   }
 
-  void _onQRViewCreated() {
-    // TODO: Implement actual QR scanner
-    // For now, simulate scanning after 3 seconds
-    Future.delayed(const Duration(seconds: 3), () {
-      if (_isScanning && mounted) {
-        _handleScanResult('PICKUP_LOC_001_WARUNG_BU_SARI');
-      }
-    });
-  }
-
-  void _handleScanResult(String result) {
+  void _onDetect(BarcodeCapture capture) {
     if (!_isScanning) return;
 
-    setState(() {
-      _isScanning = false;
-    });
-    _animationController.stop();
+    final List<Barcode> barcodes = capture.barcodes;
+    if (barcodes.isNotEmpty) {
+      final String code = barcodes.first.rawValue ?? '';
 
-    // Parse QR result and show details
-    _showScanResultDialog(result);
+      setState(() {
+        _isScanning = false;
+      });
+
+      _animationController.stop();
+
+      _showResultDialog(code);
+    }
   }
 
-  void _showScanResultDialog(String qrData) {
-    // Parse QR code data (simulate parsing pickup location data)
-    final locationData = _parseQRData(qrData);
-
+  void _showResultDialog(String scannedCode) {
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -71,160 +69,94 @@ class _QRScannerScreenState extends State<QRScannerScreen>
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
-          contentPadding: EdgeInsets.zero,
-          content: Container(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Success Icon
-                Container(
-                  width: 80,
-                  height: 80,
-                  decoration: BoxDecoration(
-                    color: AppColors.primaryGreen.withOpacity(0.1),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.qr_code_scanner,
-                    size: 40,
-                    color: AppColors.primaryGreen,
-                  ),
+          title: Row(
+            children: [
+              Icon(
+                Icons.qr_code_scanner,
+                color: AppColors.primaryGreen,
+                size: 24,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'QR Code Detected',
+                style: AppTextStyles.h4.copyWith(color: AppColors.textPrimary),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Scanned Content:',
+                style: AppTextStyles.bodyMedium.copyWith(
+                  color: AppColors.textSecondary,
+                  fontWeight: FontWeight.bold,
                 ),
-
-                const SizedBox(height: 20),
-
-                Text(
-                  'QR Code Terdeteksi!',
-                  style: AppTextStyles.h4.copyWith(
-                    color: AppColors.primaryGreen,
-                    fontWeight: FontWeight.bold,
-                  ),
+              ),
+              const SizedBox(height: 8),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.cardBackground,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: AppColors.borderColor),
                 ),
-
-                const SizedBox(height: 12),
-
-                Text(
-                  'Informasi lokasi penjemputan berhasil dipindai',
+                child: SelectableText(
+                  scannedCode,
                   style: AppTextStyles.bodyMedium.copyWith(
-                    color: AppColors.grey,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-
-                const SizedBox(height: 24),
-
-                // Location Details Card
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: AppColors.background,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: AppColors.primaryGreen.withOpacity(0.2),
-                    ),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.location_on,
-                            size: 16,
-                            color: AppColors.primaryGreen,
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              locationData['name'] ?? 'Unknown Location',
-                              style: AppTextStyles.bodyLarge.copyWith(
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.black,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        locationData['address'] ?? 'No address',
-                        style: AppTextStyles.bodyMedium.copyWith(
-                          color: AppColors.grey,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.local_gas_station,
-                            size: 14,
-                            color: AppColors.accentOrange,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            'Estimasi: ${locationData['volume']}',
-                            style: AppTextStyles.bodySmall.copyWith(
-                              color: AppColors.accentOrange,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
+                    color: AppColors.textPrimary,
+                    fontFamily: 'Courier',
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
           actions: [
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () {
-                      Navigator.pop(context);
-                      _resetScanner();
-                    },
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: AppColors.grey,
-                      side: const BorderSide(color: AppColors.grey),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    child: Text(
-                      'Scan Lagi',
-                      style: AppTextStyles.bodyMedium.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
+            TextButton(
+              onPressed: () {
+                Clipboard.setData(ClipboardData(text: scannedCode));
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Code copied to clipboard'),
+                    backgroundColor: AppColors.success,
+                    duration: Duration(seconds: 2),
                   ),
+                );
+              },
+              child: Text(
+                'Copy',
+                style: AppTextStyles.button.copyWith(
+                  color: AppColors.primaryGreen,
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.pop(context);
-                      Navigator.pop(context, locationData);
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primaryGreen,
-                      foregroundColor: AppColors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      elevation: 0,
-                    ),
-                    child: Text(
-                      'Tambahkan',
-                      style: AppTextStyles.bodyMedium.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
+              ),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                _restartScanning();
+              },
+              child: Text(
+                'Scan Again',
+                style: AppTextStyles.button.copyWith(
+                  color: AppColors.primaryGreen,
                 ),
-              ],
+              ),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                Navigator.of(context).pop();
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primaryGreen,
+                foregroundColor: AppColors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              child: const Text('Done'),
             ),
           ],
         );
@@ -232,32 +164,20 @@ class _QRScannerScreenState extends State<QRScannerScreen>
     );
   }
 
-  Map<String, String> _parseQRData(String qrData) {
-    // Simulate parsing QR data
-    // In real implementation, you would parse actual QR format
-    return {
-      'id': 'LOC_001',
-      'name': 'Warung Bu Sari',
-      'address': 'Jl. Soekarno Hatta No. 123, Malang',
-      'volume': '5-8L',
-      'contact': '081234567890',
-      'category': 'Warung Makan',
-    };
-  }
-
-  void _resetScanner() {
+  void _restartScanning() {
     setState(() {
       _isScanning = true;
     });
     _animationController.repeat(reverse: true);
-    _onQRViewCreated(); // Restart scanning simulation
   }
 
-  void _toggleFlash() {
-    setState(() {
-      _flashOn = !_flashOn;
-    });
-    // TODO: Implement actual flash toggle
+  void _toggleFlash() async {
+    if (_scannerController != null) {
+      await _scannerController!.toggleTorch();
+      setState(() {
+        _flashOn = !_flashOn;
+      });
+    }
   }
 
   @override
@@ -265,268 +185,339 @@ class _QRScannerScreenState extends State<QRScannerScreen>
     return Scaffold(
       backgroundColor: AppColors.black,
       appBar: AppBar(
-        backgroundColor: AppColors.black,
+        backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: AppColors.white),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
-          'Scan QR Code',
-          style: AppTextStyles.h5.copyWith(
-            color: AppColors.white,
-            fontWeight: FontWeight.bold,
-          ),
+          'QR Scanner',
+          style: AppTextStyles.h4.copyWith(color: AppColors.white),
         ),
-        actions: [
-          IconButton(
-            icon: Icon(
-              _flashOn ? Icons.flash_on : Icons.flash_off,
-              color: AppColors.white,
-            ),
-            onPressed: _toggleFlash,
-          ),
-        ],
+        centerTitle: true,
       ),
       body: Stack(
         children: [
-          // Camera Preview Placeholder
+          // Camera View
+          MobileScanner(controller: _scannerController, onDetect: _onDetect),
+
+          // Overlay
           Container(
-            width: double.infinity,
-            height: double.infinity,
-            color: AppColors.black,
-            child: const Center(
-              child: Text(
-                'Camera Preview\n(Simulasi)',
-                style: TextStyle(color: Colors.white54, fontSize: 16),
-                textAlign: TextAlign.center,
+            decoration: ShapeDecoration(
+              shape: QrScannerOverlayShape(
+                borderColor: AppColors.primaryGreen,
+                borderRadius: 10,
+                borderLength: 30,
+                borderWidth: 10,
+                cutOutSize: 300,
               ),
             ),
           ),
 
-          // Scanning Overlay
-          Container(
-            width: double.infinity,
-            height: double.infinity,
-            decoration: BoxDecoration(color: Colors.black.withOpacity(0.5)),
-            child: Stack(
-              children: [
-                // Scanning Area
-                Center(
-                  child: Container(
-                    width: 250,
-                    height: 250,
-                    decoration: BoxDecoration(
-                      border: Border.all(
-                        color: AppColors.primaryGreen,
-                        width: 2,
-                      ),
-                      borderRadius: BorderRadius.circular(12),
+          // Scanning line animation
+          if (_isScanning)
+            Positioned(
+              left: MediaQuery.of(context).size.width * 0.15,
+              right: MediaQuery.of(context).size.width * 0.15,
+              top:
+                  MediaQuery.of(context).size.height * 0.25 +
+                  (_animation.value * 200),
+              child: Container(
+                height: 2,
+                decoration: BoxDecoration(
+                  color: AppColors.primaryGreen,
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.primaryGreen.withOpacity(0.5),
+                      blurRadius: 10,
+                      spreadRadius: 2,
                     ),
-                    child: Stack(
-                      children: [
-                        // Corner indicators
-                        ...List.generate(4, (index) {
-                          return Positioned(
-                            top: index < 2 ? 0 : null,
-                            bottom: index >= 2 ? 0 : null,
-                            left: index % 2 == 0 ? 0 : null,
-                            right: index % 2 == 1 ? 0 : null,
-                            child: Container(
-                              width: 20,
-                              height: 20,
-                              decoration: BoxDecoration(
-                                color: AppColors.primaryGreen,
-                                borderRadius: BorderRadius.only(
-                                  topLeft: index == 0
-                                      ? const Radius.circular(10)
-                                      : Radius.zero,
-                                  topRight: index == 1
-                                      ? const Radius.circular(10)
-                                      : Radius.zero,
-                                  bottomLeft: index == 2
-                                      ? const Radius.circular(10)
-                                      : Radius.zero,
-                                  bottomRight: index == 3
-                                      ? const Radius.circular(10)
-                                      : Radius.zero,
-                                ),
-                              ),
-                            ),
-                          );
-                        }),
-
-                        // Scanning Line Animation
-                        if (_isScanning)
-                          AnimatedBuilder(
-                            animation: _animation,
-                            builder: (context, child) {
-                              return Positioned(
-                                left: 10,
-                                right: 10,
-                                top: 10 + (230 * _animation.value),
-                                child: Container(
-                                  height: 3,
-                                  decoration: BoxDecoration(
-                                    color: AppColors.primaryGreen,
-                                    borderRadius: BorderRadius.circular(2),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: AppColors.primaryGreen
-                                            .withOpacity(0.5),
-                                        blurRadius: 5,
-                                        spreadRadius: 1,
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-                      ],
-                    ),
-                  ),
+                  ],
                 ),
+              ),
+            ),
 
-                // Instructions
-                Positioned(
-                  bottom: 120,
-                  left: 20,
-                  right: 20,
-                  child: Column(
-                    children: [
-                      if (_isScanning) ...[
-                        Text(
-                          'Arahkan kamera ke QR Code',
-                          style: AppTextStyles.bodyLarge.copyWith(
-                            color: AppColors.white,
-                            fontWeight: FontWeight.w500,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Pastikan QR Code berada dalam frame',
-                          style: AppTextStyles.bodyMedium.copyWith(
-                            color: Colors.white70,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ] else ...[
-                        Text(
-                          'Memproses hasil scan...',
-                          style: AppTextStyles.bodyLarge.copyWith(
-                            color: AppColors.primaryGreen,
-                            fontWeight: FontWeight.w500,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
-                    ],
-                  ),
+          // Flash button
+          Positioned(
+            top: MediaQuery.of(context).padding.top + 100,
+            right: 20,
+            child: Container(
+              decoration: BoxDecoration(
+                color: AppColors.black.withOpacity(0.7),
+                borderRadius: BorderRadius.circular(25),
+              ),
+              child: IconButton(
+                icon: Icon(
+                  _flashOn ? Icons.flash_on : Icons.flash_off,
+                  color: _flashOn ? AppColors.accentOrange : AppColors.white,
+                  size: 24,
                 ),
-
-                // Manual Input Button
-                Positioned(
-                  bottom: 40,
-                  left: 20,
-                  right: 20,
-                  child: ElevatedButton.icon(
-                    onPressed: () {
-                      // Show manual input dialog
-                      _showManualInputDialog();
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.white.withOpacity(0.1),
-                      foregroundColor: AppColors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        side: const BorderSide(color: AppColors.white),
-                      ),
-                      elevation: 0,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                    ),
-                    icon: const Icon(Icons.keyboard),
-                    label: Text(
-                      'Input Manual',
-                      style: AppTextStyles.bodyMedium.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
+                onPressed: _toggleFlash,
+              ),
             ),
           ),
+
+          // Instructions
+          Positioned(
+            bottom: 100,
+            left: 20,
+            right: 20,
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppColors.black.withOpacity(0.7),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.qr_code_scanner,
+                    color: AppColors.accentOrange,
+                    size: 32,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Position QR code within the frame',
+                    style: AppTextStyles.bodyMedium.copyWith(
+                      color: AppColors.white,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'The scanner will automatically detect the code',
+                    style: AppTextStyles.bodySmall.copyWith(
+                      color: AppColors.white.withOpacity(0.7),
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          // Status indicator
+          if (!_isScanning)
+            Positioned(
+              top: MediaQuery.of(context).padding.top + 100,
+              left: 20,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: AppColors.success,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  'Code Detected!',
+                  style: AppTextStyles.bodySmall.copyWith(
+                    color: AppColors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
     );
   }
+}
 
-  void _showManualInputDialog() {
-    final TextEditingController controller = TextEditingController();
+// Custom overlay shape for QR scanner
+class QrScannerOverlayShape extends ShapeBorder {
+  const QrScannerOverlayShape({
+    this.borderColor = Colors.red,
+    this.borderWidth = 3.0,
+    this.overlayColor = const Color.fromRGBO(0, 0, 0, 80),
+    this.borderRadius = 0,
+    this.borderLength = 40,
+    double? cutOutSize,
+    double? cutOutWidth,
+    double? cutOutHeight,
+  }) : cutOutWidth = cutOutWidth ?? cutOutSize ?? 250,
+       cutOutHeight = cutOutHeight ?? cutOutSize ?? 250;
 
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: AppColors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text(
-          'Input QR Code Manual',
-          style: AppTextStyles.h5.copyWith(
-            color: AppColors.primaryGreen,
-            fontWeight: FontWeight.bold,
-          ),
+  final Color borderColor;
+  final double borderWidth;
+  final Color overlayColor;
+  final double borderRadius;
+  final double borderLength;
+  final double cutOutWidth;
+  final double cutOutHeight;
+
+  @override
+  EdgeInsetsGeometry get dimensions => const EdgeInsets.all(10);
+
+  @override
+  Path getInnerPath(Rect rect, {TextDirection? textDirection}) {
+    return Path()
+      ..fillType = PathFillType.evenOdd
+      ..addPath(getOuterPath(rect), Offset.zero);
+  }
+
+  @override
+  Path getOuterPath(Rect rect, {TextDirection? textDirection}) {
+    Path getLeftTopPath(Rect rect) {
+      return Path()
+        ..moveTo(rect.left, rect.bottom)
+        ..lineTo(rect.left, rect.top + borderRadius)
+        ..quadraticBezierTo(
+          rect.left,
+          rect.top,
+          rect.left + borderRadius,
+          rect.top,
+        )
+        ..lineTo(rect.right, rect.top);
+    }
+
+    return getLeftTopPath(rect)
+      ..lineTo(rect.right, rect.bottom)
+      ..lineTo(rect.left, rect.bottom)
+      ..lineTo(rect.left, rect.top);
+  }
+
+  @override
+  void paint(Canvas canvas, Rect rect, {TextDirection? textDirection}) {
+    final width = rect.width;
+    final borderWidthSize = width / 2;
+    final height = rect.height;
+    final borderHeightSize = height / 2;
+    final cutOutWidth = this.cutOutWidth < width
+        ? this.cutOutWidth
+        : width - borderWidth;
+    final cutOutHeight = this.cutOutHeight < height
+        ? this.cutOutHeight
+        : height - borderWidth;
+
+    final backgroundPaint = Paint()
+      ..color = overlayColor
+      ..style = PaintingStyle.fill;
+
+    final boxPaint = Paint()
+      ..color = borderColor
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = borderWidth;
+
+    final cutOutRect = Rect.fromLTWH(
+      borderWidthSize - cutOutWidth / 2,
+      borderHeightSize - cutOutHeight / 2,
+      cutOutWidth,
+      cutOutHeight,
+    );
+
+    // Draw overlay with cut-out
+    canvas.save();
+    canvas.clipRRect(
+      RRect.fromRectAndRadius(cutOutRect, Radius.circular(borderRadius)),
+    );
+    canvas.drawPaint(backgroundPaint);
+    canvas.restore();
+
+    // Draw border lines
+    final path = Path()
+      ..fillType = PathFillType.evenOdd
+      ..addRect(rect)
+      ..addRRect(
+        RRect.fromRectAndRadius(cutOutRect, Radius.circular(borderRadius)),
+      );
+
+    canvas.drawPath(path, backgroundPaint);
+
+    // Draw corner borders
+    final borderOffset = borderWidth / 2;
+
+    // Top-left corner
+    canvas.drawPath(
+      Path()
+        ..moveTo(cutOutRect.left - borderOffset, cutOutRect.top + borderLength)
+        ..lineTo(cutOutRect.left - borderOffset, cutOutRect.top + borderRadius)
+        ..quadraticBezierTo(
+          cutOutRect.left - borderOffset,
+          cutOutRect.top - borderOffset,
+          cutOutRect.left + borderRadius,
+          cutOutRect.top - borderOffset,
+        )
+        ..lineTo(cutOutRect.left + borderLength, cutOutRect.top - borderOffset),
+      boxPaint,
+    );
+
+    // Top-right corner
+    canvas.drawPath(
+      Path()
+        ..moveTo(cutOutRect.right - borderLength, cutOutRect.top - borderOffset)
+        ..lineTo(cutOutRect.right - borderRadius, cutOutRect.top - borderOffset)
+        ..quadraticBezierTo(
+          cutOutRect.right + borderOffset,
+          cutOutRect.top - borderOffset,
+          cutOutRect.right + borderOffset,
+          cutOutRect.top + borderRadius,
+        )
+        ..lineTo(
+          cutOutRect.right + borderOffset,
+          cutOutRect.top + borderLength,
         ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              'Masukkan kode QR atau ID lokasi',
-              style: AppTextStyles.bodyMedium.copyWith(color: AppColors.grey),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: controller,
-              decoration: InputDecoration(
-                hintText: 'Contoh: LOC_001 atau WARUNG_BU_SARI',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: AppColors.primaryGreen),
-                ),
-              ),
-            ),
-          ],
+      boxPaint,
+    );
+
+    // Bottom-left corner
+    canvas.drawPath(
+      Path()
+        ..moveTo(
+          cutOutRect.left - borderOffset,
+          cutOutRect.bottom - borderLength,
+        )
+        ..lineTo(
+          cutOutRect.left - borderOffset,
+          cutOutRect.bottom - borderRadius,
+        )
+        ..quadraticBezierTo(
+          cutOutRect.left - borderOffset,
+          cutOutRect.bottom + borderOffset,
+          cutOutRect.left + borderRadius,
+          cutOutRect.bottom + borderOffset,
+        )
+        ..lineTo(
+          cutOutRect.left + borderLength,
+          cutOutRect.bottom + borderOffset,
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(
-              'Batal',
-              style: AppTextStyles.bodyMedium.copyWith(color: AppColors.grey),
-            ),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              if (controller.text.isNotEmpty) {
-                Navigator.pop(context);
-                _handleScanResult(controller.text.toUpperCase());
-              }
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primaryGreen,
-              foregroundColor: AppColors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-            child: const Text('Proses'),
-          ),
-        ],
-      ),
+      boxPaint,
+    );
+
+    // Bottom-right corner
+    canvas.drawPath(
+      Path()
+        ..moveTo(
+          cutOutRect.right - borderLength,
+          cutOutRect.bottom + borderOffset,
+        )
+        ..lineTo(
+          cutOutRect.right - borderRadius,
+          cutOutRect.bottom + borderOffset,
+        )
+        ..quadraticBezierTo(
+          cutOutRect.right + borderOffset,
+          cutOutRect.bottom + borderOffset,
+          cutOutRect.right + borderOffset,
+          cutOutRect.bottom - borderRadius,
+        )
+        ..lineTo(
+          cutOutRect.right + borderOffset,
+          cutOutRect.bottom - borderLength,
+        ),
+      boxPaint,
+    );
+  }
+
+  @override
+  ShapeBorder scale(double t) {
+    return QrScannerOverlayShape(
+      borderColor: borderColor,
+      borderWidth: borderWidth,
+      overlayColor: overlayColor,
     );
   }
 }

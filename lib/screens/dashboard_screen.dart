@@ -7,11 +7,20 @@ import '../models/surat_jalan.dart';
 import '../services/surat_jalan_service.dart';
 import 'surat_jalan_detail_screen.dart';
 import '../services/persistent_auth_service.dart';
+import '../services/user_storage.dart';
 import 'navigation_screen.dart';
 import 'calendar_screen.dart';
 import 'notification_screen.dart';
 import 'profile_screen.dart';
 import 'qr_scanner_screen.dart';
+import '../services/global_debug_utils.dart';
+import '../services/role_management_service.dart';
+import '../widgets/shared_bottom_navbar.dart';
+import '../widgets/shared_app_bar.dart';
+import '../widgets/gps_compliance_widget.dart';
+import '../services/update_service.dart';
+import '../services/location_tracking_service.dart';
+import '../services/driver_tracking_service.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -22,6 +31,30 @@ class DashboardScreen extends StatefulWidget {
 
 class _DashboardScreenState extends State<DashboardScreen> {
   int _selectedIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    // Jalankan monitoring update di dashboard
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      UpdateService.instance.startMonitoring(context);
+      _startLocationTracking();
+    });
+  }
+
+  Future<void> _startLocationTracking() async {
+    // Auto-start location tracking after login (only if consent already given)
+    final hasConsent = await UserStorage.hasLocationTrackingConsent();
+    if (hasConsent) {
+      final hasPermission = await LocationTrackingService.instance
+          .hasPermissions();
+      if (hasPermission && !LocationTrackingService.instance.isTracking) {
+        await LocationTrackingService.instance
+            .startTrackingWithoutPermissionCheck();
+        print('📍 Auto-started location tracking after login');
+      }
+    }
+  }
 
   void _onItemTapped(int index) {
     setState(() {
@@ -67,8 +100,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
               onPressed: () async {
                 Navigator.of(context).pop(); // Close dialog
 
+                // Stop location tracking on logout
+                await LocationTrackingService.instance.stopTracking();
+                await UserStorage.setLocationTrackingConsent(false);
+                print('📍 Stopped location tracking on logout');
+
                 // Clear auth data
                 await PersistentAuthService.instance.clearAuthData();
+                await UserStorage.clearUser();
 
                 // Navigate to login screen
                 if (mounted) {
@@ -133,6 +172,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   },
                   color: AppColors.primaryGreen,
                 ),
+                // Admin switch button
+                if (RoleManagementService.isAdmin())
+                  IconButton(
+                    icon: const Icon(Icons.swap_horiz),
+                    onPressed: () {
+                      Navigator.pushReplacementNamed(
+                        context,
+                        '/sales-dashboard',
+                      );
+                    },
+                    color: AppColors.primaryGreen,
+                    tooltip: 'Switch to Sales Dashboard',
+                  ),
                 PopupMenuButton<String>(
                   icon: const Icon(Icons.more_vert),
                   iconColor: AppColors.primaryGreen,
@@ -167,54 +219,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
             )
           : null,
       body: screens[_selectedIndex],
-      bottomNavigationBar: Container(
-        decoration: const BoxDecoration(
-          color: AppColors.white,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black12,
-              blurRadius: 10,
-              offset: Offset(0, -5),
-            ),
-          ],
-        ),
-        child: BottomNavigationBar(
-          backgroundColor: AppColors.white,
-          type: BottomNavigationBarType.fixed,
-          currentIndex: _selectedIndex,
-          onTap: _onItemTapped,
-          selectedItemColor: AppColors.primaryGreen,
-          unselectedItemColor: AppColors.grey,
-          selectedLabelStyle: AppTextStyles.caption.copyWith(
-            fontWeight: FontWeight.w600,
-            color: AppColors.primaryGreen,
-          ),
-          unselectedLabelStyle: AppTextStyles.caption.copyWith(
-            color: AppColors.grey,
-          ),
-          items: const [
-            BottomNavigationBarItem(
-              icon: Icon(Icons.home_outlined),
-              activeIcon: Icon(Icons.home),
-              label: 'Beranda',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.calendar_today_outlined),
-              activeIcon: Icon(Icons.calendar_today),
-              label: 'Kalender',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.notifications_outlined),
-              activeIcon: Icon(Icons.notifications),
-              label: 'Notifikasi',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.person_outline),
-              activeIcon: Icon(Icons.person),
-              label: 'Profil',
-            ),
-          ],
-        ),
+      floatingActionButton: GlobalDebugUtils.debugFloatingActionButton(context),
+      bottomNavigationBar: SharedBottomNavbar(
+        currentIndex: _selectedIndex,
+        onTap: _onItemTapped,
       ),
     );
   }
@@ -236,6 +244,7 @@ class _HomeScreenState extends State<_HomeScreen> {
 
   // User ID - akan diambil dari data login
   String? _userId;
+  String _userName = 'Driver';
 
   // Statistics
   int _totalTasks = 0;
@@ -259,6 +268,10 @@ class _HomeScreenState extends State<_HomeScreen> {
 
     if (userData != null && userData['userId'] != null) {
       _userId = userData['userId'].toString();
+      final name = userData['userName'];
+      if (name != null && name.trim().isNotEmpty) {
+        _userName = name.trim();
+      }
       print('✅ Dashboard: User ID set to: $_userId');
       await _loadSuratJalanData();
     } else {
@@ -316,61 +329,60 @@ class _HomeScreenState extends State<_HomeScreen> {
   }
 
   void _calculateStatistics() {
-    _totalTasks = _suratJalanList.length;
-
+    int totalDestinations = 0;
+    int completedDestinations = 0;
     double totalKg = 0;
-    int completed = 0;
 
     for (final surat in _suratJalanList) {
-      // Hitung total kg (convert dari liter)
+      // 1. Hitung total kg dari header (convert dari liter)
       try {
         final liter = double.parse(surat.totalLiter);
-        totalKg += liter * 0.9; // Convert liter to kg (UCO density)
-      } catch (e) {
-        // Ignore parsing errors
-      }
+        totalKg += liter * 0.9;
+      } catch (_) {}
 
-      // Hitung yang sudah selesai
-      if (surat.status.toLowerCase() == 'done') {
-        completed++;
+      // 2. Hitung jumlah item/tujuan dari detail
+      for (final detail in surat.suratJalanDetail) {
+        totalDestinations++;
+        if (detail.status.toLowerCase() == 'done') {
+          completedDestinations++;
+        }
       }
     }
 
+    _totalTasks = totalDestinations;
+    _completedTasks = completedDestinations;
     _totalMinyak = '${totalKg.toStringAsFixed(1)} kg';
-    _completedTasks = completed;
   }
 
   void _setupMapData() {
     _markers.clear();
-    print(
-      '🗺️ Setting up map markers for ${_suratJalanList.length} surat jalan',
-    );
+    int countTotalDetails = 0;
+    int countWithGps = 0;
 
-    // Create markers for each supplier location from surat jalan details
     for (int i = 0; i < _suratJalanList.length; i++) {
       final surat = _suratJalanList[i];
-      print('🔍 Processing surat ${i}: ${surat.kode}');
-
-      // Process each supplier in the surat jalan detail
       for (
         int detailIndex = 0;
         detailIndex < surat.suratJalanDetail.length;
         detailIndex++
       ) {
+        countTotalDetails++;
         final detail = surat.suratJalanDetail[detailIndex];
-        print('  📍 Supplier ${detailIndex}: ${detail.supplierName}');
-        print('     GPS: "${detail.supplierGps}"');
 
-        // Parse supplier GPS coordinates
-        final gpsParts = detail.supplierGps.split(',');
-        print('     GPS Parts: $gpsParts (length: ${gpsParts.length})');
+        // Validasi GPS String
+        final gpsStr = detail.supplierGps;
+        if (gpsStr.isEmpty || !gpsStr.contains(',')) {
+          print(
+            '⚠️ Dashboard Map: Skipping supplier "${detail.supplierName}" due to invalid GPS: "$gpsStr"',
+          );
+          continue;
+        }
 
+        final gpsParts = gpsStr.split(',');
         if (gpsParts.length >= 2) {
           try {
             double lat = double.parse(gpsParts[0].trim());
             double lng = double.parse(gpsParts[1].trim());
-
-            print('     ✅ Parsed coordinates: $lat, $lng');
 
             final kgAmount = SuratJalanService.convertLiterToKg(detail.qtyReal);
             final markerId =
@@ -382,38 +394,43 @@ class _HomeScreenState extends State<_HomeScreen> {
               infoWindow: InfoWindow(
                 title: detail.supplierName,
                 snippet:
-                    '${kgAmount} kg - ${surat.status.toUpperCase()}\n${surat.kode}\nTap untuk detail',
+                    '${kgAmount} kg - ${detail.status.toUpperCase()}\n${surat.kode}',
               ),
               icon: BitmapDescriptor.defaultMarkerWithHue(
-                surat.status == 'done'
+                detail.status == 'done'
                     ? BitmapDescriptor.hueGreen
-                    : surat.status == 'pickup'
+                    : detail.status == 'pickup'
                     ? BitmapDescriptor.hueOrange
                     : BitmapDescriptor.hueRed,
               ),
-              onTap: () {
-                // Navigate to navigation screen when marker is tapped
-                Navigator.push(
+              onTap: () async {
+                await Navigator.push(
                   context,
                   MaterialPageRoute(
                     builder: (context) => NavigationScreen(suratJalan: surat),
                   ),
                 );
+                // Refresh data when returning
+                _loadSuratJalanData();
               },
             );
 
             _markers.add(marker);
-            print('     ➕ Marker added: $markerId');
+            countWithGps++;
           } catch (e) {
-            print('     ❌ Error parsing GPS coordinates: $e');
+            print(
+              '❌ Dashboard Map: Error parsing coordinates for "${detail.supplierName}": $e',
+            );
           }
-        } else {
-          print('     ❌ Invalid GPS format');
         }
       }
     }
 
-    print('🗺️ Total markers created: ${_markers.length}');
+    print('🗺️ Map Setup Summary:');
+    print('  - Total Surat Jalan: ${_suratJalanList.length}');
+    print('  - Total Destinations (Tasks): $countTotalDetails');
+    print('  - Valid Markers Created: $countWithGps');
+    print('  - Set size: ${_markers.length}');
   }
 
   void _fitMarkersInView(GoogleMapController controller) async {
@@ -456,274 +473,368 @@ class _HomeScreenState extends State<_HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Statistics Card
-            Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: AppColors.primaryGreen,
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: [
-                  Expanded(
-                    child: Column(
-                      children: [
-                        Text(
-                          'Tugas Hari Ini',
-                          style: AppTextStyles.bodySmall.copyWith(
-                            color: AppColors.white,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          _totalTasks.toString(),
-                          style: AppTextStyles.h1.copyWith(
-                            color: AppColors.white,
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Container(
-                    height: 60,
-                    width: 1,
-                    color: AppColors.white.withOpacity(0.3),
-                  ),
-                  Expanded(
-                    child: Column(
-                      children: [
-                        Text(
-                          'Total Minyak',
-                          style: AppTextStyles.bodySmall.copyWith(
-                            color: AppColors.white,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          _totalMinyak,
-                          style: AppTextStyles.h1.copyWith(
-                            color: AppColors.white,
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Container(
-                    height: 60,
-                    width: 1,
-                    color: AppColors.white.withOpacity(0.3),
-                  ),
-                  Expanded(
-                    child: Column(
-                      children: [
-                        Text(
-                          'Selesai',
-                          style: AppTextStyles.bodySmall.copyWith(
-                            color: AppColors.white,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          _completedTasks.toString(),
-                          style: AppTextStyles.h1.copyWith(
-                            color: AppColors.white,
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
+    final progress = _totalTasks == 0 ? 0.0 : _completedTasks / _totalTasks;
 
-            const SizedBox(height: 24),
+    return RefreshIndicator(
+      color: AppColors.primaryGreen,
+      onRefresh: _loadSuratJalanData,
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Hero card: greeting + daily progress + stats
+              _buildHeroCard(progress),
 
-            // Loading indicator
-            if (_isLoading) ...[
-              const Center(
-                child: Padding(
-                  padding: EdgeInsets.all(32.0),
-                  child: CircularProgressIndicator(
-                    valueColor: AlwaysStoppedAnimation<Color>(
-                      AppColors.primaryGreen,
+              const SizedBox(height: 24),
+
+              // Loading indicator
+              if (_isLoading) ...[
+                const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(32.0),
+                    child: CircularProgressIndicator(
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        AppColors.primaryGreen,
+                      ),
                     ),
                   ),
                 ),
-              ),
-            ] else if (_errorMessage != null) ...[
-              // Error state
-              _buildErrorWidget(),
-            ] else if (_suratJalanList.isNotEmpty) ...[
-              // Tasks exist - show normal content
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      'Surat Jalan Hari Ini',
-                      style: AppTextStyles.h5.copyWith(
-                        color: AppColors.primaryGreen,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                  GestureDetector(
-                    onTap: _loadSuratJalanData,
-                    child: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: AppColors.primaryGreen.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: const Icon(
-                        Icons.refresh,
-                        color: AppColors.primaryGreen,
-                        size: 20,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
+              ] else if (_errorMessage != null) ...[
+                // Error state
+                _buildErrorWidget(),
+              ] else if (_suratJalanList.isNotEmpty) ...[
+                // Map section header
+                _buildSectionHeader(
+                  'Peta Lokasi Pickup',
+                  icon: Icons.map_outlined,
+                ),
+                const SizedBox(height: 12),
 
-              // Map section header
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      'Peta Lokasi Pickup',
-                      style: AppTextStyles.h5.copyWith(
-                        color: AppColors.primaryGreen,
-                        fontWeight: FontWeight.bold,
+                // Map legend
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    _buildLegendItem('Selesai', AppColors.success),
+                    _buildLegendItem('Pickup', const Color(0xFFFF9500)),
+                    _buildLegendItem('Pending', AppColors.error),
+                  ],
+                ),
+
+                const SizedBox(height: 12),
+
+                // Map view (enhanced interactive)
+                Container(
+                  height: 250,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(20),
+                    color: AppColors.white,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.08),
+                        blurRadius: 16,
+                        offset: const Offset(0, 6),
                       ),
-                    ),
-                  ),
-                  // Map legend
-                  Row(
-                    children: [
-                      _buildLegendItem('Selesai', Colors.green),
-                      const SizedBox(width: 8),
-                      _buildLegendItem('Pickup', Colors.orange),
-                      const SizedBox(width: 8),
-                      _buildLegendItem('Pending', Colors.red),
                     ],
                   ),
-                ],
-              ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(20),
+                    child: GoogleMap(
+                      initialCameraPosition: const CameraPosition(
+                        target: LatLng(-7.9797, 112.6304), // Malang coordinates
+                        zoom: 13.0,
+                      ),
+                      markers: _markers,
+                      onMapCreated: (GoogleMapController controller) {
+                        // Map controller ready - fit bounds if there are markers
+                        if (_markers.isNotEmpty) {
+                          _fitMarkersInView(controller);
+                        }
+                      },
+                      zoomControlsEnabled: true,
+                      compassEnabled: true,
+                      mapToolbarEnabled: false,
+                      myLocationButtonEnabled: false,
+                      mapType: MapType.normal,
+                      onTap: (LatLng position) {},
+                    ),
+                  ),
+                ),
 
-              const SizedBox(height: 12),
+                const SizedBox(height: 24),
 
-              // Map view (enhanced interactive)
-              Container(
-                height: 250,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(16),
-                  color: AppColors.background,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
+                // Surat jalan list header
+                _buildSectionHeader(
+                  'Surat Jalan Hari Ini',
+                  icon: Icons.receipt_long_outlined,
+                  trailing: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.primaryGreen.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      '${_suratJalanList.length} surat',
+                      style: AppTextStyles.caption.copyWith(
+                        color: AppColors.primaryGreen,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                // Surat jalan list
+                ListView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: _suratJalanList.length,
+                  itemBuilder: (context, index) {
+                    final surat = _suratJalanList[index];
+                    return _buildSuratJalanCard(surat);
+                  },
+                ),
+              ] else ...[
+                // No tasks today - show empty state
+                _buildEmptyTasksWidget(),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHeroCard(double progress) {
+    final now = DateTime.now();
+    final dateLabel =
+        '${now.day.toString().padLeft(2, '0')} ${_getMonthName(now.month)} ${now.year}';
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF1B4D3E), Color(0xFF2E7D5B)],
+        ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primaryGreen.withOpacity(0.25),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Greeting + date
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _greeting(),
+                      style: AppTextStyles.bodySmall.copyWith(
+                        color: AppColors.white.withOpacity(0.75),
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      _userName,
+                      style: AppTextStyles.h4.copyWith(
+                        color: AppColors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(16),
-                  child: GoogleMap(
-                    initialCameraPosition: const CameraPosition(
-                      target: LatLng(-7.9797, 112.6304), // Malang coordinates
-                      zoom: 13.0,
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: AppColors.white.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.calendar_today,
+                      size: 12,
+                      color: AppColors.white.withOpacity(0.9),
                     ),
-                    markers: _markers,
-                    onMapCreated: (GoogleMapController controller) {
-                      // Map controller ready - fit bounds if there are markers
-                      if (_markers.isNotEmpty) {
-                        _fitMarkersInView(controller);
-                      }
-                    },
-                    zoomControlsEnabled: true,
-                    compassEnabled: true,
-                    mapToolbarEnabled: false,
-                    myLocationButtonEnabled: false,
-                    mapType: MapType.normal,
-                    // Enable marker info windows
-                    onTap: (LatLng position) {
-                      // Optional: Handle map tap
-                    },
-                  ),
+                    const SizedBox(width: 6),
+                    Text(
+                      dateLabel,
+                      style: AppTextStyles.caption.copyWith(
+                        color: AppColors.white,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-
-              const SizedBox(height: 16),
-
-              // Surat jalan list
-              ListView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: _suratJalanList.length,
-                itemBuilder: (context, index) {
-                  final surat = _suratJalanList[index];
-                  return _buildSuratJalanCard(surat);
-                },
-              ),
-            ] else ...[
-              // No tasks today - show empty state
-              _buildEmptyTasksWidget(),
             ],
+          ),
 
-            // const SizedBox(height: 24),
+          const SizedBox(height: 20),
 
-            // // Quick Actions (always visible)
-            // Text(
-            //   'Aksi Cepat',
-            //   style: AppTextStyles.h5.copyWith(
-            //     color: AppColors.primaryGreen,
-            //     fontWeight: FontWeight.bold,
-            //   ),
-            // ),
+          // Daily progress
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Progress Hari Ini',
+                style: AppTextStyles.bodySmall.copyWith(
+                  color: AppColors.white.withOpacity(0.75),
+                ),
+              ),
+              Text(
+                '$_completedTasks / $_totalTasks selesai',
+                style: AppTextStyles.caption.copyWith(
+                  color: AppColors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: LinearProgressIndicator(
+              value: progress,
+              minHeight: 8,
+              backgroundColor: AppColors.white.withOpacity(0.2),
+              valueColor: const AlwaysStoppedAnimation<Color>(
+                AppColors.accentOrange,
+              ),
+            ),
+          ),
 
-            // const SizedBox(height: 12),
+          const SizedBox(height: 20),
 
-            // Row(
-            //   children: [
-            //     Expanded(
-            //       child: _buildQuickActionButton(
-            //         icon: Icons.refresh,
-            //         label: 'Refresh Data',
-            //         onTap: _loadSuratJalanData,
-            //       ),
-            //     ),
-            //     const SizedBox(width: 12),
-            //     Expanded(
-            //       child: _buildQuickActionButton(
-            //         icon: Icons.list_alt,
-            //         label: 'Lihat Semua',
-            //         onTap: () {
-            //           // TODO: Navigate to all surat jalan list
-            //         },
-            //       ),
-            //     ),
-            //   ],
-            // ),
-            const SizedBox(height: 16),
-          ],
-        ),
+          // Stat tiles
+          Row(
+            children: [
+              _buildHeroStat(
+                Icons.assignment_outlined,
+                _totalTasks.toString(),
+                'Tugas',
+              ),
+              _heroDivider(),
+              _buildHeroStat(
+                Icons.local_gas_station_outlined,
+                _totalMinyak,
+                'Total Minyak',
+              ),
+              _heroDivider(),
+              _buildHeroStat(
+                Icons.check_circle_outline,
+                _completedTasks.toString(),
+                'Selesai',
+              ),
+            ],
+          ),
+        ],
       ),
+    );
+  }
+
+  Widget _heroDivider() {
+    return Container(
+      height: 44,
+      width: 1,
+      color: AppColors.white.withOpacity(0.2),
+    );
+  }
+
+  Widget _buildHeroStat(IconData icon, String value, String label) {
+    return Expanded(
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: AppColors.white.withOpacity(0.15),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, color: AppColors.white, size: 18),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            value,
+            style: AppTextStyles.h6.copyWith(
+              color: AppColors.white,
+              fontWeight: FontWeight.bold,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 2),
+          Text(
+            label,
+            style: AppTextStyles.caption.copyWith(
+              color: AppColors.white.withOpacity(0.75),
+              fontSize: 11,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _greeting() {
+    final hour = DateTime.now().hour;
+    if (hour < 11) return 'Selamat pagi 👋';
+    if (hour < 15) return 'Selamat siang 👋';
+    if (hour < 19) return 'Selamat sore 👋';
+    return 'Selamat malam 👋';
+  }
+
+  Widget _buildSectionHeader(
+    String title, {
+    required IconData icon,
+    Widget? trailing,
+  }) {
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(6),
+          decoration: BoxDecoration(
+            color: AppColors.primaryGreen.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(icon, size: 16, color: AppColors.primaryGreen),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            title,
+            style: AppTextStyles.h5.copyWith(
+              color: AppColors.primaryGreen,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+        if (trailing != null) trailing,
+      ],
     );
   }
 
@@ -760,6 +871,7 @@ class _HomeScreenState extends State<_HomeScreen> {
                   onPressed: () async {
                     // Navigate to login to re-authenticate
                     await PersistentAuthService.instance.clearAuthData();
+                    await UserStorage.clearUser();
                     if (mounted) {
                       Navigator.pushNamedAndRemoveUntil(
                         context,
@@ -813,37 +925,42 @@ class _HomeScreenState extends State<_HomeScreen> {
 
   Widget _buildSuratJalanCard(SuratJalan surat) {
     final statusColor = surat.status == 'done'
-        ? AppColors.primaryGreen
-        : surat.status == 'pickup'
+        ? AppColors.success
+        : (surat.status == 'progress' || surat.status == 'pickup')
         ? const Color(0xFFFF9500)
         : AppColors.error;
 
     final statusText = surat.status == 'done'
         ? 'Selesai'
-        : surat.status == 'pickup'
-        ? 'Pickup'
+        : (surat.status == 'progress' || surat.status == 'pickup')
+        ? 'Proses'
+        : surat.status == 'cancelled'
+        ? 'Batal'
         : 'Pending';
 
     return InkWell(
-      onTap: () {
-        Navigator.push(
+      onTap: () async {
+        await Navigator.push(
           context,
           MaterialPageRoute(
             builder: (context) => SuratJalanDetailScreen(suratJalan: surat),
           ),
         );
+        // Refresh data when returning
+        _loadSuratJalanData();
       },
+      borderRadius: BorderRadius.circular(16),
       child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
+        margin: const EdgeInsets.only(bottom: 14),
         decoration: BoxDecoration(
           color: AppColors.white,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppColors.background),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.borderColor.withOpacity(0.6)),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(0.05),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
             ),
           ],
         ),
@@ -851,40 +968,80 @@ class _HomeScreenState extends State<_HomeScreen> {
           children: [
             // Header dengan kode surat jalan
             Container(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
                 color: AppColors.primaryGreen.withOpacity(0.05),
                 borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(12),
-                  topRight: Radius.circular(12),
+                  topLeft: Radius.circular(16),
+                  topRight: Radius.circular(16),
                 ),
               ),
               child: Row(
                 children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppColors.primaryGreen.withOpacity(0.12),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(
+                      Icons.receipt_long,
+                      size: 18,
+                      color: AppColors.primaryGreen,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
                   Expanded(
-                    child: Text(
-                      surat.kode,
-                      style: AppTextStyles.bodyLarge.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.primaryGreen,
-                      ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          surat.kode,
+                          style: AppTextStyles.bodyLarge.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.primaryGreen,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        Text(
+                          surat.tanggalFormatted,
+                          style: AppTextStyles.caption.copyWith(
+                            color: AppColors.grey,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                   Container(
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
+                      horizontal: 10,
                       vertical: 6,
                     ),
                     decoration: BoxDecoration(
-                      color: statusColor,
+                      color: statusColor.withOpacity(0.12),
                       borderRadius: BorderRadius.circular(20),
                     ),
-                    child: Text(
-                      statusText,
-                      style: AppTextStyles.caption.copyWith(
-                        color: AppColors.white,
-                        fontWeight: FontWeight.bold,
-                      ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 6,
+                          height: 6,
+                          decoration: BoxDecoration(
+                            color: statusColor,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          statusText,
+                          style: AppTextStyles.caption.copyWith(
+                            color: statusColor,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
@@ -1070,14 +1227,26 @@ class _HomeScreenState extends State<_HomeScreen> {
                     ],
                   ),
 
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 14),
 
-                  // Tanggal
-                  Text(
-                    'Tanggal: ${surat.tanggalFormatted}',
-                    style: AppTextStyles.caption.copyWith(
-                      color: AppColors.grey,
-                    ),
+                  // Footer: tap affordance
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      Text(
+                        'Lihat detail',
+                        style: AppTextStyles.caption.copyWith(
+                          color: AppColors.primaryGreen,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(width: 2),
+                      const Icon(
+                        Icons.arrow_forward_ios,
+                        size: 12,
+                        color: AppColors.primaryGreen,
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -1216,63 +1385,30 @@ class _HomeScreenState extends State<_HomeScreen> {
   }
 
   Widget _buildLegendItem(String label, Color color) {
-    return Row(
-      children: [
-        Container(
-          width: 12,
-          height: 12,
-          decoration: BoxDecoration(
-            color: color,
-            shape: BoxShape.circle,
-            boxShadow: [
-              BoxShadow(
-                color: color.withOpacity(0.3),
-                blurRadius: 4,
-                offset: const Offset(0, 2),
-              ),
-            ],
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 8,
+            height: 8,
+            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
           ),
-        ),
-        const SizedBox(width: 4),
-        Text(
-          label,
-          style: AppTextStyles.caption.copyWith(
-            color: AppColors.grey,
-            fontSize: 11,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildQuickActionButton({
-    required IconData icon,
-    required String label,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: AppColors.white,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppColors.background),
-        ),
-        child: Column(
-          children: [
-            Icon(icon, size: 28, color: AppColors.primaryGreen),
-            const SizedBox(height: 8),
-            Text(
-              label,
-              style: AppTextStyles.caption.copyWith(
-                color: AppColors.primaryGreen,
-                fontWeight: FontWeight.w600,
-              ),
-              textAlign: TextAlign.center,
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: AppTextStyles.caption.copyWith(
+              color: AppColors.darkGrey,
+              fontWeight: FontWeight.w500,
+              fontSize: 11,
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

@@ -31,10 +31,16 @@ class RoleSelectionScreen extends StatelessWidget {
                       ),
                     ],
                   ),
-                  child: Icon(
-                    Icons.eco,
-                    size: 60,
-                    color: AppColors.primaryGreen,
+                  child: ClipOval(
+                    child: Container(
+                      width: 60,
+                      height: 60,
+                      padding: const EdgeInsets.all(8),
+                      child: Image.asset(
+                        'assets/images/logo.png',
+                        fit: BoxFit.contain,
+                      ),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 24),

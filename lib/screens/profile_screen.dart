@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import '../constants/app_colors.dart';
 import '../constants/app_text_styles.dart';
 import '../services/user_storage.dart';
+import '../services/geu/geu_auth_service.dart';
 import 'edit_profile_screen.dart';
 import 'about_screen.dart';
+import 'diagnosis_screen.dart';
+import 'pickup_history_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -170,7 +173,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   _buildMenuItem(
                     icon: Icons.history,
                     title: 'Riwayat Penjemputan',
-                    onTap: () {},
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const PickupHistoryScreen(),
+                        ),
+                      );
+                    },
                   ),
                   _buildDivider(),
                   _buildMenuItem(
@@ -219,6 +229,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         context,
                         MaterialPageRoute(
                           builder: (context) => const AboutScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                  _buildDivider(),
+                  _buildMenuItem(
+                    icon: Icons.on_device_training_outlined,
+                    title: 'Diagnosa',
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const DiagnosisScreen(),
                         ),
                       );
                     },
@@ -279,6 +302,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     if (confirm == true && mounted) {
                       // Clear user data
                       await UserStorage.clearUser();
+                      GeuAuthService.logout(); // best-effort, don't block logout
 
                       // Navigate to login
                       if (mounted) {

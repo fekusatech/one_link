@@ -29,7 +29,7 @@ static const String platform = 'Flutter';
 static const String language = 'Dart';
 static const String backend = 'REST API';
 static const String database = 'MySQL';
-static const String baseUrl = 'https://erp.greenenergiutama.co.id/api';
+static const String baseUrl = 'https://greenenergiutama.co.id/api';
 ```
 
 ## 📋 **Fitur Aplikasi**

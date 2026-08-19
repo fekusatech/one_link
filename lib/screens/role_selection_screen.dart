@@ -1,14 +1,318 @@
 import 'package:flutter/material.dart';
 import '../constants/app_colors.dart';
 import '../constants/app_text_styles.dart';
+import '../services/global_debug_utils.dart';
+import '../services/role_management_service.dart';
+import '../services/mandatory_gps_service.dart';
+import 'access_denied_screen.dart';
+import 'mandatory_gps_consent_screen.dart';
 
-class RoleSelectionScreen extends StatelessWidget {
+import '../services/update_service.dart';
+
+class RoleSelectionScreen extends StatefulWidget {
   const RoleSelectionScreen({super.key});
 
   @override
+  State<RoleSelectionScreen> createState() => _RoleSelectionScreenState();
+}
+
+class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
+  bool _isAnalyzing = true;
+  Map<String, dynamic>? _roleAnalysis;
+
+  @override
+  void initState() {
+    super.initState();
+    // Update check hanya dilakukan di dashboard setelah login berhasil
+    _analyzeUserRole();
+  }
+
+  Future<void> _analyzeUserRole() async {
+    setState(() {
+      _isAnalyzing = true;
+    });
+
+    try {
+      final roleAnalysis = await RoleManagementService.analyzeUserRole();
+
+      setState(() {
+        _roleAnalysis = roleAnalysis;
+        _isAnalyzing = false;
+      });
+
+      // Handle auto-routing
+      if (roleAnalysis['success'] == true && mounted) {
+        final roleType = roleAnalysis['roleType'] as RoleType;
+
+        if (roleAnalysis['autoRoute'] == true) {
+          // Check GPS consent before proceeding to main screens
+          bool needsGpsConsent = await MandatoryGpsService.instance
+              .needsMandatoryGpsConsent();
+
+          if (needsGpsConsent) {
+            // Redirect to mandatory GPS consent
+            await Future.delayed(const Duration(seconds: 1));
+            if (mounted) {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const MandatoryGpsConsentScreen(),
+                ),
+              );
+            }
+            return;
+          }
+
+          // Auto route untuk driver dan sales (after GPS consent is confirmed)
+          final route = RoleManagementService.getRouteForRole(roleType);
+          if (route != null) {
+            // Delay sedikit untuk user melihat loading
+            await Future.delayed(const Duration(seconds: 2));
+
+            if (mounted) {
+              if (roleType == RoleType.sales) {
+                // Navigate to sales dashboard
+                Navigator.pushReplacementNamed(context, '/sales-dashboard');
+              } else if (roleType == RoleType.driver) {
+                // Navigate to driver dashboard (jika ada)
+                Navigator.pushReplacementNamed(context, '/driver-dashboard');
+              }
+            }
+          }
+        } else if (roleType == RoleType.denied) {
+          // Show access denied screen
+          await Future.delayed(const Duration(seconds: 2));
+
+          if (mounted) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (context) => AccessDeniedScreen(
+                  message: roleAnalysis['message'],
+                  userRoles: List<String>.from(roleAnalysis['userRoles'] ?? []),
+                ),
+              ),
+            );
+          }
+        }
+        // Untuk admin (roleType.admin), tetap di role selection screen
+      }
+    } catch (e) {
+      setState(() {
+        _isAnalyzing = false;
+        _roleAnalysis = {
+          'success': false,
+          'message': 'Error analyzing roles: $e',
+          'roleType': RoleType.denied,
+        };
+      });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    if (_isAnalyzing) {
+      return _buildLoadingScreen();
+    }
+
+    if (_roleAnalysis == null || _roleAnalysis!['success'] != true) {
+      return _buildErrorScreen();
+    }
+
+    final roleType = _roleAnalysis!['roleType'] as RoleType;
+
+    // Untuk admin role, tampilkan role selection
+    if (roleType == RoleType.admin) {
+      return _buildRoleSelectionScreen();
+    }
+
+    // Untuk role lain, tampilkan loading dengan info redirect
+    return _buildRedirectScreen();
+  }
+
+  Widget _buildLoadingScreen() {
     return Scaffold(
       backgroundColor: AppColors.primaryGreen,
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // Logo
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: AppColors.white,
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 20,
+                    offset: const Offset(0, 10),
+                  ),
+                ],
+              ),
+              child: ClipOval(
+                child: Container(
+                  width: 60,
+                  height: 60,
+                  padding: const EdgeInsets.all(8),
+                  child: Image.asset(
+                    'assets/images/logo.png',
+                    fit: BoxFit.contain,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
+
+            Text(
+              'OneLink',
+              style: AppTextStyles.h3.copyWith(
+                color: AppColors.white,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 32),
+
+            CircularProgressIndicator(color: AppColors.white, strokeWidth: 3),
+            const SizedBox(height: 16),
+
+            Text(
+              'Analyzing user roles...',
+              style: AppTextStyles.bodyMedium.copyWith(
+                color: AppColors.white.withOpacity(0.8),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildErrorScreen() {
+    return Scaffold(
+      backgroundColor: AppColors.primaryGreen,
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.error_outline, size: 64, color: AppColors.white),
+              const SizedBox(height: 16),
+
+              Text(
+                'Role Analysis Failed',
+                style: AppTextStyles.h4.copyWith(
+                  color: AppColors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+
+              Text(
+                _roleAnalysis?['message'] ?? 'Unknown error occurred',
+                style: AppTextStyles.bodyMedium.copyWith(
+                  color: AppColors.white.withOpacity(0.8),
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+
+              ElevatedButton(
+                onPressed: _analyzeUserRole,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.white,
+                  foregroundColor: AppColors.primaryGreen,
+                ),
+                child: const Text('Retry'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRedirectScreen() {
+    final roleType = _roleAnalysis!['roleType'] as RoleType;
+    final message = _roleAnalysis!['message'] as String;
+
+    String redirectInfo;
+    IconData redirectIcon;
+
+    switch (roleType) {
+      case RoleType.driver:
+        redirectInfo = 'Redirecting to Driver Dashboard...';
+        redirectIcon = Icons.local_shipping;
+        break;
+      case RoleType.sales:
+        redirectInfo = 'Redirecting to Sales Dashboard...';
+        redirectIcon = Icons.business_center;
+        break;
+      default:
+        redirectInfo = 'Processing...';
+        redirectIcon = Icons.hourglass_empty;
+    }
+
+    return Scaffold(
+      backgroundColor: AppColors.primaryGreen,
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // Role Icon
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: AppColors.white,
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 20,
+                    offset: const Offset(0, 10),
+                  ),
+                ],
+              ),
+              child: Icon(
+                redirectIcon,
+                size: 60,
+                color: AppColors.primaryGreen,
+              ),
+            ),
+            const SizedBox(height: 24),
+
+            Text(
+              'Welcome ${RoleManagementService.getUserName()}!',
+              style: AppTextStyles.h4.copyWith(
+                color: AppColors.white,
+                fontWeight: FontWeight.bold,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+
+            Text(
+              redirectInfo,
+              style: AppTextStyles.bodyMedium.copyWith(
+                color: AppColors.white.withOpacity(0.8),
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 32),
+
+            CircularProgressIndicator(color: AppColors.white, strokeWidth: 3),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRoleSelectionScreen() {
+    return Scaffold(
+      backgroundColor: AppColors.primaryGreen,
+      floatingActionButton: GlobalDebugUtils.debugFloatingActionButton(context),
       body: SafeArea(
         child: SingleChildScrollView(
           child: Padding(
@@ -31,10 +335,16 @@ class RoleSelectionScreen extends StatelessWidget {
                       ),
                     ],
                   ),
-                  child: Icon(
-                    Icons.eco,
-                    size: 60,
-                    color: AppColors.primaryGreen,
+                  child: ClipOval(
+                    child: Container(
+                      width: 60,
+                      height: 60,
+                      padding: const EdgeInsets.all(8),
+                      child: Image.asset(
+                        'assets/images/logo.png',
+                        fit: BoxFit.contain,
+                      ),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 24),
@@ -56,6 +366,17 @@ class RoleSelectionScreen extends StatelessWidget {
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 12),
+
+                // User welcome message
+                Text(
+                  'Welcome ${RoleManagementService.getUserName()}!',
+                  style: AppTextStyles.bodyMedium.copyWith(
+                    color: AppColors.white.withOpacity(0.9),
+                    fontWeight: FontWeight.w600,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 4),
 
                 Text(
                   'Pilih peran Anda untuk melanjutkan',
@@ -123,8 +444,22 @@ class RoleSelectionScreen extends StatelessWidget {
     required Color textColor,
   }) {
     return GestureDetector(
-      onTap: () {
-        Navigator.pushReplacementNamed(context, route);
+      onTap: () async {
+        // Check GPS consent before navigating to any main screen
+        bool needsGpsConsent = await MandatoryGpsService.instance
+            .needsMandatoryGpsConsent();
+
+        if (needsGpsConsent && mounted) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) =>
+                  MandatoryGpsConsentScreen(targetRoute: route),
+            ),
+          );
+        } else if (mounted) {
+          Navigator.pushReplacementNamed(context, route);
+        }
       },
       child: Container(
         width: double.infinity,

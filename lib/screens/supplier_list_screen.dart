@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import '../constants/app_colors.dart';
 import '../constants/app_text_styles.dart';
 import 'add_supplier_screen_simple.dart';
+import '../services/supplier_list_service.dart';
+import '../models/supplier_list_model.dart';
+import '../services/user_storage.dart';
 
 class SupplierListScreen extends StatefulWidget {
   const SupplierListScreen({super.key});
@@ -16,9 +19,14 @@ class _SupplierListScreenState extends State<SupplierListScreen> {
   String _selectedCategory = 'Semua';
   bool _isLoading = false;
 
-  // Sample supplier data
-  List<Map<String, dynamic>> _suppliers = [];
-  List<Map<String, dynamic>> _filteredSuppliers = [];
+  // Real supplier data
+  List<SupplierListItem> _suppliers = [];
+  List<SupplierListItem> _filteredSuppliers = [];
+
+  // Date filter - default to wide range (1978 to now)
+  String _toDate = DateTime.now().toIso8601String().substring(0, 10);
+
+  int? _currentUserId;
 
   final List<String> _filterOptions = [
     'Semua',
@@ -56,155 +64,119 @@ class _SupplierListScreenState extends State<SupplierListScreen> {
       _isLoading = true;
     });
 
-    // Simulate API call
-    await Future.delayed(const Duration(seconds: 1));
+    try {
+      // Get current user ID
+      _currentUserId = await UserStorage.getUserId();
 
-    setState(() {
-      _suppliers = [
-        {
-          'id': '1',
-          'business_name': 'RM. Ayam Goreng Berkah',
-          'contact_person': 'Budi Santoso',
-          'phone': '081234567890',
-          'address': 'Jl. Veteran No. 12, Malang',
-          'category': 'Restoran',
-          'estimated_volume': '25',
-          'status': 'Aktif',
-          'last_pickup': '2 hari lalu',
-          'total_volume_collected': '150L',
-          'join_date': '15 Jan 2024',
-        },
-        {
-          'id': '2',
-          'business_name': 'Warung Makan Sari Rasa',
-          'contact_person': 'Sari Dewi',
-          'phone': '081234567891',
-          'address': 'Jl. Soekarno Hatta No. 45, Malang',
-          'category': 'Warung Makan',
-          'estimated_volume': '18',
-          'status': 'Aktif',
-          'last_pickup': '1 hari lalu',
-          'total_volume_collected': '89L',
-          'join_date': '20 Jan 2024',
-        },
-        {
-          'id': '3',
-          'business_name': 'Hotel Grand Malang',
-          'contact_person': 'Ahmad Rahman',
-          'phone': '081234567892',
-          'address': 'Jl. Tugu No. 3, Malang',
-          'category': 'Hotel',
-          'estimated_volume': '50',
-          'status': 'Pending',
-          'last_pickup': 'Belum pernah',
-          'total_volume_collected': '0L',
-          'join_date': '28 Jan 2024',
-        },
-        {
-          'id': '4',
-          'business_name': 'KFC Dinoyo',
-          'contact_person': 'Manager KFC',
-          'phone': '081234567893',
-          'address': 'Jl. MT Haryono No. 167, Malang',
-          'category': 'Fast Food',
-          'estimated_volume': '35',
-          'status': 'Aktif',
-          'last_pickup': '3 hari lalu',
-          'total_volume_collected': '210L',
-          'join_date': '10 Jan 2024',
-        },
-        {
-          'id': '5',
-          'business_name': 'Catering Sehat Berkah',
-          'contact_person': 'Ibu Fatimah',
-          'phone': '081234567894',
-          'address': 'Jl. Kawi No. 12, Malang',
-          'category': 'Katering',
-          'estimated_volume': '40',
-          'status': 'Tidak Aktif',
-          'last_pickup': '2 minggu lalu',
-          'total_volume_collected': '95L',
-          'join_date': '05 Jan 2024',
-        },
-      ];
-      _filteredSuppliers = List.from(_suppliers);
-      _isLoading = false;
-    });
+      // Load suppliers with wide date range to show all
+      final response = await SupplierListService.getSupplierList(
+        page: 1,
+        limit: 100, // Get more data
+        picId: _currentUserId,
+        date: _toDate, // Use current date as filter
+      );
+
+      if (response.status && response.data != null) {
+        setState(() {
+          _suppliers = response.data!.data;
+          _filteredSuppliers = _suppliers;
+          _isLoading = false;
+        });
+      } else {
+        setState(() {
+          _suppliers = [];
+          _filteredSuppliers = [];
+          _isLoading = false;
+        });
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(response.message),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      setState(() {
+        _suppliers = [];
+        _filteredSuppliers = [];
+        _isLoading = false;
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
   }
 
   void _filterSuppliers() {
     setState(() {
       _filteredSuppliers = _suppliers.where((supplier) {
         final matchesSearch =
-            supplier['business_name'].toLowerCase().contains(
+            supplier.name.toLowerCase().contains(
               _searchController.text.toLowerCase(),
             ) ||
-            supplier['contact_person'].toLowerCase().contains(
-              _searchController.text.toLowerCase(),
-            );
+            (supplier.alamat?.toLowerCase().contains(
+                  _searchController.text.toLowerCase(),
+                ) ??
+                false);
 
-        final matchesStatus =
-            _selectedFilter == 'Semua' || supplier['status'] == _selectedFilter;
-
-        final matchesCategory =
-            _selectedCategory == 'Semua' ||
-            supplier['category'] == _selectedCategory;
-
-        return matchesSearch && matchesStatus && matchesCategory;
+        // For now, keep simple filtering as supplier model doesn't have status/category yet
+        return matchesSearch;
       }).toList();
     });
   }
 
-  void _editSupplier(Map<String, dynamic> supplier) {
+  void _editSupplier(SupplierListItem supplier) {
     // TODO: Navigate to edit supplier screen
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Edit Supplier'),
+        title: const Text('Edit Supplier'),
         content: Text(
-          'Fitur edit akan ditambahkan. Supplier: ${supplier['business_name']}',
+          'Fitur edit akan ditambahkan. Supplier: ${supplier.name}',
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('OK'),
+            child: const Text('OK'),
           ),
         ],
       ),
     );
   }
 
-  void _deleteSupplier(Map<String, dynamic> supplier) {
+  void _deleteSupplier(SupplierListItem supplier) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Hapus Supplier'),
-        content: Text(
-          'Apakah Anda yakin ingin menghapus ${supplier['business_name']}?',
-        ),
+        title: const Text('Hapus Supplier'),
+        content: Text('Apakah Anda yakin ingin menghapus ${supplier.name}?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('Batal'),
+            child: const Text('Batal'),
           ),
           TextButton(
             onPressed: () {
               setState(() {
-                _suppliers.removeWhere((s) => s['id'] == supplier['id']);
+                _suppliers.removeWhere((s) => s.id == supplier.id);
                 _filterSuppliers();
               });
               Navigator.pop(context);
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text(
-                    '${supplier['business_name']} berhasil dihapus',
-                  ),
+                  content: Text('${supplier.name} berhasil dihapus'),
                   backgroundColor: AppColors.primaryGreen,
                 ),
               );
             },
             style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: Text('Hapus'),
+            child: const Text('Hapus'),
           ),
         ],
       ),
@@ -396,7 +368,7 @@ class _SupplierListScreenState extends State<SupplierListScreen> {
     );
   }
 
-  Widget _buildSupplierCard(Map<String, dynamic> supplier) {
+  Widget _buildSupplierCard(SupplierListItem supplier) {
     return Container(
       decoration: BoxDecoration(
         color: AppColors.white,
@@ -420,12 +392,12 @@ class _SupplierListScreenState extends State<SupplierListScreen> {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: _getStatusColor(supplier['status']).withOpacity(0.1),
+                    color: AppColors.primaryGreen.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Icon(
-                    _getCategoryIcon(supplier['category']),
-                    color: _getStatusColor(supplier['status']),
+                  child: const Icon(
+                    Icons.store,
+                    color: AppColors.primaryGreen,
                     size: 24,
                   ),
                 ),
@@ -437,7 +409,7 @@ class _SupplierListScreenState extends State<SupplierListScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        supplier['business_name'],
+                        supplier.name,
                         style: AppTextStyles.bodyLarge.copyWith(
                           fontWeight: FontWeight.bold,
                           color: AppColors.textPrimary,
@@ -445,7 +417,7 @@ class _SupplierListScreenState extends State<SupplierListScreen> {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        supplier['contact_person'],
+                        supplier.jenisName ?? 'Supplier',
                         style: AppTextStyles.bodyMedium.copyWith(
                           color: AppColors.textSecondary,
                         ),
@@ -454,20 +426,20 @@ class _SupplierListScreenState extends State<SupplierListScreen> {
                   ),
                 ),
 
-                // Status Badge
+                // Status Badge (default to Aktif for real data)
                 Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 8,
                     vertical: 4,
                   ),
                   decoration: BoxDecoration(
-                    color: _getStatusColor(supplier['status']).withOpacity(0.1),
+                    color: AppColors.primaryGreen.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
-                    supplier['status'],
+                    'Aktif',
                     style: AppTextStyles.caption.copyWith(
-                      color: _getStatusColor(supplier['status']),
+                      color: AppColors.primaryGreen,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -526,52 +498,41 @@ class _SupplierListScreenState extends State<SupplierListScreen> {
             child: Column(
               children: [
                 // Contact Info
-                Row(
-                  children: [
-                    Icon(Icons.phone, size: 16, color: AppColors.grey),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        supplier['phone'],
-                        style: AppTextStyles.bodyMedium.copyWith(
-                          color: AppColors.textSecondary,
+                if (supplier.alamat?.isNotEmpty == true) ...[
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.location_on,
+                        size: 16,
+                        color: AppColors.grey,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          supplier.alamat!,
+                          style: AppTextStyles.bodyMedium.copyWith(
+                            color: AppColors.textSecondary,
+                          ),
                         ),
                       ),
-                    ),
-                    Icon(Icons.location_on, size: 16, color: AppColors.grey),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      flex: 2,
-                      child: Text(
-                        supplier['address'],
-                        style: AppTextStyles.bodyMedium.copyWith(
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                ],
 
-                // Statistics
+                // Basic Info
                 Row(
                   children: [
                     _buildStatItem(
-                      icon: Icons.local_gas_station,
-                      label: 'Estimasi',
-                      value: '${supplier['estimated_volume']}L/minggu',
+                      icon: Icons.tag,
+                      label: 'Kode',
+                      value: supplier.kode ?? '-',
                     ),
                     const SizedBox(width: 16),
                     _buildStatItem(
-                      icon: Icons.analytics,
-                      label: 'Total Terkumpul',
-                      value: supplier['total_volume_collected'],
-                    ),
-                    const SizedBox(width: 16),
-                    _buildStatItem(
-                      icon: Icons.schedule,
-                      label: 'Terakhir',
-                      value: supplier['last_pickup'],
+                      icon: Icons.category,
+                      label: 'Kategori',
+                      value: supplier.kategoriName ?? '-',
                     ),
                   ],
                 ),
@@ -670,37 +631,5 @@ class _SupplierListScreenState extends State<SupplierListScreen> {
         ],
       ),
     );
-  }
-
-  Color _getStatusColor(String status) {
-    switch (status) {
-      case 'Aktif':
-        return AppColors.primaryGreen;
-      case 'Pending':
-        return AppColors.accentOrange;
-      case 'Tidak Aktif':
-        return Colors.red;
-      default:
-        return AppColors.grey;
-    }
-  }
-
-  IconData _getCategoryIcon(String category) {
-    switch (category) {
-      case 'Restoran':
-        return Icons.restaurant;
-      case 'Hotel':
-        return Icons.hotel;
-      case 'Warung Makan':
-        return Icons.store;
-      case 'Fast Food':
-        return Icons.fastfood;
-      case 'Katering':
-        return Icons.room_service;
-      case 'Pabrik Makanan':
-        return Icons.factory;
-      default:
-        return Icons.business;
-    }
   }
 }

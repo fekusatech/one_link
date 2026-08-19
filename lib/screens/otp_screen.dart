@@ -7,6 +7,7 @@ import '../constants/app_text_styles.dart';
 import '../services/auth_service.dart';
 import '../services/user_storage.dart';
 import '../services/persistent_auth_service.dart';
+import '../services/auth_debug_service.dart';
 
 class OtpScreen extends StatefulWidget {
   const OtpScreen({super.key});
@@ -238,6 +239,15 @@ class _OtpScreenState extends State<OtpScreen> {
 
         // Navigate to role selection
         if (mounted) {
+          // Debug: Print auth file status
+          print('🔍 Auth response saved! Checking file status...');
+          final fileInfo = await AuthDebugService.getAuthFileInfo();
+          if (fileInfo != null && fileInfo['exists']) {
+            print('✅ auth.json saved successfully!');
+            print('📄 File path: ${fileInfo['path']}');
+            print('📊 File size: ${fileInfo['size']} bytes');
+          }
+
           Navigator.pushNamedAndRemoveUntil(
             context,
             '/role-selection',
@@ -267,6 +277,77 @@ class _OtpScreenState extends State<OtpScreen> {
     }
   }
 
+  /// Debug method to show saved auth response
+  Future<void> _showAuthResponseDebug() async {
+    final authResponse = await AuthDebugService.getAuthResponse();
+    final fileInfo = await AuthDebugService.getAuthFileInfo();
+
+    if (mounted) {
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('🔍 Auth Response Debug'),
+          content: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (fileInfo != null) ...[
+                  Text(
+                    '📄 File: ${fileInfo['exists'] ? 'Found' : 'Not Found'}',
+                  ),
+                  if (fileInfo['exists']) ...[
+                    Text('📏 Size: ${fileInfo['size']} bytes'),
+                    Text('🕐 Modified: ${fileInfo['modified']}'),
+                    const SizedBox(height: 16),
+                  ],
+                ],
+                if (authResponse != null) ...[
+                  const Text('📋 Response Content:'),
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[100],
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.grey[300]!),
+                    ),
+                    child: Text(
+                      const JsonEncoder.withIndent('  ').convert(authResponse),
+                      style: const TextStyle(
+                        fontFamily: 'monospace',
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                ] else ...[
+                  const Text('❌ No auth response found'),
+                ],
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Close'),
+            ),
+            if (authResponse != null)
+              TextButton(
+                onPressed: () async {
+                  await AuthDebugService.clearAuthFile();
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('🗑️ Auth file cleared')),
+                  );
+                },
+                child: const Text('Clear'),
+              ),
+          ],
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final args =
@@ -292,7 +373,7 @@ class _OtpScreenState extends State<OtpScreen> {
         ),
       ),
       body: SafeArea(
-        child: Padding(
+        child: SingleChildScrollView(
           padding: const EdgeInsets.all(24.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.center,
@@ -406,7 +487,19 @@ class _OtpScreenState extends State<OtpScreen> {
                     ),
                 ],
               ),
-              const Spacer(),
+              const SizedBox(
+                height: 24,
+              ), // Extra space at bottom of scrollable area
+            ],
+          ),
+        ),
+      ),
+      bottomNavigationBar: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
@@ -438,6 +531,29 @@ class _OtpScreenState extends State<OtpScreen> {
                 ),
               ),
               const SizedBox(height: 16),
+
+              // Debug button (only in debug mode)
+              if (const bool.fromEnvironment('dart.vm.product') == false)
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton(
+                    onPressed: _showAuthResponseDebug,
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      side: BorderSide(color: AppColors.primaryGreen),
+                    ),
+                    child: Text(
+                      '🔍 Debug: View Auth Response',
+                      style: AppTextStyles.bodyMedium.copyWith(
+                        color: AppColors.primaryGreen,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ),
             ],
           ),
         ),

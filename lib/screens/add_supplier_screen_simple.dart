@@ -7,13 +7,14 @@ class AddSupplierScreenSimple extends StatefulWidget {
   const AddSupplierScreenSimple({super.key});
 
   @override
-  State<AddSupplierScreenSimple> createState() => _AddSupplierScreenSimpleState();
+  State<AddSupplierScreenSimple> createState() =>
+      _AddSupplierScreenSimpleState();
 }
 
 class _AddSupplierScreenSimpleState extends State<AddSupplierScreenSimple> {
   final PageController _pageController = PageController();
   int _currentPage = 0;
-  
+
   // Form controllers
   final _namaController = TextEditingController();
   final _alamatController = TextEditingController();
@@ -41,7 +42,10 @@ class _AddSupplierScreenSimpleState extends State<AddSupplierScreenSimple> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      Provider.of<SupplierFormProvider>(context, listen: false).loadMasterData();
+      Provider.of<SupplierFormProvider>(
+        context,
+        listen: false,
+      ).loadMasterData();
     });
   }
 
@@ -115,7 +119,9 @@ class _AddSupplierScreenSimpleState extends State<AddSupplierScreenSimple> {
                 margin: const EdgeInsets.symmetric(horizontal: 2),
                 height: 4,
                 decoration: BoxDecoration(
-                  color: i <= _currentPage ? const Color(0xFF1976D2) : Colors.grey[300],
+                  color: i <= _currentPage
+                      ? const Color(0xFF1976D2)
+                      : Colors.grey[300],
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -140,16 +146,16 @@ class _AddSupplierScreenSimpleState extends State<AddSupplierScreenSimple> {
             ),
           ),
           const SizedBox(height: 24),
-          
+
           _buildTextField(
             controller: _namaController,
             label: 'Nama Supplier',
             hint: 'Masukkan nama supplier',
             isRequired: true,
           ),
-          
+
           const SizedBox(height: 16),
-          
+
           _buildDropdown(
             label: 'Jenis Supplier',
             value: provider.selectedJenis,
@@ -162,9 +168,9 @@ class _AddSupplierScreenSimpleState extends State<AddSupplierScreenSimple> {
             hint: 'Pilih Jenis Supplier',
             isRequired: true,
           ),
-          
+
           const SizedBox(height: 16),
-          
+
           _buildDropdown(
             label: 'Kategori Supplier',
             value: provider.selectedKategori,
@@ -176,9 +182,9 @@ class _AddSupplierScreenSimpleState extends State<AddSupplierScreenSimple> {
             displayText: (item) => item.name,
             hint: 'Pilih Kategori Supplier',
           ),
-          
+
           const SizedBox(height: 16),
-          
+
           _buildTextField(
             controller: _alamatController,
             label: 'Alamat Lengkap',
@@ -186,9 +192,9 @@ class _AddSupplierScreenSimpleState extends State<AddSupplierScreenSimple> {
             maxLines: 3,
             isRequired: true,
           ),
-          
+
           const SizedBox(height: 16),
-          
+
           _buildTextField(
             controller: _noTelpController,
             label: 'Nomor Telepon',
@@ -196,18 +202,18 @@ class _AddSupplierScreenSimpleState extends State<AddSupplierScreenSimple> {
             keyboardType: TextInputType.phone,
             isRequired: true,
           ),
-          
+
           const SizedBox(height: 16),
-          
+
           _buildTextField(
             controller: _jenisUcoController,
             label: 'Jenis UCO',
             hint: 'Masukkan jenis minyak jelantah (UCO)',
             isRequired: true,
           ),
-          
+
           const SizedBox(height: 16),
-          
+
           _buildTextField(
             controller: _priceController,
             label: 'Harga per Satuan',
@@ -215,9 +221,9 @@ class _AddSupplierScreenSimpleState extends State<AddSupplierScreenSimple> {
             keyboardType: TextInputType.number,
             isRequired: true,
           ),
-          
+
           const SizedBox(height: 16),
-          
+
           _buildDropdown(
             label: 'Satuan Harga',
             value: provider.selectedSatuan,
@@ -250,7 +256,7 @@ class _AddSupplierScreenSimpleState extends State<AddSupplierScreenSimple> {
             ),
           ),
           const SizedBox(height: 24),
-          
+
           _buildDropdown(
             label: 'Provinsi',
             value: provider.selectedProvince,
@@ -261,9 +267,9 @@ class _AddSupplierScreenSimpleState extends State<AddSupplierScreenSimple> {
             isRequired: true,
             isLoading: provider.isLoadingMaster,
           ),
-          
+
           const SizedBox(height: 16),
-          
+
           _buildDropdown(
             label: 'Kabupaten/Kota',
             value: provider.selectedCity,
@@ -275,9 +281,9 @@ class _AddSupplierScreenSimpleState extends State<AddSupplierScreenSimple> {
             isLoading: provider.isLoadingCities,
             enabled: provider.selectedProvince != null,
           ),
-          
+
           const SizedBox(height: 16),
-          
+
           _buildDropdown(
             label: 'Kecamatan',
             value: provider.selectedDistrict,
@@ -289,9 +295,9 @@ class _AddSupplierScreenSimpleState extends State<AddSupplierScreenSimple> {
             isLoading: provider.isLoadingDistricts,
             enabled: provider.selectedCity != null,
           ),
-          
+
           const SizedBox(height: 16),
-          
+
           _buildDropdown(
             label: 'Desa/Kelurahan',
             value: provider.selectedVillage,
@@ -305,9 +311,9 @@ class _AddSupplierScreenSimpleState extends State<AddSupplierScreenSimple> {
             isLoading: provider.isLoadingVillages,
             enabled: provider.selectedDistrict != null,
           ),
-          
+
           const SizedBox(height: 24),
-          
+
           const Text(
             'Koordinat GPS',
             style: TextStyle(
@@ -317,7 +323,7 @@ class _AddSupplierScreenSimpleState extends State<AddSupplierScreenSimple> {
             ),
           ),
           const SizedBox(height: 8),
-          
+
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(16),
@@ -333,21 +339,25 @@ class _AddSupplierScreenSimpleState extends State<AddSupplierScreenSimple> {
                     style: const TextStyle(fontSize: 14),
                   ),
                   Text(
-                    'Lng: $_currentLongitude', 
+                    'Lng: $_currentLongitude',
                     style: const TextStyle(fontSize: 14),
                   ),
                   const SizedBox(height: 12),
                 ],
                 ElevatedButton.icon(
                   onPressed: _isGettingLocation ? null : _getCurrentLocation,
-                  icon: _isGettingLocation 
+                  icon: _isGettingLocation
                       ? const SizedBox(
                           width: 16,
                           height: 16,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
                       : const Icon(Icons.my_location),
-                  label: Text(_isGettingLocation ? 'Mendapatkan Lokasi...' : 'Ambil Lokasi Saat Ini'),
+                  label: Text(
+                    _isGettingLocation
+                        ? 'Mendapatkan Lokasi...'
+                        : 'Ambil Lokasi Saat Ini',
+                  ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF1976D2),
                     foregroundColor: Colors.white,
@@ -376,7 +386,7 @@ class _AddSupplierScreenSimpleState extends State<AddSupplierScreenSimple> {
             ),
           ),
           const SizedBox(height: 24),
-          
+
           _buildDropdown(
             label: 'Bank',
             value: provider.selectedBank,
@@ -389,9 +399,9 @@ class _AddSupplierScreenSimpleState extends State<AddSupplierScreenSimple> {
             hint: 'Pilih Bank',
             isRequired: true,
           ),
-          
+
           const SizedBox(height: 16),
-          
+
           _buildTextField(
             controller: _nomorRekeningController,
             label: 'Nomor Rekening',
@@ -399,27 +409,27 @@ class _AddSupplierScreenSimpleState extends State<AddSupplierScreenSimple> {
             keyboardType: TextInputType.number,
             isRequired: true,
           ),
-          
+
           const SizedBox(height: 16),
-          
+
           _buildTextField(
             controller: _namaRekeningController,
             label: 'Nama Pemilik Rekening',
             hint: 'Masukkan nama pemilik rekening',
             isRequired: true,
           ),
-          
+
           const SizedBox(height: 16),
-          
+
           _buildTextField(
             controller: _siklusController,
             label: 'Siklus Pickup',
             hint: 'Contoh: Mingguan, Bulanan, dll',
             isRequired: true,
           ),
-          
+
           const SizedBox(height: 16),
-          
+
           _buildTextField(
             controller: _poinController,
             label: 'Poin/Score',
@@ -446,7 +456,7 @@ class _AddSupplierScreenSimpleState extends State<AddSupplierScreenSimple> {
             ),
           ),
           const SizedBox(height: 24),
-          
+
           _buildDropdown(
             label: 'Person In Charge (PIC)',
             value: provider.selectedPic,
@@ -459,17 +469,17 @@ class _AddSupplierScreenSimpleState extends State<AddSupplierScreenSimple> {
             hint: 'Pilih PIC',
             isRequired: true,
           ),
-          
+
           const SizedBox(height: 16),
-          
+
           _buildTextField(
             controller: _namaPicController,
             label: 'Nama PIC Alternatif',
             hint: 'Atau masukkan nama PIC manual',
           ),
-          
+
           const SizedBox(height: 16),
-          
+
           _buildTextField(
             controller: _noTelpPicController,
             label: 'Nomor Telepon PIC',
@@ -477,9 +487,9 @@ class _AddSupplierScreenSimpleState extends State<AddSupplierScreenSimple> {
             keyboardType: TextInputType.phone,
             isRequired: true,
           ),
-          
+
           const SizedBox(height: 16),
-          
+
           _buildTextField(
             controller: _emailPicController,
             label: 'Email PIC',
@@ -516,19 +526,21 @@ class _AddSupplierScreenSimpleState extends State<AddSupplierScreenSimple> {
           if (_currentPage > 0) const SizedBox(width: 16),
           Expanded(
             child: ElevatedButton(
-              onPressed: provider.isSubmitting ? null : () {
-                if (_currentPage < 3) {
-                  _handleNextButton();
-                } else {
-                  _submitForm(provider);
-                }
-              },
+              onPressed: provider.isSubmitting
+                  ? null
+                  : () {
+                      if (_currentPage < 3) {
+                        _handleNextButton();
+                      } else {
+                        _submitForm(provider);
+                      }
+                    },
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF1976D2),
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 12),
               ),
-              child: provider.isSubmitting 
+              child: provider.isSubmitting
                   ? const SizedBox(
                       width: 20,
                       height: 20,
@@ -557,7 +569,7 @@ class _AddSupplierScreenSimpleState extends State<AddSupplierScreenSimple> {
     TextInputType? keyboardType,
   }) {
     final hasError = _fieldErrors.contains(label);
-    
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -587,18 +599,27 @@ class _AddSupplierScreenSimpleState extends State<AddSupplierScreenSimple> {
           decoration: InputDecoration(
             hintText: hint,
             suffixIcon: suffixIcon,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 12,
+            ),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide(color: hasError ? Colors.red : Colors.grey[300]!),
+              borderSide: BorderSide(
+                color: hasError ? Colors.red : Colors.grey[300]!,
+              ),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide(color: hasError ? Colors.red : Colors.grey[300]!),
+              borderSide: BorderSide(
+                color: hasError ? Colors.red : Colors.grey[300]!,
+              ),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide(color: hasError ? Colors.red : const Color(0xFF1976D2)),
+              borderSide: BorderSide(
+                color: hasError ? Colors.red : const Color(0xFF1976D2),
+              ),
             ),
             disabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
@@ -616,10 +637,7 @@ class _AddSupplierScreenSimpleState extends State<AddSupplierScreenSimple> {
           const SizedBox(height: 4),
           Text(
             'Field ini wajib diisi',
-            style: TextStyle(
-              color: Colors.red,
-              fontSize: 12,
-            ),
+            style: TextStyle(color: Colors.red, fontSize: 12),
           ),
         ],
       ],
@@ -638,7 +656,7 @@ class _AddSupplierScreenSimpleState extends State<AddSupplierScreenSimple> {
     bool isLoading = false,
   }) {
     final hasError = _fieldErrors.contains(label);
-    
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -655,9 +673,11 @@ class _AddSupplierScreenSimpleState extends State<AddSupplierScreenSimple> {
           width: double.infinity,
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
           decoration: BoxDecoration(
-            border: Border.all(color: hasError ? Colors.red : Colors.grey[300]!),
+            border: Border.all(
+              color: hasError ? Colors.red : Colors.grey[300]!,
+            ),
             borderRadius: BorderRadius.circular(8),
-            color: enabled 
+            color: enabled
                 ? (hasError ? Colors.red.withOpacity(0.05) : Colors.white)
                 : Colors.grey[100],
           ),
@@ -689,15 +709,17 @@ class _AddSupplierScreenSimpleState extends State<AddSupplierScreenSimple> {
                         ),
                       );
                     }).toList(),
-                    onChanged: enabled ? (T? newValue) {
-                      onChanged(newValue);
-                      // Remove error state when user selects
-                      if (hasError && newValue != null) {
-                        setState(() {
-                          _fieldErrors.remove(label);
-                        });
-                      }
-                    } : null,
+                    onChanged: enabled
+                        ? (T? newValue) {
+                            onChanged(newValue);
+                            // Remove error state when user selects
+                            if (hasError && newValue != null) {
+                              setState(() {
+                                _fieldErrors.remove(label);
+                              });
+                            }
+                          }
+                        : null,
                   ),
                 ),
         ),
@@ -705,10 +727,7 @@ class _AddSupplierScreenSimpleState extends State<AddSupplierScreenSimple> {
           const SizedBox(height: 4),
           Text(
             'Field ini wajib dipilih',
-            style: TextStyle(
-              color: Colors.red,
-              fontSize: 12,
-            ),
+            style: TextStyle(color: Colors.red, fontSize: 12),
           ),
         ],
       ],
@@ -720,7 +739,7 @@ class _AddSupplierScreenSimpleState extends State<AddSupplierScreenSimple> {
     setState(() {
       _fieldErrors.clear();
     });
-    
+
     if (_validateCurrentPage()) {
       _pageController.nextPage(
         duration: const Duration(milliseconds: 300),
@@ -733,29 +752,30 @@ class _AddSupplierScreenSimpleState extends State<AddSupplierScreenSimple> {
 
   bool _validateCurrentPage() {
     final provider = Provider.of<SupplierFormProvider>(context, listen: false);
-    
+
     switch (_currentPage) {
       case 0: // Basic info
         return _namaController.text.trim().isNotEmpty &&
-               provider.selectedJenis != null &&
-               _alamatController.text.trim().isNotEmpty &&
-               _noTelpController.text.trim().isNotEmpty &&
-               _jenisUcoController.text.trim().isNotEmpty &&
-               _priceController.text.trim().isNotEmpty &&
-               provider.selectedSatuan != null;
+            provider.selectedJenis != null &&
+            _alamatController.text.trim().isNotEmpty &&
+            _noTelpController.text.trim().isNotEmpty &&
+            _jenisUcoController.text.trim().isNotEmpty &&
+            _priceController.text.trim().isNotEmpty &&
+            provider.selectedSatuan != null;
       case 1: // Location
         return provider.selectedProvince != null &&
-               provider.selectedCity != null &&
-               provider.selectedDistrict != null &&
-               (_currentLatitude != null && _currentLongitude != null);
+            provider.selectedCity != null &&
+            provider.selectedDistrict != null &&
+            (_currentLatitude != null && _currentLongitude != null);
       case 2: // Financial
         return provider.selectedBank != null &&
-               _nomorRekeningController.text.trim().isNotEmpty &&
-               _namaRekeningController.text.trim().isNotEmpty &&
-               _siklusController.text.trim().isNotEmpty;
+            _nomorRekeningController.text.trim().isNotEmpty &&
+            _namaRekeningController.text.trim().isNotEmpty &&
+            _siklusController.text.trim().isNotEmpty;
       case 3: // Contact
-        return (provider.selectedPic != null || _namaPicController.text.trim().isNotEmpty) &&
-               _noTelpPicController.text.trim().isNotEmpty;
+        return (provider.selectedPic != null ||
+                _namaPicController.text.trim().isNotEmpty) &&
+            _noTelpPicController.text.trim().isNotEmpty;
       default:
         return false;
     }
@@ -765,10 +785,12 @@ class _AddSupplierScreenSimpleState extends State<AddSupplierScreenSimple> {
     String message;
     switch (_currentPage) {
       case 0:
-        message = 'Mohon lengkapi nama, jenis supplier, alamat, nomor telepon, jenis UCO, harga, dan satuan';
+        message =
+            'Mohon lengkapi nama, jenis supplier, alamat, nomor telepon, jenis UCO, harga, dan satuan';
         break;
       case 1:
-        message = 'Mohon pilih provinsi, kota/kabupaten, kecamatan, dan ambil koordinat GPS';
+        message =
+            'Mohon pilih provinsi, kota/kabupaten, kecamatan, dan ambil koordinat GPS';
         break;
       case 2:
         message = 'Mohon lengkapi informasi bank, rekening, dan siklus pickup';
@@ -779,7 +801,7 @@ class _AddSupplierScreenSimpleState extends State<AddSupplierScreenSimple> {
       default:
         message = 'Mohon lengkapi semua field yang diperlukan';
     }
-    
+
     _showErrorToast(message);
   }
 
@@ -787,20 +809,26 @@ class _AddSupplierScreenSimpleState extends State<AddSupplierScreenSimple> {
     setState(() {
       _fieldErrors.addAll(missingFields);
     });
-    
-    String message = 'Field berikut masih kosong:\\n• ${missingFields.join('\\n• ')}';
+
+    String message =
+        'Field berikut masih kosong:\\n• ${missingFields.join('\\n• ')}';
     _showErrorToast(message);
-    
+
     // Navigate to the first page that has errors
     _navigateToErrorPage(missingFields);
   }
-  
+
   void _navigateToErrorPage(List<String> missingFields) {
     // Map fields to pages
     Set<int> errorPages = {};
-    
+
     for (String field in missingFields) {
-      if (['Nama Supplier', 'Jenis Supplier', 'Alamat', 'Nomor Telepon'].contains(field)) {
+      if ([
+        'Nama Supplier',
+        'Jenis Supplier',
+        'Alamat',
+        'Nomor Telepon',
+      ].contains(field)) {
         errorPages.add(0);
       } else if (['Provinsi', 'Kota/Kabupaten', 'Kecamatan'].contains(field)) {
         errorPages.add(1);
@@ -810,7 +838,7 @@ class _AddSupplierScreenSimpleState extends State<AddSupplierScreenSimple> {
         errorPages.add(3);
       }
     }
-    
+
     // Navigate to first error page
     if (errorPages.isNotEmpty) {
       int firstErrorPage = errorPages.first;
@@ -825,7 +853,9 @@ class _AddSupplierScreenSimpleState extends State<AddSupplierScreenSimple> {
   void _handleApiError(String errorMessage) {
     // Try to parse API validation errors
     if (errorMessage.contains('Validation Error')) {
-      _showErrorToast('Terdapat kesalahan validasi. Mohon periksa kembali data yang diinput.');
+      _showErrorToast(
+        'Terdapat kesalahan validasi. Mohon periksa kembali data yang diinput.',
+      );
     } else {
       _showErrorToast(errorMessage);
     }
@@ -870,7 +900,7 @@ class _AddSupplierScreenSimpleState extends State<AddSupplierScreenSimple> {
 
     // Validate all required fields before submission
     List<String> missingFields = [];
-    
+
     if (_namaController.text.trim().isEmpty) {
       missingFields.add('Nama Supplier');
     }
@@ -901,7 +931,8 @@ class _AddSupplierScreenSimpleState extends State<AddSupplierScreenSimple> {
     if (_namaRekeningController.text.trim().isEmpty) {
       missingFields.add('Nama Rekening');
     }
-    if (provider.selectedPic == null && _namaPicController.text.trim().isEmpty) {
+    if (provider.selectedPic == null &&
+        _namaPicController.text.trim().isEmpty) {
       missingFields.add('PIC');
     }
     if (_noTelpPicController.text.trim().isEmpty) {
@@ -915,13 +946,14 @@ class _AddSupplierScreenSimpleState extends State<AddSupplierScreenSimple> {
 
     try {
       // Ensure we have proper PIC data
-      String picName = _namaPicController.text.trim().isNotEmpty 
-          ? _namaPicController.text.trim() 
+      String picName = _namaPicController.text.trim().isNotEmpty
+          ? _namaPicController.text.trim()
           : (provider.selectedPic?.name ?? '');
-      
-      String picJabatan = provider.selectedPic?.jabatan ?? 
+
+      String picJabatan =
+          provider.selectedPic?.jabatan ??
           (provider.selectedPic?.position ?? 'Staff');
-      
+
       // Make sure jabatan is not empty
       if (picJabatan.trim().isEmpty) {
         picJabatan = 'Staff';
@@ -944,26 +976,33 @@ class _AddSupplierScreenSimpleState extends State<AddSupplierScreenSimple> {
         kecamatanId: provider.selectedDistrict!.id,
         desaId: provider.selectedVillage?.id,
         alamat: _alamatController.text.trim(),
-        gps: _gpsController.text.trim().isNotEmpty ? _gpsController.text.trim() : null,
+        gps: _gpsController.text.trim().isNotEmpty
+            ? _gpsController.text.trim()
+            : null,
         namaRek: _namaRekeningController.text.trim(),
         nomorRek: _nomorRekeningController.text.trim(),
         bankRekId: provider.selectedBank!.id,
-        siklus: _siklusController.text.trim().isNotEmpty ? _siklusController.text.trim() : null,
+        siklus: _siklusController.text.trim().isNotEmpty
+            ? _siklusController.text.trim()
+            : null,
         poin: int.tryParse(_poinController.text.trim()),
       );
 
       final success = await provider.submitSupplier(supplier);
-      
+
       if (mounted) {
         if (success) {
           _showSuccessToast();
           Navigator.of(context).pop(true);
         } else {
           // Show detailed API validation errors
-          if (provider.errorMessage != null && provider.errorMessage!.contains('Validation Error')) {
+          if (provider.errorMessage != null &&
+              provider.errorMessage!.contains('Validation Error')) {
             _showApiValidationErrors();
           } else {
-            _handleApiError(provider.errorMessage ?? 'Gagal menambahkan supplier');
+            _handleApiError(
+              provider.errorMessage ?? 'Gagal menambahkan supplier',
+            );
           }
         }
       }
@@ -1059,8 +1098,10 @@ class _AddSupplierScreenSimpleState extends State<AddSupplierScreenSimple> {
     try {
       // For now, we'll use mock coordinates since we don't have location package
       // In a real app, you would use the location package here
-      await Future.delayed(const Duration(seconds: 2)); // Simulate getting location
-      
+      await Future.delayed(
+        const Duration(seconds: 2),
+      ); // Simulate getting location
+
       // Mock coordinates (you can replace with real location service)
       setState(() {
         _currentLatitude = -7.9797 + (DateTime.now().millisecond / 100000);

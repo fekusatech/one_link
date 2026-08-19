@@ -1,12 +1,14 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
+import 'dart:io' as io;
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
 import '../models/surat_jalan.dart';
+import '../config/app_config.dart';
+import 'persistent_auth_service.dart';
 
 class SuratJalanService {
-  static const String baseUrl =
-      'https://erp.greenenergiutama.co.id'; // URL yang sudah di-push
+  static const String baseUrl = AppConfig.serverDomain; // URL yang sudah di-push
 
   // Debug mode untuk test empty state
   static const bool debugEmptyState = false; // Set true untuk test empty state
@@ -209,9 +211,9 @@ class SuratJalanService {
             },
           )
           .timeout(
-            const Duration(seconds: 20), // Extended timeout untuk real API
+            const Duration(seconds: 20),
             onTimeout: () {
-              throw const SocketException('Request timeout');
+              throw io.SocketException('Request timeout');
             },
           );
       ;
@@ -255,7 +257,7 @@ class SuratJalanService {
         }
       } else {
         print('❌ HTTP Error ${response.statusCode}: ${response.body}');
-        throw HttpException(
+        throw io.HttpException(
           'Failed to load surat jalan. Status: ${response.statusCode}, Body: ${response.body}',
         );
       }
@@ -267,14 +269,10 @@ class SuratJalanService {
       print('  - DateRange: ${dateRange ?? "not set"}');
       print('  - Status: ${status ?? "all"}');
 
-      // Handle berbagai jenis error dan rethrow untuk production
-      if (e is SocketException) {
-        if (e.message.contains('timeout')) {
-          throw Exception('Request timeout. Silakan coba lagi.');
-        }
-        throw Exception('Tidak ada koneksi internet. Periksa koneksi Anda.');
-      } else if (e is HttpException) {
-        throw Exception('Error server: ${e.message}');
+      if (e is io.SocketException) {
+        throw Exception('Tidak ada koneksi internet atau request timeout. Periksa koneksi Anda.');
+      } else if (e is io.HttpException) {
+        throw Exception('Error server: ${(e as io.HttpException).message}');
       } else if (e is FormatException) {
         throw Exception('Format data tidak valid dari server.');
       } else {
@@ -546,6 +544,315 @@ class SuratJalanService {
       }
     } catch (e) {
       return '$amount kg';
+    }
+  }
+
+  /// Fetch pickup history using the newly created API
+  static Future<List<SuratJalan>> getPickupHistory({
+    required String userId,
+    int page = 1,
+  }) async {
+    print('✅ History: User ID set to: $userId');
+    print('🔍 History: Loading history data for user: $userId');
+
+    try {
+      final queryParams = {
+        'user_id': userId,
+        'page': page.toString(),
+        'limit': '50',
+      };
+      
+      // Trying the PRD endpoint first
+      final uri = Uri.parse('$baseUrl/api/v1/surat-jalan/history').replace(
+        queryParameters: queryParams,
+      );
+
+      print('🔍 Calling REAL History API:');
+      print('📍 URL: $uri');
+      print('👤 User ID: $userId');
+      print('🔗 Final Query Params: $queryParams');
+
+      final token = await PersistentAuthService.instance.getToken();
+
+      final response = await http.get(
+        uri,
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'User-Agent': 'OneLink-Mobile/1.0',
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
+      ).timeout(const Duration(seconds: 15));
+
+      print('🔄 Response Status: ${response.statusCode}');
+      print('📜 Response Body: ${response.body.length > 500 ? response.body.substring(0, 500) + '...' : response.body}');
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> jsonData = json.decode(response.body);
+        print('✅ JSON parsed successfully');
+
+        dynamic rawItems;
+        dynamic rawPagination;
+        
+        if (jsonData['data'] != null) {
+          if (jsonData['data']['items'] != null) {
+            rawItems = jsonData['data']['items'];
+            rawPagination = jsonData['data']['pagination'];
+          } else if (jsonData['data']['data'] != null && jsonData['data']['data']['items'] != null) {
+            // Nested structure returned by the actual backend
+            rawItems = jsonData['data']['data']['items'];
+            rawPagination = jsonData['data']['data']['pagination'];
+          }
+        }
+
+        if (rawItems != null) {
+          final items = rawItems as List;
+
+          print('📊 Data received:');
+          print('  - Total count: ${rawPagination?['total_items'] ?? items.length}');
+          print('  - History array length: ${items.length}');
+          print('  - First item ID: ${items.isNotEmpty ? items.first['id'] : 'none'}');
+          print('✅ History: Data loaded successfully');
+          print('🗺️ Setting up map markers for ${items.length} surat jalan');
+
+          return items.map<SuratJalan>((e) {
+            // Mapping back actual backend dictionary to SuratJalan model fallback structure
+            final statusStr = e['status']?.toString() ?? 'done';
+            
+            return SuratJalan(
+              suratJalanId: e['id']?.toString() ?? '0',
+              kode: e['kode'] ?? '-',
+              tanggal: e['date'] ?? '-',
+              tanggalFormatted: e['date'] != null ? e['date'].toString().split('T')[0] : '-',
+              status: statusStr.toLowerCase() == 'cancel' ? 'cancelled' : statusStr,
+              kodePickup: e['kode_pickup'] ?? '-',
+              driverName: e['driver_name'] ?? '-',
+              plat: e['plat'] ?? '-',
+              gudangName: e['gudang_name'] ?? '-',
+              gudangGps: e['gudang_gps'] ?? '-',
+              supplierNames: '-',
+              totalSuppliers: e['total_supplier']?.toString() ?? '0',
+              totalQty: e['total_qty']?.toString() ?? '0',
+              totalQtyReal: '0',
+              // Since total_kg is missing from backend, we map total_qty as liter
+              totalLiter: e['total_qty']?.toString() ?? '0',
+              totalHarga: '0',
+              createdAt: e['created_at'] ?? e['date'] ?? '',
+              updatedAt: e['updated_at'] ?? e['date'] ?? '',
+              progress: Progress(
+                totalItems: '0', completedItems: '0', pickupItems: '0', cancelledItems: '0', percentage: 100,
+                statusSummary: StatusSummary(done: '0', pickup: '0', pending: 0, cancelled: '0'),
+              ),
+              suratJalanDetail: [],
+            );
+          }).toList();
+        }
+      }
+    } catch (e) {
+      print('❌ Error PRD endpoint: $e, falling back to legacy endpoint');
+    }
+
+    // Fallback: Using existing getSuratJalan but we just want history (done, cancelled)
+    try {
+      print('⚠️ History: Falling back to getSuratJalan legacy endpoint...');
+      final response = await getSuratJalan(userId: userId);
+      // Filter out only done and cancelled to mimic history
+      final historyList = response.data.suratJalan.where((s) {
+        final st = s.status.toLowerCase();
+        return st == 'done' || st == 'cancelled';
+      }).toList();
+
+      print('📊 Fallback data received:');
+      print('  - Total count: ${response.data.totalCount}');
+      print('  - History array length: ${historyList.length}');
+      print('  - First item ID: ${historyList.isNotEmpty ? historyList.first.suratJalanId : 'none'}');
+      print('✅ History (Fallback): Data loaded successfully');
+
+      return historyList;
+    } catch (e) {
+      print('❌ Both endpoints failed: $e');
+      throw Exception('Gagal memuat riwayat penjemputan: $e');
+    }
+  }
+
+  /// Fetch detail of a specific history using the PRD API
+  static Future<SuratJalan> getPickupHistoryDetail(String id) async {
+    try {
+      final uri = Uri.parse('$baseUrl/api/v1/surat-jalan/history/$id');
+      print('🔍 Calling REAL History Detail API:');
+      print('📍 URL: $uri');
+
+      final token = await PersistentAuthService.instance.getToken();
+      final response = await http.get(
+        uri,
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'User-Agent': 'OneLink-Mobile/1.0',
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
+      ).timeout(const Duration(seconds: 15));
+
+      print('🔄 Response Status: ${response.statusCode}');
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> jsonData = json.decode(response.body);
+        
+        dynamic rawData;
+        if (jsonData['data'] != null) {
+           rawData = jsonData['data'];
+           if (rawData['data'] != null) { // Handle double nested
+             rawData = rawData['data'];
+           }
+        }
+        
+        if (rawData != null) {
+           final e = rawData;
+           final statusStr = e['status']?.toString() ?? 'done';
+           
+           return SuratJalan(
+              suratJalanId: e['id']?.toString() ?? e['surat_jalan_id']?.toString() ?? '0',
+              kode: e['kode'] ?? '-',
+              tanggal: e['date'] ?? e['tanggal'] ?? '-',
+              tanggalFormatted: e['date'] != null ? e['date'].toString().split('T')[0] : (e['tanggal_formatted'] ?? '-'),
+              status: statusStr.toLowerCase() == 'cancel' ? 'cancelled' : statusStr,
+              kodePickup: e['kode_pickup'] ?? '-',
+              driverName: e['driver_name'] ?? '-',
+              plat: e['plat_no'] ?? e['plat'] ?? '-',
+              gudangName: e['gudang_name'] ?? '-',
+              gudangGps: e['gudang_gps'] ?? '-',
+              supplierNames: e['supplier_names'] ?? '-',
+              totalSuppliers: e['total_supplier']?.toString() ?? e['total_suppliers']?.toString() ?? '0',
+              totalQty: e['total_qty']?.toString() ?? '0',
+              totalQtyReal: e['total_qty_real']?.toString() ?? '0',
+              totalLiter: e['total_kg']?.toString() ?? e['total_liter']?.toString() ?? e['total_qty']?.toString() ?? '0',
+              totalHarga: e['total_harga']?.toString() ?? '0',
+              createdAt: e['created_at'] ?? e['date'] ?? '',
+              updatedAt: e['updated_at'] ?? e['date'] ?? '',
+              progress: Progress(
+                totalItems: '0', completedItems: '0', pickupItems: '0', cancelledItems: '0', percentage: 100,
+                statusSummary: StatusSummary(done: '0', pickup: '0', pending: 0, cancelled: '0'),
+              ),
+              suratJalanDetail: ((e['surat_jalan_detail'] ?? e['details'] ?? e['items']) as List?)?.map((item) => SuratJalanDetail.fromJson(item)).toList() ?? [],
+           );
+        }
+      }
+      throw Exception('Format data tidak dikenali atau detail tidak ditemukan');
+    } catch (e) {
+      print('❌ Error PRD Detail endpoint: $e');
+      throw Exception('Gagal memuat detail riwayat penjemputan: $e');
+    }
+  }
+
+  // ── NEW 3-STEP API FLOW ──────────────────────────────────
+
+  /// STEP 1: Simpan Tanda Tangan (Base64)
+  static Future<bool> saveSignatureApi({
+    required int detailId,
+    required String ttdBase64,
+  }) async {
+    try {
+      final uri = Uri.parse('$baseUrl/api/surat_jalan_ttd');
+      print('📤 Step 1: Saving TTD for ID: $detailId');
+      
+      final response = await http.post(
+        uri,
+        body: {
+          'id': detailId.toString(),
+          'ttd': ttdBase64,
+        },
+      ).timeout(const Duration(seconds: 20));
+
+      print('🔄 TTD Response Status: ${response.statusCode}');
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final success = data['status'] == 'success';
+        if (success) print('✅ Step 1 Success: TTD saved');
+        return success;
+      }
+      return false;
+    } catch (e) {
+      print('❌ Step 1 Error: $e');
+      throw Exception('Gagal menyimpan tanda tangan: $e');
+    }
+  }
+
+  /// STEP 2: Upload Foto Bukti (Base64)
+  static Future<bool> savePhotoApi({
+    required int detailId,
+    required String photoBase64,
+    double? lat,
+    double? lng,
+  }) async {
+    try {
+      final uri = Uri.parse('$baseUrl/api/surat_jalan_foto');
+      print('📤 Step 2: Uploading Photo for ID: $detailId');
+      
+      final body = {
+        'id': detailId.toString(),
+        'foto': photoBase64,
+        if (lat != null) 'gps_latitude': lat.toString(),
+        if (lng != null) 'gps_longitude': lng.toString(),
+      };
+
+      final response = await http.post(
+        uri,
+        body: body,
+      ).timeout(const Duration(seconds: 30));
+
+      print('🔄 Photo Response Status: ${response.statusCode}');
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final success = data['status'] == 'success';
+        if (success) print('✅ Step 2 Success: Photo uploaded');
+        return success;
+      }
+      return false;
+    } catch (e) {
+      print('❌ Step 2 Error: $e');
+      throw Exception('Gagal mengupload foto: $e');
+    }
+  }
+
+  /// STEP 3: Update Status (PALING AKHIR!)
+  static Future<bool> updateStatusApi({
+    required int detailId,
+    required String status,
+    String? qtyReal,
+    String? reason,
+  }) async {
+    try {
+      final uri = Uri.parse('$baseUrl/api/surat_jalan_update_status');
+      print('📤 Step 3: Updating Status to $status for ID: $detailId');
+      
+      final body = {
+        'id': detailId.toString(),
+        'status': status,
+        if (qtyReal != null) 'qty_real': qtyReal,
+        if (reason != null) 'keterangan_cancel': reason,
+      };
+
+      final response = await http.post(
+        uri,
+        body: body,
+      ).timeout(const Duration(seconds: 20));
+
+      print('🔄 Status Response Status: ${response.statusCode}');
+      print('📜 Status Response Body: ${response.body}');
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final success = data['status'] == 'success';
+        if (success) {
+          print('✅ Step 3 Success: Status updated to $status');
+          if (data['data'] != null) {
+            print('📊 Parent SJ Status: ${data['data']['surat_jalan_status']}');
+          }
+        }
+        return success;
+      }
+      return false;
+    } catch (e) {
+      print('❌ Step 3 Error: $e');
+      throw Exception('Gagal memperbarui status: $e');
     }
   }
 }

@@ -1,3 +1,6 @@
+import 'dart:convert';
+import '../config/app_config.dart';
+
 class SuratJalanResponse {
   final String status;
   final int code;
@@ -243,11 +246,11 @@ class SuratJalanDetail {
     // Jika foto sudah berupa path lengkap (dimulai dengan filemanager/),
     // maka hanya tambahkan domain
     if (foto!.startsWith('filemanager/')) {
-      return 'https://erp.greenenergiutama.co.id/$foto';
+      return '${AppConfig.serverDomain}/$foto';
     }
 
     // Jika hanya nama file, tambahkan path lengkap
-    return 'https://erp.greenenergiutama.co.id/filemanager/foto-pengambilan/$foto';
+    return '${AppConfig.serverDomain}/filemanager/foto-pengambilan/$foto';
   }
 
   String? get ttdUrl {
@@ -256,11 +259,11 @@ class SuratJalanDetail {
     // Jika ttd sudah berupa path lengkap (dimulai dengan filemanager/),
     // maka hanya tambahkan domain
     if (ttd!.startsWith('filemanager/')) {
-      return 'https://erp.greenenergiutama.co.id/$ttd';
+      return '${AppConfig.serverDomain}/$ttd';
     }
 
     // Jika hanya nama file, tambahkan path lengkap
-    return 'https://erp.greenenergiutama.co.id/filemanager/ttd/$ttd';
+    return '${AppConfig.serverDomain}/filemanager/ttd/$ttd';
   }
 }
 

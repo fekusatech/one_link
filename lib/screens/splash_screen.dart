@@ -1,10 +1,15 @@
 import 'package:flutter/material.dart';
 import '../services/persistent_auth_service.dart';
+import '../services/mandatory_gps_service.dart';
+import '../services/update_service.dart';
+import '../services/geu/geu_auth_service.dart';
+
 import 'login_screen.dart';
-import 'dashboard_screen.dart';
 import 'role_selection_screen.dart';
+import 'mandatory_gps_consent_screen.dart';
 import '../constants/app_colors.dart';
 import '../constants/app_text_styles.dart';
+import '../config/app_config.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({Key? key}) : super(key: key);
@@ -38,7 +43,10 @@ class _SplashScreenState extends State<SplashScreen>
 
     _animationController.forward();
 
-    // Cek status login setelah animasi
+    // Reset update service flag untuk app session baru
+    UpdateService.instance.resetForNewLoad();
+
+    // 2. Lanjut ke Cek Login secara paralel/setelah delay
     _checkLoginStatus();
   }
 
@@ -52,14 +60,53 @@ class _SplashScreenState extends State<SplashScreen>
 
       if (mounted) {
         if (isLoggedIn) {
-          // Auto-login berhasil, ke role selection
-          print('🚀 Auto-login successful, navigating to role selection');
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              builder: (context) => const RoleSelectionScreen(),
-            ),
-          );
+          // Best-effort, non-blocking: re-open the Canvassing/Visit Planner
+          // session using securely cached credentials, since this auto-login
+          // path never sees a password to forward.
+          GeuAuthService.ensureSession();
+
+          // Check if user needs mandatory GPS consent
+          bool needsGpsConsent = await MandatoryGpsService.instance
+              .needsMandatoryGpsConsent();
+
+          if (needsGpsConsent) {
+            // User logged in but hasn't given GPS consent - mandatory screen
+            print(
+              '🔒 User logged in but needs GPS consent, navigating to consent screen',
+            );
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const MandatoryGpsConsentScreen(),
+              ),
+            );
+          } else {
+            // Check if can proceed to main app
+            bool canProceed = await MandatoryGpsService.instance
+                .canProceedToMain();
+
+            if (canProceed) {
+              // User has everything set up, go to main app
+              print(
+                '🚀 Auto-login successful with GPS consent, navigating to main app',
+              );
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const RoleSelectionScreen(),
+                ),
+              );
+            } else {
+              // Something is wrong, force GPS consent again
+              print('⚠️ GPS setup invalid, forcing consent screen');
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const MandatoryGpsConsentScreen(),
+                ),
+              );
+            }
+          }
         } else {
           // Belum login atau token expired, ke login screen
           print('🔑 No valid login found, navigating to login');
@@ -113,7 +160,7 @@ class _SplashScreenState extends State<SplashScreen>
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      // Logo atau icon aplikasi
+                      // App logo
                       Container(
                         width: 120,
                         height: 120,
@@ -128,10 +175,15 @@ class _SplashScreenState extends State<SplashScreen>
                             ),
                           ],
                         ),
-                        child: Icon(
-                          Icons.local_shipping,
-                          size: 60,
-                          color: AppColors.primaryGreen,
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(30),
+                          child: Padding(
+                            padding: const EdgeInsets.all(20),
+                            child: Image.asset(
+                              'assets/images/logo.png',
+                              fit: BoxFit.contain,
+                            ),
+                          ),
                         ),
                       ),
 
@@ -139,7 +191,7 @@ class _SplashScreenState extends State<SplashScreen>
 
                       // Nama aplikasi
                       Text(
-                        'ONE LINK',
+                        'One Link - GEU',
                         style: AppTextStyles.h3.copyWith(
                           color: AppColors.white,
                           fontWeight: FontWeight.bold,
@@ -151,7 +203,7 @@ class _SplashScreenState extends State<SplashScreen>
 
                       // Subtitle
                       Text(
-                        'Surat Jalan Management',
+                        'Green Energi Utama',
                         style: AppTextStyles.bodyMedium.copyWith(
                           color: AppColors.white.withOpacity(0.8),
                           letterSpacing: 1,
@@ -178,6 +230,16 @@ class _SplashScreenState extends State<SplashScreen>
                         'Checking login status...',
                         style: AppTextStyles.bodySmall.copyWith(
                           color: AppColors.white.withOpacity(0.7),
+                        ),
+                      ),
+
+                      const SizedBox(height: 50),
+
+                      // Version info
+                      Text(
+                        AppConfig.formattedVersion,
+                        style: AppTextStyles.caption.copyWith(
+                          color: AppColors.white.withOpacity(0.6),
                         ),
                       ),
                     ],

@@ -1,15 +1,17 @@
 import 'dart:convert';
+import '../../config/app_config.dart';
 import 'package:http/http.dart' as http;
 import '../../models/api_response.dart';
 
 // Base API Service
 class ApiService {
-  static const String baseURL = 'https://erp.greenenergiutama.co.id';
-  // For production use: 'https://erp.greenenergiutama.co.id'
+  static const String baseURL = AppConfig.serverDomain;
+  // For production use: AppConfig.serverDomain
 
   static Map<String, String> get headers => {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
+    'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
   };
 
   static Future<ApiResponse<T>> _handleResponse<T>(
@@ -31,7 +33,7 @@ class ApiService {
     } catch (e) {
       return ApiResponse<T>(
         status: false,
-        message: 'Error parsing response: $e',
+        message: 'Error parsing response: $e\nResponse Body: ${response.body}',
       );
     }
   }
@@ -68,7 +70,7 @@ class ApiService {
     } catch (e) {
       return ApiResponse<List<T>>(
         status: false,
-        message: 'Error parsing response: $e',
+        message: 'Error parsing response: $e\nResponse Body: ${response.body}',
       );
     }
   }

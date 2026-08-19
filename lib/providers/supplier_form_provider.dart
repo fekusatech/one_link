@@ -350,7 +350,8 @@ class SupplierFormProvider extends ChangeNotifier {
       if (!response.status) {
         // Parse validation errors if available
         if (response.message?.contains('Validation Error') == true) {
-          _errorMessage = 'Validation Error: Terdapat kesalahan pada data yang dikirim';
+          _errorMessage =
+              'Validation Error: Terdapat kesalahan pada data yang dikirim';
         } else {
           _errorMessage = response.message ?? 'Gagal menambahkan supplier';
         }
