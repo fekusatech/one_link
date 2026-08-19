@@ -29,6 +29,7 @@ import '../widgets/dynamic_pickup_map_widget.dart';
 import '../services/update_service.dart';
 import '../services/location_tracking_service.dart';
 import '../services/driver_tracking_service.dart';
+import '../services/emergency_shake_service.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -43,9 +44,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   void initState() {
     super.initState();
-    // Jalankan monitoring update di dashboard
+    // Jalankan monitoring update & shake detector SOS di dashboard
     WidgetsBinding.instance.addPostFrameCallback((_) {
       UpdateService.instance.startMonitoring(context);
+      EmergencyShakeService.instance.startListening(context);
       _startLocationTracking();
     });
   }
