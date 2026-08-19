@@ -25,7 +25,10 @@ class EmergencyShakeService {
     if (_isListening) return;
 
     _shakeDetector = ShakeDetector.autoStart(
-      shakeThresholdGravity: 2.7,
+      shakeThresholdGravity: 3.5,
+      minimumShakeCount: 3,
+      shakeSlopTimeMS: 500,
+      shakeCountResetTime: 3000,
       onPhoneShake: (event) {
         final now = DateTime.now();
         if (_lastShakeTime != null && now.difference(_lastShakeTime!).inSeconds < 8) {
@@ -36,7 +39,7 @@ class EmergencyShakeService {
       },
     );
     _isListening = true;
-    debugPrint('🚨 Emergency Shake Detector started!');
+    debugPrint('🚨 Emergency Shake Detector started (Requirement: 3 shakes, Threshold: 3.5g)!');
   }
 
   /// Stop listening for shake events (call on logout)
@@ -58,7 +61,7 @@ class EmergencyShakeService {
 
   void _showEmergencyConfirmationDialog(BuildContext context) {
     _isDialogShowing = true;
-    int countdown = 3;
+    int countdown = 5;
     Timer? timer;
 
     showDialog(
@@ -106,7 +109,7 @@ class EmergencyShakeService {
                 children: [
                   const SizedBox(height: 10),
                   const Text(
-                    'Ponsel dikocok! Pesan WhatsApp Darurat lokasi & data diri Anda akan otomatis dikirim ke Admin/PIC.',
+                    'Ponsel dikocok 3 kali! Pesan WhatsApp Darurat lokasi & data diri Anda akan otomatis dikirim ke Admin/PIC.',
                     textAlign: TextAlign.center,
                     style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
                   ),
