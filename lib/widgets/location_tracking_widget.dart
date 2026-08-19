@@ -58,7 +58,7 @@ class _LocationTrackingWidgetState extends State<LocationTrackingWidget> {
 
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('GPS Tracking diaktifkan'),
+            content: Text('Pembaruan lokasi diaktifkan'),
             backgroundColor: AppColors.primaryGreen,
           ),
         );
@@ -77,7 +77,7 @@ class _LocationTrackingWidgetState extends State<LocationTrackingWidget> {
             Icon(Icons.warning, color: Colors.orange, size: 24),
             const SizedBox(width: 8),
             Text(
-              'GPS Tracking Wajib',
+              'Akses Lokasi Diperlukan',
               style: AppTextStyles.h6.copyWith(
                 color: AppColors.textPrimary,
                 fontWeight: FontWeight.bold,
@@ -90,13 +90,16 @@ class _LocationTrackingWidgetState extends State<LocationTrackingWidget> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'GPS tracking tidak dapat dinonaktifkan karena merupakan fitur wajib untuk:',
+              'Akses lokasi diperlukan selama tugas aktif untuk:',
               style: AppTextStyles.bodyMedium.copyWith(
                 color: AppColors.textSecondary,
               ),
             ),
             const SizedBox(height: 12),
-            _buildMandatoryFeature(Icons.navigation, 'Tracking rute real-time'),
+            _buildMandatoryFeature(
+              Icons.navigation,
+              'Navigasi rute saat tugas aktif',
+            ),
             _buildMandatoryFeature(
               Icons.location_searching,
               'Mencari supplier terdekat',
@@ -112,7 +115,7 @@ class _LocationTrackingWidgetState extends State<LocationTrackingWidget> {
                 border: Border.all(color: Colors.red.withOpacity(0.3)),
               ),
               child: Text(
-                'Menonaktifkan GPS tracking akan menutup aplikasi.',
+                'Jika akses lokasi dicabut, aplikasi tidak dapat digunakan untuk tugas aktif.',
                 style: AppTextStyles.bodySmall.copyWith(
                   color: Colors.red.shade700,
                   fontWeight: FontWeight.w500,
@@ -262,7 +265,7 @@ class _LocationTrackingWidgetState extends State<LocationTrackingWidget> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'GPS Tracking',
+                        'Pembaruan Lokasi',
                         style: AppTextStyles.bodyLarge.copyWith(
                           fontWeight: FontWeight.bold,
                           color: AppColors.textPrimary,
@@ -271,8 +274,8 @@ class _LocationTrackingWidgetState extends State<LocationTrackingWidget> {
                       const SizedBox(height: 4),
                       Text(
                         _isTracking
-                            ? 'Aktif - Lokasi sedang dilacak'
-                            : 'Nonaktif - Tracking dimatikan',
+                            ? 'Aktif - Lokasi digunakan saat tugas berjalan'
+                            : 'Nonaktif - Akses lokasi tidak aktif',
                         style: AppTextStyles.bodySmall.copyWith(
                           color: _isTracking
                               ? AppColors.primaryGreen
@@ -281,7 +284,7 @@ class _LocationTrackingWidgetState extends State<LocationTrackingWidget> {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        'GPS tracking wajib untuk aplikasi',
+                        'Akses lokasi diperlukan untuk menjalankan tugas',
                         style: AppTextStyles.caption.copyWith(
                           color: AppColors.textSecondary.withOpacity(0.7),
                           fontStyle: FontStyle.italic,
@@ -317,7 +320,7 @@ class _LocationTrackingWidgetState extends State<LocationTrackingWidget> {
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        'Persetujuan diperlukan untuk mengaktifkan tracking',
+                        'Persetujuan diperlukan untuk mengaktifkan akses lokasi',
                         style: AppTextStyles.caption.copyWith(
                           color: Colors.orange.shade700,
                         ),

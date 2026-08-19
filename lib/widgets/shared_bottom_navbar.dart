@@ -5,11 +5,17 @@ import '../constants/app_text_styles.dart';
 class SharedBottomNavbar extends StatelessWidget {
   final int currentIndex;
   final ValueChanged<int> onTap;
+  final bool showVisitPlan;
+  final bool showTasks;
+  final bool showHistory;
 
   const SharedBottomNavbar({
     super.key,
     required this.currentIndex,
     required this.onTap,
+    this.showVisitPlan = false,
+    this.showTasks = false,
+    this.showHistory = true,
   });
 
   @override
@@ -39,23 +45,31 @@ class SharedBottomNavbar extends StatelessWidget {
         unselectedLabelStyle: AppTextStyles.caption.copyWith(
           color: AppColors.grey,
         ),
-        items: const [
-          BottomNavigationBarItem(
+        items: [
+          const BottomNavigationBarItem(
             icon: Icon(Icons.home_outlined),
             activeIcon: Icon(Icons.home),
             label: 'Beranda',
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.calendar_today_outlined),
-            activeIcon: Icon(Icons.calendar_today),
-            label: 'Kalender',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.notifications_outlined),
-            activeIcon: Icon(Icons.notifications),
-            label: 'Notifikasi',
-          ),
-          BottomNavigationBarItem(
+          if (showVisitPlan)
+            const BottomNavigationBarItem(
+              icon: Icon(Icons.map_outlined),
+              activeIcon: Icon(Icons.map),
+              label: 'Visit Plan',
+            ),
+          if (showTasks)
+            const BottomNavigationBarItem(
+              icon: Icon(Icons.checklist_outlined),
+              activeIcon: Icon(Icons.checklist),
+              label: 'Tugas',
+            ),
+          if (showHistory)
+            const BottomNavigationBarItem(
+              icon: Icon(Icons.history_outlined),
+              activeIcon: Icon(Icons.history),
+              label: 'Riwayat',
+            ),
+          const BottomNavigationBarItem(
             icon: Icon(Icons.person_outline),
             activeIcon: Icon(Icons.person),
             label: 'Profil',

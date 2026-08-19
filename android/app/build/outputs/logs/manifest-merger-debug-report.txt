@@ -1,0 +1,1066 @@
+-- Merging decision tree log ---
+application
+INJECTED from /Users/macprom12020/Project/crm-mobile/android/app/src/main/AndroidManifest.xml:11:5-35:19
+INJECTED from /Users/macprom12020/Project/crm-mobile/android/app/src/main/AndroidManifest.xml:11:5-35:19
+MERGED from [:react-native-nitro-geolocation] /Users/macprom12020/Project/crm-mobile/node_modules/react-native-nitro-geolocation/android/build/intermediates/merged_manifest/debug/processDebugManifest/AndroidManifest.xml:13:5-41:19
+MERGED from [:react-native-nitro-geolocation] /Users/macprom12020/Project/crm-mobile/node_modules/react-native-nitro-geolocation/android/build/intermediates/merged_manifest/debug/processDebugManifest/AndroidManifest.xml:13:5-41:19
+MERGED from [com.facebook.react:react-android:0.87.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/20ad2d019970f8e91fa7eb3c7227b106/transformed/react-android-0.87.0-debug/AndroidManifest.xml:24:5-28:19
+MERGED from [com.facebook.react:react-android:0.87.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/20ad2d019970f8e91fa7eb3c7227b106/transformed/react-android-0.87.0-debug/AndroidManifest.xml:24:5-28:19
+MERGED from [com.google.android.gms:play-services-location:21.3.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/b2b4cd6058baae506bd69cab3b46d440/transformed/play-services-location-21.3.0/AndroidManifest.xml:6:5-20
+MERGED from [com.google.android.gms:play-services-location:21.3.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/b2b4cd6058baae506bd69cab3b46d440/transformed/play-services-location-21.3.0/AndroidManifest.xml:6:5-20
+MERGED from [androidx.work:work-runtime:2.9.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cfbc11290a4358d7cb3b676f361a1979/transformed/work-runtime-2.9.1/AndroidManifest.xml:28:5-143:19
+MERGED from [androidx.work:work-runtime:2.9.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cfbc11290a4358d7cb3b676f361a1979/transformed/work-runtime-2.9.1/AndroidManifest.xml:28:5-143:19
+MERGED from [com.google.maps.android:android-maps-utils:3.10.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/8c1c093590a431121b62838c12cebb04/transformed/android-maps-utils-3.10.0/AndroidManifest.xml:22:5-26:19
+MERGED from [com.google.maps.android:android-maps-utils:3.10.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/8c1c093590a431121b62838c12cebb04/transformed/android-maps-utils-3.10.0/AndroidManifest.xml:22:5-26:19
+MERGED from [com.google.android.material:material:1.13.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/b04940072532ad5890c30dc09e9719db/transformed/material-1.13.0/AndroidManifest.xml:22:5-20
+MERGED from [com.google.android.material:material:1.13.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/b04940072532ad5890c30dc09e9719db/transformed/material-1.13.0/AndroidManifest.xml:22:5-20
+MERGED from [androidx.camera:camera-extensions:1.7.0-alpha02] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/ceaf89110f2f6b8ea2ec82fd4854f10e/transformed/camera-extensions-1.7.0-alpha02/AndroidManifest.xml:28:5-32:19
+MERGED from [androidx.camera:camera-extensions:1.7.0-alpha02] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/ceaf89110f2f6b8ea2ec82fd4854f10e/transformed/camera-extensions-1.7.0-alpha02/AndroidManifest.xml:28:5-32:19
+MERGED from [androidx.camera:camera-camera2:1.7.0-alpha02] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/1e39a74d4ed1ae1965030050df09dfa8/transformed/camera-camera2-1.7.0-alpha02/AndroidManifest.xml:23:5-34:19
+MERGED from [androidx.camera:camera-camera2:1.7.0-alpha02] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/1e39a74d4ed1ae1965030050df09dfa8/transformed/camera-camera2-1.7.0-alpha02/AndroidManifest.xml:23:5-34:19
+MERGED from [androidx.camera:camera-core:1.7.0-alpha02] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/ca07a269539aae34a968667247cee21f/transformed/camera-core-1.7.0-alpha02/AndroidManifest.xml:23:5-34:19
+MERGED from [androidx.camera:camera-core:1.7.0-alpha02] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/ca07a269539aae34a968667247cee21f/transformed/camera-core-1.7.0-alpha02/AndroidManifest.xml:23:5-34:19
+MERGED from [androidx.constraintlayout:constraintlayout:2.1.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/d384371710018e239a5aaad66d10db44/transformed/constraintlayout-2.1.0/AndroidManifest.xml:9:5-20
+MERGED from [androidx.constraintlayout:constraintlayout:2.1.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/d384371710018e239a5aaad66d10db44/transformed/constraintlayout-2.1.0/AndroidManifest.xml:9:5-20
+MERGED from [com.google.android.gms:play-services-maps:19.1.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/e6ec427d553d8f0442f01775741f7bd3/transformed/play-services-maps-19.1.0/AndroidManifest.xml:31:5-34:19
+MERGED from [com.google.android.gms:play-services-maps:19.1.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/e6ec427d553d8f0442f01775741f7bd3/transformed/play-services-maps-19.1.0/AndroidManifest.xml:31:5-34:19
+MERGED from [com.google.android.gms:play-services-base:18.5.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/8ba622aaeec82932b5a56955961a11ef/transformed/play-services-base-18.5.0/AndroidManifest.xml:4:5-6:19
+MERGED from [com.google.android.gms:play-services-base:18.5.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/8ba622aaeec82932b5a56955961a11ef/transformed/play-services-base-18.5.0/AndroidManifest.xml:4:5-6:19
+MERGED from [com.google.android.gms:play-services-tasks:18.2.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/0a79fad6b942fb86e213e7afc2cfc2c9/transformed/play-services-tasks-18.2.0/AndroidManifest.xml:4:5-20
+MERGED from [com.google.android.gms:play-services-tasks:18.2.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/0a79fad6b942fb86e213e7afc2cfc2c9/transformed/play-services-tasks-18.2.0/AndroidManifest.xml:4:5-20
+MERGED from [com.google.android.gms:play-services-basement:18.4.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/e3d6ca69365f1245e5f59965ee189ff8/transformed/play-services-basement-18.4.0/AndroidManifest.xml:5:5-7:19
+MERGED from [com.google.android.gms:play-services-basement:18.4.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/e3d6ca69365f1245e5f59965ee189ff8/transformed/play-services-basement-18.4.0/AndroidManifest.xml:5:5-7:19
+MERGED from [androidx.window:window:1.5.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/39179a95061da83d4e635ddc46fd300b/transformed/window-1.5.1/AndroidManifest.xml:22:5-29:19
+MERGED from [androidx.window:window:1.5.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/39179a95061da83d4e635ddc46fd300b/transformed/window-1.5.1/AndroidManifest.xml:22:5-29:19
+MERGED from [androidx.emoji2:emoji2:1.3.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/28e696fcf5719a4a7310588b66326deb/transformed/emoji2-1.3.0/AndroidManifest.xml:23:5-33:19
+MERGED from [androidx.emoji2:emoji2:1.3.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/28e696fcf5719a4a7310588b66326deb/transformed/emoji2-1.3.0/AndroidManifest.xml:23:5-33:19
+MERGED from [androidx.core:core:1.17.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/bda5dc46d04cebe26f23f5b9298bf3a5/transformed/core-1.17.0/AndroidManifest.xml:28:5-89
+MERGED from [androidx.core:core:1.17.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/bda5dc46d04cebe26f23f5b9298bf3a5/transformed/core-1.17.0/AndroidManifest.xml:28:5-89
+MERGED from [androidx.lifecycle:lifecycle-process:2.6.2] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/6455de05fb5326832daa27b51d0f3858/transformed/lifecycle-process-2.6.2/AndroidManifest.xml:23:5-33:19
+MERGED from [androidx.lifecycle:lifecycle-process:2.6.2] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/6455de05fb5326832daa27b51d0f3858/transformed/lifecycle-process-2.6.2/AndroidManifest.xml:23:5-33:19
+MERGED from [androidx.room:room-runtime:2.5.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/1aa931eb04bf1d7b9fa4b3d0f5b4b1b6/transformed/room-runtime-2.5.0/AndroidManifest.xml:23:5-29:19
+MERGED from [androidx.room:room-runtime:2.5.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/1aa931eb04bf1d7b9fa4b3d0f5b4b1b6/transformed/room-runtime-2.5.0/AndroidManifest.xml:23:5-29:19
+MERGED from [androidx.profileinstaller:profileinstaller:1.3.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/6ef67b66dc1bdc1e721aa142990bbc99/transformed/profileinstaller-1.3.1/AndroidManifest.xml:23:5-53:19
+MERGED from [androidx.profileinstaller:profileinstaller:1.3.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/6ef67b66dc1bdc1e721aa142990bbc99/transformed/profileinstaller-1.3.1/AndroidManifest.xml:23:5-53:19
+MERGED from [androidx.startup:startup-runtime:1.1.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/9e0b3365c7afa45e31ac52a82a1b8af7/transformed/startup-runtime-1.1.1/AndroidManifest.xml:25:5-31:19
+MERGED from [androidx.startup:startup-runtime:1.1.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/9e0b3365c7afa45e31ac52a82a1b8af7/transformed/startup-runtime-1.1.1/AndroidManifest.xml:25:5-31:19
+MERGED from [androidx.versionedparcelable:versionedparcelable:1.1.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/9c379efd578e486320e561c0cc026ec2/transformed/versionedparcelable-1.1.1/AndroidManifest.xml:24:5-25:19
+MERGED from [androidx.versionedparcelable:versionedparcelable:1.1.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/9c379efd578e486320e561c0cc026ec2/transformed/versionedparcelable-1.1.1/AndroidManifest.xml:24:5-25:19
+MERGED from [com.facebook.soloader:soloader:0.12.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/d24b621da5898bd22d4b2070b09a9d57/transformed/soloader-0.12.1/AndroidManifest.xml:11:5-15:19
+MERGED from [com.facebook.soloader:soloader:0.12.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/d24b621da5898bd22d4b2070b09a9d57/transformed/soloader-0.12.1/AndroidManifest.xml:11:5-15:19
+	android:extractNativeLibs
+		INJECTED from /Users/macprom12020/Project/crm-mobile/android/app/src/main/AndroidManifest.xml
+	android:appComponentFactory
+		ADDED from [androidx.core:core:1.17.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/bda5dc46d04cebe26f23f5b9298bf3a5/transformed/core-1.17.0/AndroidManifest.xml:28:18-86
+	android:supportsRtl
+		ADDED from /Users/macprom12020/Project/crm-mobile/android/app/src/main/AndroidManifest.xml:19:7-33
+	android:label
+		ADDED from /Users/macprom12020/Project/crm-mobile/android/app/src/main/AndroidManifest.xml:13:7-39
+	android:roundIcon
+		ADDED from /Users/macprom12020/Project/crm-mobile/android/app/src/main/AndroidManifest.xml:15:7-52
+	android:icon
+		ADDED from /Users/macprom12020/Project/crm-mobile/android/app/src/main/AndroidManifest.xml:14:7-41
+	android:allowBackup
+		ADDED from /Users/macprom12020/Project/crm-mobile/android/app/src/main/AndroidManifest.xml:16:7-34
+	android:theme
+		ADDED from /Users/macprom12020/Project/crm-mobile/android/app/src/main/AndroidManifest.xml:17:7-38
+	android:name
+		ADDED from /Users/macprom12020/Project/crm-mobile/android/app/src/main/AndroidManifest.xml:12:7-38
+	android:usesCleartextTraffic
+		INJECTED from /Users/macprom12020/Project/crm-mobile/android/app/src/main/AndroidManifest.xml
+		ADDED from /Users/macprom12020/Project/crm-mobile/android/app/src/main/AndroidManifest.xml:18:7-61
+meta-data#com.google.android.geo.API_KEY
+INJECTED from /Users/macprom12020/Project/crm-mobile/android/app/src/main/AndroidManifest.xml:20:7-22:43
+	android:value
+		INJECTED from /Users/macprom12020/Project/crm-mobile/android/app/src/main/AndroidManifest.xml
+		ADDED from /Users/macprom12020/Project/crm-mobile/android/app/src/main/AndroidManifest.xml:22:9-40
+	android:name
+		ADDED from /Users/macprom12020/Project/crm-mobile/android/app/src/main/AndroidManifest.xml:21:9-54
+manifest
+ADDED from /Users/macprom12020/Project/crm-mobile/android/app/src/main/AndroidManifest.xml:1:1-36:12
+INJECTED from /Users/macprom12020/Project/crm-mobile/android/app/src/main/AndroidManifest.xml:1:1-36:12
+INJECTED from /Users/macprom12020/Project/crm-mobile/android/app/src/main/AndroidManifest.xml:1:1-36:12
+INJECTED from /Users/macprom12020/Project/crm-mobile/android/app/src/main/AndroidManifest.xml:1:1-36:12
+MERGED from [:dr.pogodin_react-native-fs] /Users/macprom12020/Project/crm-mobile/node_modules/@dr.pogodin/react-native-fs/android/build/intermediates/merged_manifest/debug/processDebugManifest/AndroidManifest.xml:2:1-9:12
+MERGED from [:op-engineering_op-sqlite] /Users/macprom12020/Project/crm-mobile/node_modules/@op-engineering/op-sqlite/android/build/intermediates/merged_manifest/debug/processDebugManifest/AndroidManifest.xml:2:1-7:12
+MERGED from [:react-native-gesture-handler] /Users/macprom12020/Project/crm-mobile/node_modules/react-native-gesture-handler/android/build/intermediates/merged_manifest/debug/processDebugManifest/AndroidManifest.xml:2:1-7:12
+MERGED from [:react-native-keychain] /Users/macprom12020/Project/crm-mobile/node_modules/react-native-keychain/android/build/intermediates/merged_manifest/debug/processDebugManifest/AndroidManifest.xml:2:1-13:12
+MERGED from [:react-native-maps] /Users/macprom12020/Project/crm-mobile/node_modules/react-native-maps/android/build/intermediates/merged_manifest/debug/processDebugManifest/AndroidManifest.xml:2:1-7:12
+MERGED from [:react-native-mmkv] /Users/macprom12020/Project/crm-mobile/node_modules/react-native-mmkv/android/build/intermediates/merged_manifest/debug/processDebugManifest/AndroidManifest.xml:2:1-7:12
+MERGED from [:react-native-nitro-geolocation] /Users/macprom12020/Project/crm-mobile/node_modules/react-native-nitro-geolocation/android/build/intermediates/merged_manifest/debug/processDebugManifest/AndroidManifest.xml:2:1-43:12
+MERGED from [:react-native-vision-camera] /Users/macprom12020/Project/crm-mobile/node_modules/react-native-vision-camera/android/build/intermediates/merged_manifest/debug/processDebugManifest/AndroidManifest.xml:2:1-14:12
+MERGED from [:react-native-nitro-image] /Users/macprom12020/Project/crm-mobile/node_modules/react-native-nitro-image/android/build/intermediates/merged_manifest/debug/processDebugManifest/AndroidManifest.xml:2:1-7:12
+MERGED from [:react-native-nitro-modules] /Users/macprom12020/Project/crm-mobile/node_modules/react-native-nitro-modules/android/build/intermediates/merged_manifest/debug/processDebugManifest/AndroidManifest.xml:2:1-7:12
+MERGED from [:react-native-permissions] /Users/macprom12020/Project/crm-mobile/node_modules/react-native-permissions/android/build/intermediates/merged_manifest/debug/processDebugManifest/AndroidManifest.xml:2:1-7:12
+MERGED from [:react-native-safe-area-context] /Users/macprom12020/Project/crm-mobile/node_modules/react-native-safe-area-context/android/build/intermediates/merged_manifest/debug/processDebugManifest/AndroidManifest.xml:2:1-7:12
+MERGED from [:react-native-screens] /Users/macprom12020/Project/crm-mobile/node_modules/react-native-screens/android/build/intermediates/merged_manifest/debug/processDebugManifest/AndroidManifest.xml:2:1-7:12
+MERGED from [:react-native-community_netinfo] /Users/macprom12020/Project/crm-mobile/node_modules/@react-native-community/netinfo/android/build/intermediates/merged_manifest/debug/processDebugManifest/AndroidManifest.xml:2:1-10:12
+MERGED from [:react-native-get-random-values] /Users/macprom12020/Project/crm-mobile/node_modules/react-native-get-random-values/android/build/intermediates/merged_manifest/debug/processDebugManifest/AndroidManifest.xml:2:1-7:12
+MERGED from [com.facebook.react:react-android:0.87.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/20ad2d019970f8e91fa7eb3c7227b106/transformed/react-android-0.87.0-debug/AndroidManifest.xml:2:1-30:12
+MERGED from [com.google.android.gms:play-services-location:21.3.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/b2b4cd6058baae506bd69cab3b46d440/transformed/play-services-location-21.3.0/AndroidManifest.xml:2:1-8:12
+MERGED from [androidx.work:work-runtime:2.9.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cfbc11290a4358d7cb3b676f361a1979/transformed/work-runtime-2.9.1/AndroidManifest.xml:17:1-145:12
+MERGED from [com.google.maps.android:android-maps-utils:3.10.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/8c1c093590a431121b62838c12cebb04/transformed/android-maps-utils-3.10.0/AndroidManifest.xml:17:1-28:12
+MERGED from [com.google.android.material:material:1.13.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/b04940072532ad5890c30dc09e9719db/transformed/material-1.13.0/AndroidManifest.xml:17:1-24:12
+MERGED from [androidx.camera:camera-common:1.7.0-alpha02] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/db52a47dc101076c78eca1d0b6bab63c/transformed/camera-common-1.7.0-alpha02/AndroidManifest.xml:2:1-7:12
+MERGED from [androidx.camera:camera-extensions:1.7.0-alpha02] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/ceaf89110f2f6b8ea2ec82fd4854f10e/transformed/camera-extensions-1.7.0-alpha02/AndroidManifest.xml:17:1-34:12
+MERGED from [androidx.camera:camera-video:1.7.0-alpha02] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/281c182c670adc6dc9bc34bf2f52f947/transformed/camera-video-1.7.0-alpha02/AndroidManifest.xml:2:1-7:12
+MERGED from [androidx.camera:camera-lifecycle:1.7.0-alpha02] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/ac8aff5333612150e0202463b08ebd7c/transformed/camera-lifecycle-1.7.0-alpha02/AndroidManifest.xml:2:1-7:12
+MERGED from [androidx.camera:camera-camera2-pipe:1.7.0-alpha02] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/37ce15428b6be2b71d466b1f956c42ab/transformed/camera-camera2-pipe-1.7.0-alpha02/AndroidManifest.xml:2:1-7:12
+MERGED from [androidx.camera:camera-camera2:1.7.0-alpha02] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/1e39a74d4ed1ae1965030050df09dfa8/transformed/camera-camera2-1.7.0-alpha02/AndroidManifest.xml:17:1-36:12
+MERGED from [androidx.camera:camera-core:1.7.0-alpha02] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/ca07a269539aae34a968667247cee21f/transformed/camera-core-1.7.0-alpha02/AndroidManifest.xml:17:1-36:12
+MERGED from [androidx.camera:camera-view:1.7.0-alpha02] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/ebae750d4bb675ca820a33e8ee452f3a/transformed/camera-view-1.7.0-alpha02/AndroidManifest.xml:2:1-7:12
+MERGED from [androidx.appcompat:appcompat-resources:1.7.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/9346932432a03edfffdb769e56bed04f/transformed/appcompat-resources-1.7.1/AndroidManifest.xml:2:1-7:12
+MERGED from [androidx.constraintlayout:constraintlayout:2.1.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/d384371710018e239a5aaad66d10db44/transformed/constraintlayout-2.1.0/AndroidManifest.xml:2:1-11:12
+MERGED from [androidx.appcompat:appcompat:1.7.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/64cfc275a42587da817fcdb6795dcc7b/transformed/appcompat-1.7.1/AndroidManifest.xml:2:1-7:12
+MERGED from [androidx.legacy:legacy-support-v4:1.0.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/d0de1113a462ee3fc9ced169512cfaac/transformed/legacy-support-v4-1.0.0/AndroidManifest.xml:17:1-22:12
+MERGED from [com.google.android.gms:play-services-maps:19.1.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/e6ec427d553d8f0442f01775741f7bd3/transformed/play-services-maps-19.1.0/AndroidManifest.xml:16:1-35:12
+MERGED from [com.google.android.gms:play-services-base:18.5.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/8ba622aaeec82932b5a56955961a11ef/transformed/play-services-base-18.5.0/AndroidManifest.xml:2:1-7:12
+MERGED from [com.google.android.gms:play-services-tasks:18.2.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/0a79fad6b942fb86e213e7afc2cfc2c9/transformed/play-services-tasks-18.2.0/AndroidManifest.xml:2:1-5:12
+MERGED from [com.google.android.gms:play-services-basement:18.4.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/e3d6ca69365f1245e5f59965ee189ff8/transformed/play-services-basement-18.4.0/AndroidManifest.xml:2:1-9:12
+MERGED from [androidx.viewpager2:viewpager2:1.0.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/1fbdb5139a2fc3081126aa48678efba5/transformed/viewpager2-1.0.0/AndroidManifest.xml:17:1-24:12
+MERGED from [androidx.fragment:fragment:1.8.9] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/8263917f980421217533fa6237ed9a02/transformed/fragment-1.8.9/AndroidManifest.xml:2:1-7:12
+MERGED from [androidx.fragment:fragment-ktx:1.8.9] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/ca52507a102fc66a4b126ca3b4a26906/transformed/fragment-ktx-1.8.9/AndroidManifest.xml:2:1-7:12
+MERGED from [androidx.activity:activity:1.8.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/831b69df40054594c4e5c574a88cd0ae/transformed/activity-1.8.1/AndroidManifest.xml:17:1-22:12
+MERGED from [androidx.activity:activity-ktx:1.8.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/2ab6fa66b398c3d0019df656c8a45a5b/transformed/activity-ktx-1.8.1/AndroidManifest.xml:2:1-7:12
+MERGED from [androidx.legacy:legacy-support-core-ui:1.0.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/7d7d762f061a39c875ce2dfdb01c2d73/transformed/legacy-support-core-ui-1.0.0/AndroidManifest.xml:17:1-22:12
+MERGED from [androidx.coordinatorlayout:coordinatorlayout:1.2.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/699ec824e89dfd9b1547c0058267d647/transformed/coordinatorlayout-1.2.0/AndroidManifest.xml:17:1-24:12
+MERGED from [androidx.swiperefreshlayout:swiperefreshlayout:1.1.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/8daca84ddb8dbaff3ebcbde0c0daf330/transformed/swiperefreshlayout-1.1.0/AndroidManifest.xml:17:1-24:12
+MERGED from [androidx.autofill:autofill:1.3.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/5ca330925ded27f33216a83f9d13a5b7/transformed/autofill-1.3.0/AndroidManifest.xml:2:1-7:12
+MERGED from [androidx.window:window-core-android:1.5.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/87967091b61d20e64d2c4c9eee3cc744/transformed/window-core/AndroidManifest.xml:2:1-7:12
+MERGED from [androidx.window:window:1.5.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/39179a95061da83d4e635ddc46fd300b/transformed/window-1.5.1/AndroidManifest.xml:17:1-31:12
+MERGED from [androidx.media:media:1.0.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/8bc1a208046179b6c9cb0aae5e1b8268/transformed/media-1.0.0/AndroidManifest.xml:17:1-22:12
+MERGED from [androidx.legacy:legacy-support-core-utils:1.0.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/d7fe9737ca75653135881f52af7af616/transformed/legacy-support-core-utils-1.0.0/AndroidManifest.xml:17:1-22:12
+MERGED from [androidx.emoji2:emoji2-views-helper:1.3.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/56d91ad9b8fd8af0a39ba5d5b260ff73/transformed/emoji2-views-helper-1.3.0/AndroidManifest.xml:2:1-7:12
+MERGED from [androidx.emoji2:emoji2:1.3.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/28e696fcf5719a4a7310588b66326deb/transformed/emoji2-1.3.0/AndroidManifest.xml:17:1-35:12
+MERGED from [androidx.transition:transition-ktx:1.7.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/f1aaee677f3bbd5da95d9dc0d325c693/transformed/transition-ktx-1.7.0/AndroidManifest.xml:2:1-7:12
+MERGED from [androidx.transition:transition:1.7.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/e6595b98d05fdb24e40d3d307b41db01/transformed/transition-1.7.0/AndroidManifest.xml:2:1-7:12
+MERGED from [androidx.drawerlayout:drawerlayout:1.1.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/3134d22626ff13206e49f433f14b2fd7/transformed/drawerlayout-1.1.1/AndroidManifest.xml:17:1-24:12
+MERGED from [androidx.dynamicanimation:dynamicanimation:1.1.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/47105aaeb99f2d4e17ed637fcf6bd2b2/transformed/dynamicanimation-1.1.0/AndroidManifest.xml:2:1-7:12
+MERGED from [androidx.recyclerview:recyclerview:1.2.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/e045269f5fcc6695b59b62795796a8f4/transformed/recyclerview-1.2.1/AndroidManifest.xml:17:1-24:12
+MERGED from [androidx.vectordrawable:vectordrawable-animated:1.1.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/58dcf99d76f29deb4beb98c632a08090/transformed/vectordrawable-animated-1.1.0/AndroidManifest.xml:17:1-24:12
+MERGED from [androidx.vectordrawable:vectordrawable:1.1.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/ba3e9ac9248e2a4c24c80a049c35e917/transformed/vectordrawable-1.1.0/AndroidManifest.xml:17:1-24:12
+MERGED from [androidx.camera.viewfinder:viewfinder-core:1.5.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/73230aaf3b5ba81f60e24e1ace6868f4/transformed/viewfinder-core-1.5.1/AndroidManifest.xml:2:1-7:12
+MERGED from [com.facebook.fresco:fresco:3.7.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/bd5c58f88712427ce3bec94146e45ca7/transformed/fresco-3.7.0/AndroidManifest.xml:2:1-7:12
+MERGED from [com.facebook.fresco:imagepipeline-okhttp3:3.7.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/2c7317a93ad81b3fe62c0fd8f1211d95/transformed/imagepipeline-okhttp3-3.7.0/AndroidManifest.xml:2:1-7:12
+MERGED from [com.facebook.fresco:drawee:3.7.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/a134cc4621de3e7ac567549617293712/transformed/drawee-3.7.0/AndroidManifest.xml:2:1-7:12
+MERGED from [com.facebook.fresco:nativeimagefilters:3.7.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/91b01aae9c9204bbeb8da802bbcd51d5/transformed/nativeimagefilters-3.7.0/AndroidManifest.xml:2:1-7:12
+MERGED from [com.facebook.fresco:memory-type-native:3.7.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/4abaa0138534500e80645f7dee954ca1/transformed/memory-type-native-3.7.0/AndroidManifest.xml:2:1-7:12
+MERGED from [com.facebook.fresco:memory-type-java:3.7.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/6ec8175bf6f9c56e5c456fc3e9d00c4e/transformed/memory-type-java-3.7.0/AndroidManifest.xml:2:1-7:12
+MERGED from [com.facebook.fresco:imagepipeline-native:3.7.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/f8ed91e9d6f95970a5c6e4644b575a1f/transformed/imagepipeline-native-3.7.0/AndroidManifest.xml:2:1-7:12
+MERGED from [com.facebook.fresco:memory-type-ashmem:3.7.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/fc14c10b2f16fe6bad378a5d6d3e6e25/transformed/memory-type-ashmem-3.7.0/AndroidManifest.xml:2:1-7:12
+MERGED from [com.facebook.fresco:imagepipeline:3.7.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/6c0ba659b98a3c40015a227c6c788a90/transformed/imagepipeline-3.7.0/AndroidManifest.xml:2:1-7:12
+MERGED from [com.facebook.fresco:nativeimagetranscoder:3.7.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/71b3b3ae57b85b5dcdf781226708d943/transformed/nativeimagetranscoder-3.7.0/AndroidManifest.xml:2:1-7:12
+MERGED from [com.facebook.fresco:imagepipeline-base:3.7.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/7fc040c75b70058420971b42e6638358/transformed/imagepipeline-base-3.7.0/AndroidManifest.xml:2:1-7:12
+MERGED from [com.facebook.fresco:urimod:3.7.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/bec7c566aab48e0470a1a048bbe46225/transformed/urimod-3.7.0/AndroidManifest.xml:2:1-7:12
+MERGED from [com.facebook.fresco:vito-source:3.7.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cb5b0a7bce5d9604421c067fae1d2057/transformed/vito-source-3.7.0/AndroidManifest.xml:2:1-7:12
+MERGED from [com.facebook.fresco:middleware:3.7.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/000207df7f0c802ba72ee3f8db64f7de/transformed/middleware-3.7.0/AndroidManifest.xml:2:1-7:12
+MERGED from [com.facebook.fresco:ui-common:3.7.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/6687be5f16a46618d184040d31f7aba8/transformed/ui-common-3.7.0/AndroidManifest.xml:2:1-7:12
+MERGED from [com.facebook.fresco:soloader:3.7.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/134400d30f6a824bf513146192ad66e1/transformed/soloader-3.7.0/AndroidManifest.xml:2:1-7:12
+MERGED from [com.facebook.fresco:fbcore:3.7.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/edfa32609845d1fcdca17070cb252c30/transformed/fbcore-3.7.0/AndroidManifest.xml:2:1-7:12
+MERGED from [androidx.loader:loader:1.0.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/edd701cc6d330f9585f28f1907a7ace3/transformed/loader-1.0.0/AndroidManifest.xml:17:1-22:12
+MERGED from [androidx.viewpager:viewpager:1.0.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/6467f6c40fa9e8cee82e21d200b09142/transformed/viewpager-1.0.0/AndroidManifest.xml:17:1-22:12
+MERGED from [androidx.slidingpanelayout:slidingpanelayout:1.0.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/f6cef2483b154d8823bfdb2d32882165/transformed/slidingpanelayout-1.0.0/AndroidManifest.xml:17:1-22:12
+MERGED from [androidx.asynclayoutinflater:asynclayoutinflater:1.0.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/161594aaf0bdbf4db91be8d5d6e425af/transformed/asynclayoutinflater-1.0.0/AndroidManifest.xml:17:1-22:12
+MERGED from [androidx.customview:customview:1.1.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cefa4f817fddbae385bc444552e6c27e/transformed/customview-1.1.0/AndroidManifest.xml:17:1-24:12
+MERGED from [androidx.core:core:1.17.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/bda5dc46d04cebe26f23f5b9298bf3a5/transformed/core-1.17.0/AndroidManifest.xml:17:1-30:12
+MERGED from [androidx.graphics:graphics-shapes-android:1.0.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/d53a3d76b64ab328bc2c6a92f69d7aae/transformed/graphics-shapes-release/AndroidManifest.xml:2:1-7:12
+MERGED from [androidx.savedstate:savedstate-ktx:1.2.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/be5f918e94b6631edbde4d8aa8b7ddd1/transformed/savedstate-ktx-1.2.1/AndroidManifest.xml:17:1-22:12
+MERGED from [androidx.savedstate:savedstate:1.2.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/0edef17b2155bac1d9b39dfbc1f0c425/transformed/savedstate-1.2.1/AndroidManifest.xml:17:1-22:12
+MERGED from [androidx.lifecycle:lifecycle-viewmodel-ktx:2.6.2] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/3a9f3bf1480d248931d2372ff89bea9d/transformed/lifecycle-viewmodel-ktx-2.6.2/AndroidManifest.xml:17:1-22:12
+MERGED from [androidx.lifecycle:lifecycle-viewmodel:2.6.2] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/57e7240e6b22d635a52ea7d2dd41ea16/transformed/lifecycle-viewmodel-2.6.2/AndroidManifest.xml:17:1-22:12
+MERGED from [androidx.lifecycle:lifecycle-service:2.6.2] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/3636d7f5f5e027f703c66b80de8641b3/transformed/lifecycle-service-2.6.2/AndroidManifest.xml:17:1-22:12
+MERGED from [androidx.lifecycle:lifecycle-runtime-ktx:2.6.2] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/bdf17d0a02aba1f6a6153cf759883524/transformed/lifecycle-runtime-ktx-2.6.2/AndroidManifest.xml:17:1-22:12
+MERGED from [androidx.lifecycle:lifecycle-process:2.6.2] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/6455de05fb5326832daa27b51d0f3858/transformed/lifecycle-process-2.6.2/AndroidManifest.xml:17:1-35:12
+MERGED from [androidx.lifecycle:lifecycle-livedata-core-ktx:2.6.2] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/908969f20ed62fbe87608890b9852b3c/transformed/lifecycle-livedata-core-ktx-2.6.2/AndroidManifest.xml:17:1-22:12
+MERGED from [androidx.lifecycle:lifecycle-livedata-core:2.6.2] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/073d82132e2dee9ba0bf993c12e1308d/transformed/lifecycle-livedata-core-2.6.2/AndroidManifest.xml:17:1-22:12
+MERGED from [androidx.lifecycle:lifecycle-livedata:2.6.2] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/9d0f7310829d25d467bb08b2ee8bab1c/transformed/lifecycle-livedata-2.6.2/AndroidManifest.xml:17:1-22:12
+MERGED from [androidx.lifecycle:lifecycle-runtime:2.6.2] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/33004b889cd11abb0c44f69d13a122b3/transformed/lifecycle-runtime-2.6.2/AndroidManifest.xml:2:1-7:12
+MERGED from [androidx.lifecycle:lifecycle-viewmodel-savedstate:2.6.2] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/68254c2d56662e7c411892652b4701a3/transformed/lifecycle-viewmodel-savedstate-2.6.2/AndroidManifest.xml:17:1-22:12
+MERGED from [androidx.core:core-ktx:1.17.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/3b564ea86632ff7701c03b1decdc4cb1/transformed/core-ktx-1.17.0/AndroidManifest.xml:2:1-7:12
+MERGED from [androidx.datastore:datastore-core-android:1.1.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/78be167197dc3e1339a1a5c09b69a2be/transformed/datastore-core-release/AndroidManifest.xml:2:1-7:12
+MERGED from [androidx.datastore:datastore-android:1.1.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/172634d7f4175cc1d1d427356216cae7/transformed/datastore-release/AndroidManifest.xml:17:1-22:12
+MERGED from [androidx.datastore:datastore-preferences-android:1.1.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/d736a71aa11adb8a9cf2b4c4ba4d911b/transformed/datastore-preferences-release/AndroidManifest.xml:17:1-22:12
+MERGED from [androidx.room:room-ktx:2.5.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/a47f589201bc9707076ca934987b9b64/transformed/room-ktx-2.5.0/AndroidManifest.xml:17:1-22:12
+MERGED from [androidx.room:room-runtime:2.5.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/1aa931eb04bf1d7b9fa4b3d0f5b4b1b6/transformed/room-runtime-2.5.0/AndroidManifest.xml:17:1-31:12
+MERGED from [androidx.sqlite:sqlite-framework:2.3.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/195fe4199f9f65d91d8c18fc3c0775ef/transformed/sqlite-framework-2.3.0/AndroidManifest.xml:17:1-22:12
+MERGED from [androidx.media3:media3-muxer:1.9.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/1775810cd60cbb152f4b46ac5f3f58fa/transformed/media3-muxer-1.9.0/AndroidManifest.xml:17:1-22:12
+MERGED from [androidx.media3:media3-container:1.9.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/158cde9fc0ef8adb0bcecb9b11118919/transformed/media3-container-1.9.0/AndroidManifest.xml:17:1-22:12
+MERGED from [androidx.media3:media3-common:1.9.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/477bd2ebfc14d1600a43446c152f8ecd/transformed/media3-common-1.9.0/AndroidManifest.xml:17:1-24:12
+MERGED from [androidx.annotation:annotation-experimental:1.4.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/e1761d6765a15c2fccb846d2cf849ae8/transformed/annotation-experimental-1.4.1/AndroidManifest.xml:2:1-7:12
+MERGED from [androidx.core:core-backported-fixes:1.0.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/c27dc5118b11dcb08cc607fa06aab6e0/transformed/core-backported-fixes-1.0.0/AndroidManifest.xml:2:1-7:12
+MERGED from [androidx.camera.featurecombinationquery:featurecombinationquery:1.7.0-alpha02] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/11e3506ea513e04fc3aa7263b3f9985f/transformed/featurecombinationquery-1.7.0-alpha02/AndroidManifest.xml:2:1-7:12
+MERGED from [com.facebook.fresco:ui-core:3.7.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/de24c081a3169b00f641d630db5be887/transformed/ui-core-3.7.0/AndroidManifest.xml:2:1-7:12
+MERGED from [androidx.sqlite:sqlite:2.3.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/15af65b6f1e470ff778e6fb32c0d886a/transformed/sqlite-2.3.0/AndroidManifest.xml:17:1-22:12
+MERGED from [com.facebook.hermes:hermes-android:250829098.0.16] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/82e12f5657b78a2f3001648586ffcf26/transformed/hermes-android-250829098.0.16-debug/AndroidManifest.xml:2:1-7:12
+MERGED from [io.github.zhongwuzw:mmkv:2.4.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/671fc0266906f8c204dc1c05dc4b3725/transformed/mmkv-2.4.1/AndroidManifest.xml:2:1-7:12
+MERGED from [androidx.exifinterface:exifinterface:1.4.2] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/109afa14bebf7b3713ce89af58f99efd/transformed/exifinterface-1.4.2/AndroidManifest.xml:2:1-7:12
+MERGED from [androidx.profileinstaller:profileinstaller:1.3.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/6ef67b66dc1bdc1e721aa142990bbc99/transformed/profileinstaller-1.3.1/AndroidManifest.xml:17:1-55:12
+MERGED from [androidx.startup:startup-runtime:1.1.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/9e0b3365c7afa45e31ac52a82a1b8af7/transformed/startup-runtime-1.1.1/AndroidManifest.xml:17:1-33:12
+MERGED from [io.github.zhongwuzw:annotation:2.4.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/ce81de470e9309fa0b8e27ac81769f79/transformed/annotation-2.4.1/AndroidManifest.xml:2:1-7:12
+MERGED from [androidx.cursoradapter:cursoradapter:1.0.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/22d963dd8a35fd2aa4afd881901613a2/transformed/cursoradapter-1.0.0/AndroidManifest.xml:17:1-22:12
+MERGED from [androidx.interpolator:interpolator:1.0.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/3abc620732fa015aab3613c968b3e1f8/transformed/interpolator-1.0.0/AndroidManifest.xml:17:1-22:12
+MERGED from [androidx.cardview:cardview:1.0.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/db9f59adef89fe931a9edf3f4d7c5ee3/transformed/cardview-1.0.0/AndroidManifest.xml:17:1-22:12
+MERGED from [androidx.arch.core:core-runtime:2.2.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/1f5d2a831f5f18fb6d8b729e0c5e9cd1/transformed/core-runtime-2.2.0/AndroidManifest.xml:17:1-22:12
+MERGED from [androidx.documentfile:documentfile:1.0.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/8155517dd82f8db683e6d6fe60581546/transformed/documentfile-1.0.0/AndroidManifest.xml:17:1-22:12
+MERGED from [androidx.localbroadcastmanager:localbroadcastmanager:1.0.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/d14c1d7af5fbfbc88684026f80e98424/transformed/localbroadcastmanager-1.0.0/AndroidManifest.xml:17:1-22:12
+MERGED from [androidx.print:print:1.0.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/a69bcaaae6fd860e2ff4965ffb07f56b/transformed/print-1.0.0/AndroidManifest.xml:17:1-22:12
+MERGED from [androidx.versionedparcelable:versionedparcelable:1.1.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/9c379efd578e486320e561c0cc026ec2/transformed/versionedparcelable-1.1.1/AndroidManifest.xml:17:1-27:12
+MERGED from [androidx.tracing:tracing-ktx:1.3.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/92a3d4d0f556bec91e2258bec8368d57/transformed/tracing-ktx-1.3.0/AndroidManifest.xml:17:1-22:12
+MERGED from [androidx.tracing:tracing-android:1.3.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/c65af69baf8a693b1a4fde6d9a611048/transformed/tracing/AndroidManifest.xml:17:1-22:12
+MERGED from [androidx.core:core-viewtree:1.0.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/1ce8cd10a050c0a2371a020271cac1b0/transformed/core-viewtree-1.0.0/AndroidManifest.xml:2:1-7:12
+MERGED from [io.github.ronickg:openssl:3.3.2-1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/44b57712dd44ef99be496c6c9a8cb14d/transformed/openssl-3.3.2-1/AndroidManifest.xml:1:1-3:12
+MERGED from [androidx.biometric:biometric:1.1.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/d430266c78e5cb99e1e98416ad9c263d/transformed/biometric-1.1.0/AndroidManifest.xml:17:1-29:12
+MERGED from [com.facebook.fbjni:fbjni:0.7.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/3cb1792e16d0777e9535521c99f0b7b5/transformed/fbjni-0.7.0/AndroidManifest.xml:2:1-7:12
+MERGED from [com.facebook.soloader:soloader:0.12.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/d24b621da5898bd22d4b2070b09a9d57/transformed/soloader-0.12.1/AndroidManifest.xml:2:1-17:12
+	package
+		INJECTED from /Users/macprom12020/Project/crm-mobile/android/app/src/main/AndroidManifest.xml
+	android:versionName
+		INJECTED from /Users/macprom12020/Project/crm-mobile/android/app/src/main/AndroidManifest.xml
+	android:versionCode
+		INJECTED from /Users/macprom12020/Project/crm-mobile/android/app/src/main/AndroidManifest.xml
+	xmlns:android
+		ADDED from /Users/macprom12020/Project/crm-mobile/android/app/src/main/AndroidManifest.xml:1:11-69
+uses-permission#android.permission.INTERNET
+ADDED from /Users/macprom12020/Project/crm-mobile/android/app/src/main/AndroidManifest.xml:3:5-67
+MERGED from [com.google.android.gms:play-services-maps:19.1.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/e6ec427d553d8f0442f01775741f7bd3/transformed/play-services-maps-19.1.0/AndroidManifest.xml:21:5-66
+MERGED from [com.google.android.gms:play-services-maps:19.1.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/e6ec427d553d8f0442f01775741f7bd3/transformed/play-services-maps-19.1.0/AndroidManifest.xml:21:5-66
+	android:name
+		ADDED from /Users/macprom12020/Project/crm-mobile/android/app/src/main/AndroidManifest.xml:3:22-64
+uses-permission#android.permission.ACCESS_NETWORK_STATE
+ADDED from /Users/macprom12020/Project/crm-mobile/android/app/src/main/AndroidManifest.xml:4:5-79
+MERGED from [:react-native-community_netinfo] /Users/macprom12020/Project/crm-mobile/node_modules/@react-native-community/netinfo/android/build/intermediates/merged_manifest/debug/processDebugManifest/AndroidManifest.xml:7:5-79
+MERGED from [:react-native-community_netinfo] /Users/macprom12020/Project/crm-mobile/node_modules/@react-native-community/netinfo/android/build/intermediates/merged_manifest/debug/processDebugManifest/AndroidManifest.xml:7:5-79
+MERGED from [androidx.work:work-runtime:2.9.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cfbc11290a4358d7cb3b676f361a1979/transformed/work-runtime-2.9.1/AndroidManifest.xml:24:5-79
+MERGED from [androidx.work:work-runtime:2.9.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cfbc11290a4358d7cb3b676f361a1979/transformed/work-runtime-2.9.1/AndroidManifest.xml:24:5-79
+MERGED from [com.google.android.gms:play-services-maps:19.1.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/e6ec427d553d8f0442f01775741f7bd3/transformed/play-services-maps-19.1.0/AndroidManifest.xml:20:5-78
+MERGED from [com.google.android.gms:play-services-maps:19.1.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/e6ec427d553d8f0442f01775741f7bd3/transformed/play-services-maps-19.1.0/AndroidManifest.xml:20:5-78
+MERGED from [androidx.media3:media3-common:1.9.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/477bd2ebfc14d1600a43446c152f8ecd/transformed/media3-common-1.9.0/AndroidManifest.xml:22:5-79
+MERGED from [androidx.media3:media3-common:1.9.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/477bd2ebfc14d1600a43446c152f8ecd/transformed/media3-common-1.9.0/AndroidManifest.xml:22:5-79
+	android:name
+		ADDED from /Users/macprom12020/Project/crm-mobile/android/app/src/main/AndroidManifest.xml:4:22-76
+uses-permission#android.permission.ACCESS_FINE_LOCATION
+ADDED from /Users/macprom12020/Project/crm-mobile/android/app/src/main/AndroidManifest.xml:7:5-79
+	android:name
+		ADDED from /Users/macprom12020/Project/crm-mobile/android/app/src/main/AndroidManifest.xml:7:22-76
+uses-permission#android.permission.ACCESS_COARSE_LOCATION
+ADDED from /Users/macprom12020/Project/crm-mobile/android/app/src/main/AndroidManifest.xml:8:5-81
+	android:name
+		ADDED from /Users/macprom12020/Project/crm-mobile/android/app/src/main/AndroidManifest.xml:8:22-78
+uses-permission#android.permission.CAMERA
+ADDED from /Users/macprom12020/Project/crm-mobile/android/app/src/main/AndroidManifest.xml:9:5-65
+	android:name
+		ADDED from /Users/macprom12020/Project/crm-mobile/android/app/src/main/AndroidManifest.xml:9:22-62
+activity#com.crmmobile.MainActivity
+ADDED from /Users/macprom12020/Project/crm-mobile/android/app/src/main/AndroidManifest.xml:23:7-34:18
+	android:label
+		ADDED from /Users/macprom12020/Project/crm-mobile/android/app/src/main/AndroidManifest.xml:25:9-41
+	android:launchMode
+		ADDED from /Users/macprom12020/Project/crm-mobile/android/app/src/main/AndroidManifest.xml:27:9-40
+	android:windowSoftInputMode
+		ADDED from /Users/macprom12020/Project/crm-mobile/android/app/src/main/AndroidManifest.xml:28:9-51
+	android:exported
+		ADDED from /Users/macprom12020/Project/crm-mobile/android/app/src/main/AndroidManifest.xml:29:9-32
+	android:configChanges
+		ADDED from /Users/macprom12020/Project/crm-mobile/android/app/src/main/AndroidManifest.xml:26:9-118
+	android:name
+		ADDED from /Users/macprom12020/Project/crm-mobile/android/app/src/main/AndroidManifest.xml:24:9-37
+intent-filter#action:name:android.intent.action.MAIN+category:name:android.intent.category.LAUNCHER
+ADDED from /Users/macprom12020/Project/crm-mobile/android/app/src/main/AndroidManifest.xml:30:9-33:25
+action#android.intent.action.MAIN
+ADDED from /Users/macprom12020/Project/crm-mobile/android/app/src/main/AndroidManifest.xml:31:13-65
+	android:name
+		ADDED from /Users/macprom12020/Project/crm-mobile/android/app/src/main/AndroidManifest.xml:31:21-62
+category#android.intent.category.LAUNCHER
+ADDED from /Users/macprom12020/Project/crm-mobile/android/app/src/main/AndroidManifest.xml:32:13-73
+	android:name
+		ADDED from /Users/macprom12020/Project/crm-mobile/android/app/src/main/AndroidManifest.xml:32:23-70
+uses-sdk
+INJECTED from /Users/macprom12020/Project/crm-mobile/android/app/src/main/AndroidManifest.xml reason: use-sdk injection requested
+INJECTED from /Users/macprom12020/Project/crm-mobile/android/app/src/main/AndroidManifest.xml
+INJECTED from /Users/macprom12020/Project/crm-mobile/android/app/src/main/AndroidManifest.xml
+MERGED from [:dr.pogodin_react-native-fs] /Users/macprom12020/Project/crm-mobile/node_modules/@dr.pogodin/react-native-fs/android/build/intermediates/merged_manifest/debug/processDebugManifest/AndroidManifest.xml:5:5-44
+MERGED from [:dr.pogodin_react-native-fs] /Users/macprom12020/Project/crm-mobile/node_modules/@dr.pogodin/react-native-fs/android/build/intermediates/merged_manifest/debug/processDebugManifest/AndroidManifest.xml:5:5-44
+MERGED from [:op-engineering_op-sqlite] /Users/macprom12020/Project/crm-mobile/node_modules/@op-engineering/op-sqlite/android/build/intermediates/merged_manifest/debug/processDebugManifest/AndroidManifest.xml:5:5-44
+MERGED from [:op-engineering_op-sqlite] /Users/macprom12020/Project/crm-mobile/node_modules/@op-engineering/op-sqlite/android/build/intermediates/merged_manifest/debug/processDebugManifest/AndroidManifest.xml:5:5-44
+MERGED from [:react-native-gesture-handler] /Users/macprom12020/Project/crm-mobile/node_modules/react-native-gesture-handler/android/build/intermediates/merged_manifest/debug/processDebugManifest/AndroidManifest.xml:5:5-44
+MERGED from [:react-native-gesture-handler] /Users/macprom12020/Project/crm-mobile/node_modules/react-native-gesture-handler/android/build/intermediates/merged_manifest/debug/processDebugManifest/AndroidManifest.xml:5:5-44
+MERGED from [:react-native-keychain] /Users/macprom12020/Project/crm-mobile/node_modules/react-native-keychain/android/build/intermediates/merged_manifest/debug/processDebugManifest/AndroidManifest.xml:6:5-8:54
+MERGED from [:react-native-keychain] /Users/macprom12020/Project/crm-mobile/node_modules/react-native-keychain/android/build/intermediates/merged_manifest/debug/processDebugManifest/AndroidManifest.xml:6:5-8:54
+MERGED from [:react-native-maps] /Users/macprom12020/Project/crm-mobile/node_modules/react-native-maps/android/build/intermediates/merged_manifest/debug/processDebugManifest/AndroidManifest.xml:5:5-44
+MERGED from [:react-native-maps] /Users/macprom12020/Project/crm-mobile/node_modules/react-native-maps/android/build/intermediates/merged_manifest/debug/processDebugManifest/AndroidManifest.xml:5:5-44
+MERGED from [:react-native-mmkv] /Users/macprom12020/Project/crm-mobile/node_modules/react-native-mmkv/android/build/intermediates/merged_manifest/debug/processDebugManifest/AndroidManifest.xml:5:5-44
+MERGED from [:react-native-mmkv] /Users/macprom12020/Project/crm-mobile/node_modules/react-native-mmkv/android/build/intermediates/merged_manifest/debug/processDebugManifest/AndroidManifest.xml:5:5-44
+MERGED from [:react-native-nitro-geolocation] /Users/macprom12020/Project/crm-mobile/node_modules/react-native-nitro-geolocation/android/build/intermediates/merged_manifest/debug/processDebugManifest/AndroidManifest.xml:5:5-44
+MERGED from [:react-native-nitro-geolocation] /Users/macprom12020/Project/crm-mobile/node_modules/react-native-nitro-geolocation/android/build/intermediates/merged_manifest/debug/processDebugManifest/AndroidManifest.xml:5:5-44
+MERGED from [:react-native-vision-camera] /Users/macprom12020/Project/crm-mobile/node_modules/react-native-vision-camera/android/build/intermediates/merged_manifest/debug/processDebugManifest/AndroidManifest.xml:5:5-44
+MERGED from [:react-native-vision-camera] /Users/macprom12020/Project/crm-mobile/node_modules/react-native-vision-camera/android/build/intermediates/merged_manifest/debug/processDebugManifest/AndroidManifest.xml:5:5-44
+MERGED from [:react-native-nitro-image] /Users/macprom12020/Project/crm-mobile/node_modules/react-native-nitro-image/android/build/intermediates/merged_manifest/debug/processDebugManifest/AndroidManifest.xml:5:5-44
+MERGED from [:react-native-nitro-image] /Users/macprom12020/Project/crm-mobile/node_modules/react-native-nitro-image/android/build/intermediates/merged_manifest/debug/processDebugManifest/AndroidManifest.xml:5:5-44
+MERGED from [:react-native-nitro-modules] /Users/macprom12020/Project/crm-mobile/node_modules/react-native-nitro-modules/android/build/intermediates/merged_manifest/debug/processDebugManifest/AndroidManifest.xml:5:5-44
+MERGED from [:react-native-nitro-modules] /Users/macprom12020/Project/crm-mobile/node_modules/react-native-nitro-modules/android/build/intermediates/merged_manifest/debug/processDebugManifest/AndroidManifest.xml:5:5-44
+MERGED from [:react-native-permissions] /Users/macprom12020/Project/crm-mobile/node_modules/react-native-permissions/android/build/intermediates/merged_manifest/debug/processDebugManifest/AndroidManifest.xml:5:5-44
+MERGED from [:react-native-permissions] /Users/macprom12020/Project/crm-mobile/node_modules/react-native-permissions/android/build/intermediates/merged_manifest/debug/processDebugManifest/AndroidManifest.xml:5:5-44
+MERGED from [:react-native-safe-area-context] /Users/macprom12020/Project/crm-mobile/node_modules/react-native-safe-area-context/android/build/intermediates/merged_manifest/debug/processDebugManifest/AndroidManifest.xml:5:5-44
+MERGED from [:react-native-safe-area-context] /Users/macprom12020/Project/crm-mobile/node_modules/react-native-safe-area-context/android/build/intermediates/merged_manifest/debug/processDebugManifest/AndroidManifest.xml:5:5-44
+MERGED from [:react-native-screens] /Users/macprom12020/Project/crm-mobile/node_modules/react-native-screens/android/build/intermediates/merged_manifest/debug/processDebugManifest/AndroidManifest.xml:5:5-44
+MERGED from [:react-native-screens] /Users/macprom12020/Project/crm-mobile/node_modules/react-native-screens/android/build/intermediates/merged_manifest/debug/processDebugManifest/AndroidManifest.xml:5:5-44
+MERGED from [:react-native-community_netinfo] /Users/macprom12020/Project/crm-mobile/node_modules/@react-native-community/netinfo/android/build/intermediates/merged_manifest/debug/processDebugManifest/AndroidManifest.xml:5:5-44
+MERGED from [:react-native-community_netinfo] /Users/macprom12020/Project/crm-mobile/node_modules/@react-native-community/netinfo/android/build/intermediates/merged_manifest/debug/processDebugManifest/AndroidManifest.xml:5:5-44
+MERGED from [:react-native-get-random-values] /Users/macprom12020/Project/crm-mobile/node_modules/react-native-get-random-values/android/build/intermediates/merged_manifest/debug/processDebugManifest/AndroidManifest.xml:5:5-44
+MERGED from [:react-native-get-random-values] /Users/macprom12020/Project/crm-mobile/node_modules/react-native-get-random-values/android/build/intermediates/merged_manifest/debug/processDebugManifest/AndroidManifest.xml:5:5-44
+MERGED from [com.facebook.react:react-android:0.87.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/20ad2d019970f8e91fa7eb3c7227b106/transformed/react-android-0.87.0-debug/AndroidManifest.xml:10:5-44
+MERGED from [com.facebook.react:react-android:0.87.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/20ad2d019970f8e91fa7eb3c7227b106/transformed/react-android-0.87.0-debug/AndroidManifest.xml:10:5-44
+MERGED from [com.google.android.gms:play-services-location:21.3.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/b2b4cd6058baae506bd69cab3b46d440/transformed/play-services-location-21.3.0/AndroidManifest.xml:4:5-44
+MERGED from [com.google.android.gms:play-services-location:21.3.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/b2b4cd6058baae506bd69cab3b46d440/transformed/play-services-location-21.3.0/AndroidManifest.xml:4:5-44
+MERGED from [androidx.work:work-runtime:2.9.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cfbc11290a4358d7cb3b676f361a1979/transformed/work-runtime-2.9.1/AndroidManifest.xml:21:5-44
+MERGED from [androidx.work:work-runtime:2.9.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cfbc11290a4358d7cb3b676f361a1979/transformed/work-runtime-2.9.1/AndroidManifest.xml:21:5-44
+MERGED from [com.google.maps.android:android-maps-utils:3.10.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/8c1c093590a431121b62838c12cebb04/transformed/android-maps-utils-3.10.0/AndroidManifest.xml:20:5-44
+MERGED from [com.google.maps.android:android-maps-utils:3.10.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/8c1c093590a431121b62838c12cebb04/transformed/android-maps-utils-3.10.0/AndroidManifest.xml:20:5-44
+MERGED from [com.google.android.material:material:1.13.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/b04940072532ad5890c30dc09e9719db/transformed/material-1.13.0/AndroidManifest.xml:20:5-44
+MERGED from [com.google.android.material:material:1.13.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/b04940072532ad5890c30dc09e9719db/transformed/material-1.13.0/AndroidManifest.xml:20:5-44
+MERGED from [androidx.camera:camera-common:1.7.0-alpha02] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/db52a47dc101076c78eca1d0b6bab63c/transformed/camera-common-1.7.0-alpha02/AndroidManifest.xml:5:5-44
+MERGED from [androidx.camera:camera-common:1.7.0-alpha02] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/db52a47dc101076c78eca1d0b6bab63c/transformed/camera-common-1.7.0-alpha02/AndroidManifest.xml:5:5-44
+MERGED from [androidx.camera:camera-extensions:1.7.0-alpha02] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/ceaf89110f2f6b8ea2ec82fd4854f10e/transformed/camera-extensions-1.7.0-alpha02/AndroidManifest.xml:20:5-44
+MERGED from [androidx.camera:camera-extensions:1.7.0-alpha02] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/ceaf89110f2f6b8ea2ec82fd4854f10e/transformed/camera-extensions-1.7.0-alpha02/AndroidManifest.xml:20:5-44
+MERGED from [androidx.camera:camera-video:1.7.0-alpha02] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/281c182c670adc6dc9bc34bf2f52f947/transformed/camera-video-1.7.0-alpha02/AndroidManifest.xml:5:5-44
+MERGED from [androidx.camera:camera-video:1.7.0-alpha02] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/281c182c670adc6dc9bc34bf2f52f947/transformed/camera-video-1.7.0-alpha02/AndroidManifest.xml:5:5-44
+MERGED from [androidx.camera:camera-lifecycle:1.7.0-alpha02] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/ac8aff5333612150e0202463b08ebd7c/transformed/camera-lifecycle-1.7.0-alpha02/AndroidManifest.xml:5:5-44
+MERGED from [androidx.camera:camera-lifecycle:1.7.0-alpha02] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/ac8aff5333612150e0202463b08ebd7c/transformed/camera-lifecycle-1.7.0-alpha02/AndroidManifest.xml:5:5-44
+MERGED from [androidx.camera:camera-camera2-pipe:1.7.0-alpha02] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/37ce15428b6be2b71d466b1f956c42ab/transformed/camera-camera2-pipe-1.7.0-alpha02/AndroidManifest.xml:5:5-44
+MERGED from [androidx.camera:camera-camera2-pipe:1.7.0-alpha02] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/37ce15428b6be2b71d466b1f956c42ab/transformed/camera-camera2-pipe-1.7.0-alpha02/AndroidManifest.xml:5:5-44
+MERGED from [androidx.camera:camera-camera2:1.7.0-alpha02] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/1e39a74d4ed1ae1965030050df09dfa8/transformed/camera-camera2-1.7.0-alpha02/AndroidManifest.xml:21:5-44
+MERGED from [androidx.camera:camera-camera2:1.7.0-alpha02] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/1e39a74d4ed1ae1965030050df09dfa8/transformed/camera-camera2-1.7.0-alpha02/AndroidManifest.xml:21:5-44
+MERGED from [androidx.camera:camera-core:1.7.0-alpha02] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/ca07a269539aae34a968667247cee21f/transformed/camera-core-1.7.0-alpha02/AndroidManifest.xml:21:5-44
+MERGED from [androidx.camera:camera-core:1.7.0-alpha02] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/ca07a269539aae34a968667247cee21f/transformed/camera-core-1.7.0-alpha02/AndroidManifest.xml:21:5-44
+MERGED from [androidx.camera:camera-view:1.7.0-alpha02] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/ebae750d4bb675ca820a33e8ee452f3a/transformed/camera-view-1.7.0-alpha02/AndroidManifest.xml:5:5-44
+MERGED from [androidx.camera:camera-view:1.7.0-alpha02] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/ebae750d4bb675ca820a33e8ee452f3a/transformed/camera-view-1.7.0-alpha02/AndroidManifest.xml:5:5-44
+MERGED from [androidx.appcompat:appcompat-resources:1.7.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/9346932432a03edfffdb769e56bed04f/transformed/appcompat-resources-1.7.1/AndroidManifest.xml:5:5-44
+MERGED from [androidx.appcompat:appcompat-resources:1.7.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/9346932432a03edfffdb769e56bed04f/transformed/appcompat-resources-1.7.1/AndroidManifest.xml:5:5-44
+MERGED from [androidx.constraintlayout:constraintlayout:2.1.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/d384371710018e239a5aaad66d10db44/transformed/constraintlayout-2.1.0/AndroidManifest.xml:5:5-7:41
+MERGED from [androidx.constraintlayout:constraintlayout:2.1.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/d384371710018e239a5aaad66d10db44/transformed/constraintlayout-2.1.0/AndroidManifest.xml:5:5-7:41
+MERGED from [androidx.appcompat:appcompat:1.7.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/64cfc275a42587da817fcdb6795dcc7b/transformed/appcompat-1.7.1/AndroidManifest.xml:5:5-44
+MERGED from [androidx.appcompat:appcompat:1.7.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/64cfc275a42587da817fcdb6795dcc7b/transformed/appcompat-1.7.1/AndroidManifest.xml:5:5-44
+MERGED from [androidx.legacy:legacy-support-v4:1.0.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/d0de1113a462ee3fc9ced169512cfaac/transformed/legacy-support-v4-1.0.0/AndroidManifest.xml:20:5-44
+MERGED from [androidx.legacy:legacy-support-v4:1.0.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/d0de1113a462ee3fc9ced169512cfaac/transformed/legacy-support-v4-1.0.0/AndroidManifest.xml:20:5-44
+MERGED from [com.google.android.gms:play-services-maps:19.1.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/e6ec427d553d8f0442f01775741f7bd3/transformed/play-services-maps-19.1.0/AndroidManifest.xml:26:5-43
+MERGED from [com.google.android.gms:play-services-maps:19.1.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/e6ec427d553d8f0442f01775741f7bd3/transformed/play-services-maps-19.1.0/AndroidManifest.xml:26:5-43
+MERGED from [com.google.android.gms:play-services-base:18.5.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/8ba622aaeec82932b5a56955961a11ef/transformed/play-services-base-18.5.0/AndroidManifest.xml:3:5-44
+MERGED from [com.google.android.gms:play-services-base:18.5.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/8ba622aaeec82932b5a56955961a11ef/transformed/play-services-base-18.5.0/AndroidManifest.xml:3:5-44
+MERGED from [com.google.android.gms:play-services-tasks:18.2.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/0a79fad6b942fb86e213e7afc2cfc2c9/transformed/play-services-tasks-18.2.0/AndroidManifest.xml:3:5-44
+MERGED from [com.google.android.gms:play-services-tasks:18.2.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/0a79fad6b942fb86e213e7afc2cfc2c9/transformed/play-services-tasks-18.2.0/AndroidManifest.xml:3:5-44
+MERGED from [com.google.android.gms:play-services-basement:18.4.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/e3d6ca69365f1245e5f59965ee189ff8/transformed/play-services-basement-18.4.0/AndroidManifest.xml:3:5-44
+MERGED from [com.google.android.gms:play-services-basement:18.4.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/e3d6ca69365f1245e5f59965ee189ff8/transformed/play-services-basement-18.4.0/AndroidManifest.xml:3:5-44
+MERGED from [androidx.viewpager2:viewpager2:1.0.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/1fbdb5139a2fc3081126aa48678efba5/transformed/viewpager2-1.0.0/AndroidManifest.xml:20:5-22:41
+MERGED from [androidx.viewpager2:viewpager2:1.0.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/1fbdb5139a2fc3081126aa48678efba5/transformed/viewpager2-1.0.0/AndroidManifest.xml:20:5-22:41
+MERGED from [androidx.fragment:fragment:1.8.9] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/8263917f980421217533fa6237ed9a02/transformed/fragment-1.8.9/AndroidManifest.xml:5:5-44
+MERGED from [androidx.fragment:fragment:1.8.9] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/8263917f980421217533fa6237ed9a02/transformed/fragment-1.8.9/AndroidManifest.xml:5:5-44
+MERGED from [androidx.fragment:fragment-ktx:1.8.9] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/ca52507a102fc66a4b126ca3b4a26906/transformed/fragment-ktx-1.8.9/AndroidManifest.xml:5:5-44
+MERGED from [androidx.fragment:fragment-ktx:1.8.9] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/ca52507a102fc66a4b126ca3b4a26906/transformed/fragment-ktx-1.8.9/AndroidManifest.xml:5:5-44
+MERGED from [androidx.activity:activity:1.8.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/831b69df40054594c4e5c574a88cd0ae/transformed/activity-1.8.1/AndroidManifest.xml:20:5-44
+MERGED from [androidx.activity:activity:1.8.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/831b69df40054594c4e5c574a88cd0ae/transformed/activity-1.8.1/AndroidManifest.xml:20:5-44
+MERGED from [androidx.activity:activity-ktx:1.8.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/2ab6fa66b398c3d0019df656c8a45a5b/transformed/activity-ktx-1.8.1/AndroidManifest.xml:5:5-44
+MERGED from [androidx.activity:activity-ktx:1.8.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/2ab6fa66b398c3d0019df656c8a45a5b/transformed/activity-ktx-1.8.1/AndroidManifest.xml:5:5-44
+MERGED from [androidx.legacy:legacy-support-core-ui:1.0.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/7d7d762f061a39c875ce2dfdb01c2d73/transformed/legacy-support-core-ui-1.0.0/AndroidManifest.xml:20:5-44
+MERGED from [androidx.legacy:legacy-support-core-ui:1.0.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/7d7d762f061a39c875ce2dfdb01c2d73/transformed/legacy-support-core-ui-1.0.0/AndroidManifest.xml:20:5-44
+MERGED from [androidx.coordinatorlayout:coordinatorlayout:1.2.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/699ec824e89dfd9b1547c0058267d647/transformed/coordinatorlayout-1.2.0/AndroidManifest.xml:20:5-22:41
+MERGED from [androidx.coordinatorlayout:coordinatorlayout:1.2.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/699ec824e89dfd9b1547c0058267d647/transformed/coordinatorlayout-1.2.0/AndroidManifest.xml:20:5-22:41
+MERGED from [androidx.swiperefreshlayout:swiperefreshlayout:1.1.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/8daca84ddb8dbaff3ebcbde0c0daf330/transformed/swiperefreshlayout-1.1.0/AndroidManifest.xml:20:5-22:41
+MERGED from [androidx.swiperefreshlayout:swiperefreshlayout:1.1.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/8daca84ddb8dbaff3ebcbde0c0daf330/transformed/swiperefreshlayout-1.1.0/AndroidManifest.xml:20:5-22:41
+MERGED from [androidx.autofill:autofill:1.3.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/5ca330925ded27f33216a83f9d13a5b7/transformed/autofill-1.3.0/AndroidManifest.xml:5:5-44
+MERGED from [androidx.autofill:autofill:1.3.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/5ca330925ded27f33216a83f9d13a5b7/transformed/autofill-1.3.0/AndroidManifest.xml:5:5-44
+MERGED from [androidx.window:window-core-android:1.5.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/87967091b61d20e64d2c4c9eee3cc744/transformed/window-core/AndroidManifest.xml:5:5-44
+MERGED from [androidx.window:window-core-android:1.5.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/87967091b61d20e64d2c4c9eee3cc744/transformed/window-core/AndroidManifest.xml:5:5-44
+MERGED from [androidx.window:window:1.5.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/39179a95061da83d4e635ddc46fd300b/transformed/window-1.5.1/AndroidManifest.xml:20:5-44
+MERGED from [androidx.window:window:1.5.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/39179a95061da83d4e635ddc46fd300b/transformed/window-1.5.1/AndroidManifest.xml:20:5-44
+MERGED from [androidx.media:media:1.0.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/8bc1a208046179b6c9cb0aae5e1b8268/transformed/media-1.0.0/AndroidManifest.xml:20:5-44
+MERGED from [androidx.media:media:1.0.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/8bc1a208046179b6c9cb0aae5e1b8268/transformed/media-1.0.0/AndroidManifest.xml:20:5-44
+MERGED from [androidx.legacy:legacy-support-core-utils:1.0.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/d7fe9737ca75653135881f52af7af616/transformed/legacy-support-core-utils-1.0.0/AndroidManifest.xml:20:5-44
+MERGED from [androidx.legacy:legacy-support-core-utils:1.0.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/d7fe9737ca75653135881f52af7af616/transformed/legacy-support-core-utils-1.0.0/AndroidManifest.xml:20:5-44
+MERGED from [androidx.emoji2:emoji2-views-helper:1.3.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/56d91ad9b8fd8af0a39ba5d5b260ff73/transformed/emoji2-views-helper-1.3.0/AndroidManifest.xml:5:5-44
+MERGED from [androidx.emoji2:emoji2-views-helper:1.3.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/56d91ad9b8fd8af0a39ba5d5b260ff73/transformed/emoji2-views-helper-1.3.0/AndroidManifest.xml:5:5-44
+MERGED from [androidx.emoji2:emoji2:1.3.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/28e696fcf5719a4a7310588b66326deb/transformed/emoji2-1.3.0/AndroidManifest.xml:21:5-44
+MERGED from [androidx.emoji2:emoji2:1.3.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/28e696fcf5719a4a7310588b66326deb/transformed/emoji2-1.3.0/AndroidManifest.xml:21:5-44
+MERGED from [androidx.transition:transition-ktx:1.7.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/f1aaee677f3bbd5da95d9dc0d325c693/transformed/transition-ktx-1.7.0/AndroidManifest.xml:5:5-44
+MERGED from [androidx.transition:transition-ktx:1.7.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/f1aaee677f3bbd5da95d9dc0d325c693/transformed/transition-ktx-1.7.0/AndroidManifest.xml:5:5-44
+MERGED from [androidx.transition:transition:1.7.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/e6595b98d05fdb24e40d3d307b41db01/transformed/transition-1.7.0/AndroidManifest.xml:5:5-44
+MERGED from [androidx.transition:transition:1.7.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/e6595b98d05fdb24e40d3d307b41db01/transformed/transition-1.7.0/AndroidManifest.xml:5:5-44
+MERGED from [androidx.drawerlayout:drawerlayout:1.1.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/3134d22626ff13206e49f433f14b2fd7/transformed/drawerlayout-1.1.1/AndroidManifest.xml:20:5-22:41
+MERGED from [androidx.drawerlayout:drawerlayout:1.1.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/3134d22626ff13206e49f433f14b2fd7/transformed/drawerlayout-1.1.1/AndroidManifest.xml:20:5-22:41
+MERGED from [androidx.dynamicanimation:dynamicanimation:1.1.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/47105aaeb99f2d4e17ed637fcf6bd2b2/transformed/dynamicanimation-1.1.0/AndroidManifest.xml:5:5-44
+MERGED from [androidx.dynamicanimation:dynamicanimation:1.1.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/47105aaeb99f2d4e17ed637fcf6bd2b2/transformed/dynamicanimation-1.1.0/AndroidManifest.xml:5:5-44
+MERGED from [androidx.recyclerview:recyclerview:1.2.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/e045269f5fcc6695b59b62795796a8f4/transformed/recyclerview-1.2.1/AndroidManifest.xml:20:5-22:41
+MERGED from [androidx.recyclerview:recyclerview:1.2.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/e045269f5fcc6695b59b62795796a8f4/transformed/recyclerview-1.2.1/AndroidManifest.xml:20:5-22:41
+MERGED from [androidx.vectordrawable:vectordrawable-animated:1.1.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/58dcf99d76f29deb4beb98c632a08090/transformed/vectordrawable-animated-1.1.0/AndroidManifest.xml:20:5-22:41
+MERGED from [androidx.vectordrawable:vectordrawable-animated:1.1.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/58dcf99d76f29deb4beb98c632a08090/transformed/vectordrawable-animated-1.1.0/AndroidManifest.xml:20:5-22:41
+MERGED from [androidx.vectordrawable:vectordrawable:1.1.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/ba3e9ac9248e2a4c24c80a049c35e917/transformed/vectordrawable-1.1.0/AndroidManifest.xml:20:5-22:41
+MERGED from [androidx.vectordrawable:vectordrawable:1.1.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/ba3e9ac9248e2a4c24c80a049c35e917/transformed/vectordrawable-1.1.0/AndroidManifest.xml:20:5-22:41
+MERGED from [androidx.camera.viewfinder:viewfinder-core:1.5.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/73230aaf3b5ba81f60e24e1ace6868f4/transformed/viewfinder-core-1.5.1/AndroidManifest.xml:5:5-44
+MERGED from [androidx.camera.viewfinder:viewfinder-core:1.5.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/73230aaf3b5ba81f60e24e1ace6868f4/transformed/viewfinder-core-1.5.1/AndroidManifest.xml:5:5-44
+MERGED from [com.facebook.fresco:fresco:3.7.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/bd5c58f88712427ce3bec94146e45ca7/transformed/fresco-3.7.0/AndroidManifest.xml:5:5-44
+MERGED from [com.facebook.fresco:fresco:3.7.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/bd5c58f88712427ce3bec94146e45ca7/transformed/fresco-3.7.0/AndroidManifest.xml:5:5-44
+MERGED from [com.facebook.fresco:imagepipeline-okhttp3:3.7.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/2c7317a93ad81b3fe62c0fd8f1211d95/transformed/imagepipeline-okhttp3-3.7.0/AndroidManifest.xml:5:5-44
+MERGED from [com.facebook.fresco:imagepipeline-okhttp3:3.7.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/2c7317a93ad81b3fe62c0fd8f1211d95/transformed/imagepipeline-okhttp3-3.7.0/AndroidManifest.xml:5:5-44
+MERGED from [com.facebook.fresco:drawee:3.7.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/a134cc4621de3e7ac567549617293712/transformed/drawee-3.7.0/AndroidManifest.xml:5:5-44
+MERGED from [com.facebook.fresco:drawee:3.7.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/a134cc4621de3e7ac567549617293712/transformed/drawee-3.7.0/AndroidManifest.xml:5:5-44
+MERGED from [com.facebook.fresco:nativeimagefilters:3.7.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/91b01aae9c9204bbeb8da802bbcd51d5/transformed/nativeimagefilters-3.7.0/AndroidManifest.xml:5:5-44
+MERGED from [com.facebook.fresco:nativeimagefilters:3.7.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/91b01aae9c9204bbeb8da802bbcd51d5/transformed/nativeimagefilters-3.7.0/AndroidManifest.xml:5:5-44
+MERGED from [com.facebook.fresco:memory-type-native:3.7.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/4abaa0138534500e80645f7dee954ca1/transformed/memory-type-native-3.7.0/AndroidManifest.xml:5:5-44
+MERGED from [com.facebook.fresco:memory-type-native:3.7.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/4abaa0138534500e80645f7dee954ca1/transformed/memory-type-native-3.7.0/AndroidManifest.xml:5:5-44
+MERGED from [com.facebook.fresco:memory-type-java:3.7.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/6ec8175bf6f9c56e5c456fc3e9d00c4e/transformed/memory-type-java-3.7.0/AndroidManifest.xml:5:5-44
+MERGED from [com.facebook.fresco:memory-type-java:3.7.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/6ec8175bf6f9c56e5c456fc3e9d00c4e/transformed/memory-type-java-3.7.0/AndroidManifest.xml:5:5-44
+MERGED from [com.facebook.fresco:imagepipeline-native:3.7.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/f8ed91e9d6f95970a5c6e4644b575a1f/transformed/imagepipeline-native-3.7.0/AndroidManifest.xml:5:5-44
+MERGED from [com.facebook.fresco:imagepipeline-native:3.7.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/f8ed91e9d6f95970a5c6e4644b575a1f/transformed/imagepipeline-native-3.7.0/AndroidManifest.xml:5:5-44
+MERGED from [com.facebook.fresco:memory-type-ashmem:3.7.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/fc14c10b2f16fe6bad378a5d6d3e6e25/transformed/memory-type-ashmem-3.7.0/AndroidManifest.xml:5:5-44
+MERGED from [com.facebook.fresco:memory-type-ashmem:3.7.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/fc14c10b2f16fe6bad378a5d6d3e6e25/transformed/memory-type-ashmem-3.7.0/AndroidManifest.xml:5:5-44
+MERGED from [com.facebook.fresco:imagepipeline:3.7.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/6c0ba659b98a3c40015a227c6c788a90/transformed/imagepipeline-3.7.0/AndroidManifest.xml:5:5-44
+MERGED from [com.facebook.fresco:imagepipeline:3.7.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/6c0ba659b98a3c40015a227c6c788a90/transformed/imagepipeline-3.7.0/AndroidManifest.xml:5:5-44
+MERGED from [com.facebook.fresco:nativeimagetranscoder:3.7.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/71b3b3ae57b85b5dcdf781226708d943/transformed/nativeimagetranscoder-3.7.0/AndroidManifest.xml:5:5-44
+MERGED from [com.facebook.fresco:nativeimagetranscoder:3.7.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/71b3b3ae57b85b5dcdf781226708d943/transformed/nativeimagetranscoder-3.7.0/AndroidManifest.xml:5:5-44
+MERGED from [com.facebook.fresco:imagepipeline-base:3.7.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/7fc040c75b70058420971b42e6638358/transformed/imagepipeline-base-3.7.0/AndroidManifest.xml:5:5-44
+MERGED from [com.facebook.fresco:imagepipeline-base:3.7.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/7fc040c75b70058420971b42e6638358/transformed/imagepipeline-base-3.7.0/AndroidManifest.xml:5:5-44
+MERGED from [com.facebook.fresco:urimod:3.7.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/bec7c566aab48e0470a1a048bbe46225/transformed/urimod-3.7.0/AndroidManifest.xml:5:5-44
+MERGED from [com.facebook.fresco:urimod:3.7.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/bec7c566aab48e0470a1a048bbe46225/transformed/urimod-3.7.0/AndroidManifest.xml:5:5-44
+MERGED from [com.facebook.fresco:vito-source:3.7.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cb5b0a7bce5d9604421c067fae1d2057/transformed/vito-source-3.7.0/AndroidManifest.xml:5:5-44
+MERGED from [com.facebook.fresco:vito-source:3.7.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cb5b0a7bce5d9604421c067fae1d2057/transformed/vito-source-3.7.0/AndroidManifest.xml:5:5-44
+MERGED from [com.facebook.fresco:middleware:3.7.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/000207df7f0c802ba72ee3f8db64f7de/transformed/middleware-3.7.0/AndroidManifest.xml:5:5-44
+MERGED from [com.facebook.fresco:middleware:3.7.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/000207df7f0c802ba72ee3f8db64f7de/transformed/middleware-3.7.0/AndroidManifest.xml:5:5-44
+MERGED from [com.facebook.fresco:ui-common:3.7.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/6687be5f16a46618d184040d31f7aba8/transformed/ui-common-3.7.0/AndroidManifest.xml:5:5-44
+MERGED from [com.facebook.fresco:ui-common:3.7.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/6687be5f16a46618d184040d31f7aba8/transformed/ui-common-3.7.0/AndroidManifest.xml:5:5-44
+MERGED from [com.facebook.fresco:soloader:3.7.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/134400d30f6a824bf513146192ad66e1/transformed/soloader-3.7.0/AndroidManifest.xml:5:5-44
+MERGED from [com.facebook.fresco:soloader:3.7.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/134400d30f6a824bf513146192ad66e1/transformed/soloader-3.7.0/AndroidManifest.xml:5:5-44
+MERGED from [com.facebook.fresco:fbcore:3.7.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/edfa32609845d1fcdca17070cb252c30/transformed/fbcore-3.7.0/AndroidManifest.xml:5:5-44
+MERGED from [com.facebook.fresco:fbcore:3.7.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/edfa32609845d1fcdca17070cb252c30/transformed/fbcore-3.7.0/AndroidManifest.xml:5:5-44
+MERGED from [androidx.loader:loader:1.0.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/edd701cc6d330f9585f28f1907a7ace3/transformed/loader-1.0.0/AndroidManifest.xml:20:5-44
+MERGED from [androidx.loader:loader:1.0.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/edd701cc6d330f9585f28f1907a7ace3/transformed/loader-1.0.0/AndroidManifest.xml:20:5-44
+MERGED from [androidx.viewpager:viewpager:1.0.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/6467f6c40fa9e8cee82e21d200b09142/transformed/viewpager-1.0.0/AndroidManifest.xml:20:5-44
+MERGED from [androidx.viewpager:viewpager:1.0.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/6467f6c40fa9e8cee82e21d200b09142/transformed/viewpager-1.0.0/AndroidManifest.xml:20:5-44
+MERGED from [androidx.slidingpanelayout:slidingpanelayout:1.0.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/f6cef2483b154d8823bfdb2d32882165/transformed/slidingpanelayout-1.0.0/AndroidManifest.xml:20:5-44
+MERGED from [androidx.slidingpanelayout:slidingpanelayout:1.0.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/f6cef2483b154d8823bfdb2d32882165/transformed/slidingpanelayout-1.0.0/AndroidManifest.xml:20:5-44
+MERGED from [androidx.asynclayoutinflater:asynclayoutinflater:1.0.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/161594aaf0bdbf4db91be8d5d6e425af/transformed/asynclayoutinflater-1.0.0/AndroidManifest.xml:20:5-44
+MERGED from [androidx.asynclayoutinflater:asynclayoutinflater:1.0.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/161594aaf0bdbf4db91be8d5d6e425af/transformed/asynclayoutinflater-1.0.0/AndroidManifest.xml:20:5-44
+MERGED from [androidx.customview:customview:1.1.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cefa4f817fddbae385bc444552e6c27e/transformed/customview-1.1.0/AndroidManifest.xml:20:5-22:41
+MERGED from [androidx.customview:customview:1.1.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cefa4f817fddbae385bc444552e6c27e/transformed/customview-1.1.0/AndroidManifest.xml:20:5-22:41
+MERGED from [androidx.core:core:1.17.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/bda5dc46d04cebe26f23f5b9298bf3a5/transformed/core-1.17.0/AndroidManifest.xml:20:5-44
+MERGED from [androidx.core:core:1.17.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/bda5dc46d04cebe26f23f5b9298bf3a5/transformed/core-1.17.0/AndroidManifest.xml:20:5-44
+MERGED from [androidx.graphics:graphics-shapes-android:1.0.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/d53a3d76b64ab328bc2c6a92f69d7aae/transformed/graphics-shapes-release/AndroidManifest.xml:5:5-44
+MERGED from [androidx.graphics:graphics-shapes-android:1.0.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/d53a3d76b64ab328bc2c6a92f69d7aae/transformed/graphics-shapes-release/AndroidManifest.xml:5:5-44
+MERGED from [androidx.savedstate:savedstate-ktx:1.2.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/be5f918e94b6631edbde4d8aa8b7ddd1/transformed/savedstate-ktx-1.2.1/AndroidManifest.xml:20:5-44
+MERGED from [androidx.savedstate:savedstate-ktx:1.2.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/be5f918e94b6631edbde4d8aa8b7ddd1/transformed/savedstate-ktx-1.2.1/AndroidManifest.xml:20:5-44
+MERGED from [androidx.savedstate:savedstate:1.2.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/0edef17b2155bac1d9b39dfbc1f0c425/transformed/savedstate-1.2.1/AndroidManifest.xml:20:5-44
+MERGED from [androidx.savedstate:savedstate:1.2.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/0edef17b2155bac1d9b39dfbc1f0c425/transformed/savedstate-1.2.1/AndroidManifest.xml:20:5-44
+MERGED from [androidx.lifecycle:lifecycle-viewmodel-ktx:2.6.2] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/3a9f3bf1480d248931d2372ff89bea9d/transformed/lifecycle-viewmodel-ktx-2.6.2/AndroidManifest.xml:20:5-44
+MERGED from [androidx.lifecycle:lifecycle-viewmodel-ktx:2.6.2] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/3a9f3bf1480d248931d2372ff89bea9d/transformed/lifecycle-viewmodel-ktx-2.6.2/AndroidManifest.xml:20:5-44
+MERGED from [androidx.lifecycle:lifecycle-viewmodel:2.6.2] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/57e7240e6b22d635a52ea7d2dd41ea16/transformed/lifecycle-viewmodel-2.6.2/AndroidManifest.xml:20:5-44
+MERGED from [androidx.lifecycle:lifecycle-viewmodel:2.6.2] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/57e7240e6b22d635a52ea7d2dd41ea16/transformed/lifecycle-viewmodel-2.6.2/AndroidManifest.xml:20:5-44
+MERGED from [androidx.lifecycle:lifecycle-service:2.6.2] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/3636d7f5f5e027f703c66b80de8641b3/transformed/lifecycle-service-2.6.2/AndroidManifest.xml:20:5-44
+MERGED from [androidx.lifecycle:lifecycle-service:2.6.2] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/3636d7f5f5e027f703c66b80de8641b3/transformed/lifecycle-service-2.6.2/AndroidManifest.xml:20:5-44
+MERGED from [androidx.lifecycle:lifecycle-runtime-ktx:2.6.2] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/bdf17d0a02aba1f6a6153cf759883524/transformed/lifecycle-runtime-ktx-2.6.2/AndroidManifest.xml:20:5-44
+MERGED from [androidx.lifecycle:lifecycle-runtime-ktx:2.6.2] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/bdf17d0a02aba1f6a6153cf759883524/transformed/lifecycle-runtime-ktx-2.6.2/AndroidManifest.xml:20:5-44
+MERGED from [androidx.lifecycle:lifecycle-process:2.6.2] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/6455de05fb5326832daa27b51d0f3858/transformed/lifecycle-process-2.6.2/AndroidManifest.xml:21:5-44
+MERGED from [androidx.lifecycle:lifecycle-process:2.6.2] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/6455de05fb5326832daa27b51d0f3858/transformed/lifecycle-process-2.6.2/AndroidManifest.xml:21:5-44
+MERGED from [androidx.lifecycle:lifecycle-livedata-core-ktx:2.6.2] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/908969f20ed62fbe87608890b9852b3c/transformed/lifecycle-livedata-core-ktx-2.6.2/AndroidManifest.xml:20:5-44
+MERGED from [androidx.lifecycle:lifecycle-livedata-core-ktx:2.6.2] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/908969f20ed62fbe87608890b9852b3c/transformed/lifecycle-livedata-core-ktx-2.6.2/AndroidManifest.xml:20:5-44
+MERGED from [androidx.lifecycle:lifecycle-livedata-core:2.6.2] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/073d82132e2dee9ba0bf993c12e1308d/transformed/lifecycle-livedata-core-2.6.2/AndroidManifest.xml:20:5-44
+MERGED from [androidx.lifecycle:lifecycle-livedata-core:2.6.2] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/073d82132e2dee9ba0bf993c12e1308d/transformed/lifecycle-livedata-core-2.6.2/AndroidManifest.xml:20:5-44
+MERGED from [androidx.lifecycle:lifecycle-livedata:2.6.2] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/9d0f7310829d25d467bb08b2ee8bab1c/transformed/lifecycle-livedata-2.6.2/AndroidManifest.xml:20:5-44
+MERGED from [androidx.lifecycle:lifecycle-livedata:2.6.2] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/9d0f7310829d25d467bb08b2ee8bab1c/transformed/lifecycle-livedata-2.6.2/AndroidManifest.xml:20:5-44
+MERGED from [androidx.lifecycle:lifecycle-runtime:2.6.2] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/33004b889cd11abb0c44f69d13a122b3/transformed/lifecycle-runtime-2.6.2/AndroidManifest.xml:5:5-44
+MERGED from [androidx.lifecycle:lifecycle-runtime:2.6.2] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/33004b889cd11abb0c44f69d13a122b3/transformed/lifecycle-runtime-2.6.2/AndroidManifest.xml:5:5-44
+MERGED from [androidx.lifecycle:lifecycle-viewmodel-savedstate:2.6.2] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/68254c2d56662e7c411892652b4701a3/transformed/lifecycle-viewmodel-savedstate-2.6.2/AndroidManifest.xml:20:5-44
+MERGED from [androidx.lifecycle:lifecycle-viewmodel-savedstate:2.6.2] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/68254c2d56662e7c411892652b4701a3/transformed/lifecycle-viewmodel-savedstate-2.6.2/AndroidManifest.xml:20:5-44
+MERGED from [androidx.core:core-ktx:1.17.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/3b564ea86632ff7701c03b1decdc4cb1/transformed/core-ktx-1.17.0/AndroidManifest.xml:5:5-44
+MERGED from [androidx.core:core-ktx:1.17.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/3b564ea86632ff7701c03b1decdc4cb1/transformed/core-ktx-1.17.0/AndroidManifest.xml:5:5-44
+MERGED from [androidx.datastore:datastore-core-android:1.1.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/78be167197dc3e1339a1a5c09b69a2be/transformed/datastore-core-release/AndroidManifest.xml:5:5-44
+MERGED from [androidx.datastore:datastore-core-android:1.1.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/78be167197dc3e1339a1a5c09b69a2be/transformed/datastore-core-release/AndroidManifest.xml:5:5-44
+MERGED from [androidx.datastore:datastore-android:1.1.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/172634d7f4175cc1d1d427356216cae7/transformed/datastore-release/AndroidManifest.xml:20:5-44
+MERGED from [androidx.datastore:datastore-android:1.1.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/172634d7f4175cc1d1d427356216cae7/transformed/datastore-release/AndroidManifest.xml:20:5-44
+MERGED from [androidx.datastore:datastore-preferences-android:1.1.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/d736a71aa11adb8a9cf2b4c4ba4d911b/transformed/datastore-preferences-release/AndroidManifest.xml:20:5-44
+MERGED from [androidx.datastore:datastore-preferences-android:1.1.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/d736a71aa11adb8a9cf2b4c4ba4d911b/transformed/datastore-preferences-release/AndroidManifest.xml:20:5-44
+MERGED from [androidx.room:room-ktx:2.5.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/a47f589201bc9707076ca934987b9b64/transformed/room-ktx-2.5.0/AndroidManifest.xml:20:5-44
+MERGED from [androidx.room:room-ktx:2.5.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/a47f589201bc9707076ca934987b9b64/transformed/room-ktx-2.5.0/AndroidManifest.xml:20:5-44
+MERGED from [androidx.room:room-runtime:2.5.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/1aa931eb04bf1d7b9fa4b3d0f5b4b1b6/transformed/room-runtime-2.5.0/AndroidManifest.xml:21:5-44
+MERGED from [androidx.room:room-runtime:2.5.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/1aa931eb04bf1d7b9fa4b3d0f5b4b1b6/transformed/room-runtime-2.5.0/AndroidManifest.xml:21:5-44
+MERGED from [androidx.sqlite:sqlite-framework:2.3.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/195fe4199f9f65d91d8c18fc3c0775ef/transformed/sqlite-framework-2.3.0/AndroidManifest.xml:20:5-44
+MERGED from [androidx.sqlite:sqlite-framework:2.3.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/195fe4199f9f65d91d8c18fc3c0775ef/transformed/sqlite-framework-2.3.0/AndroidManifest.xml:20:5-44
+MERGED from [androidx.media3:media3-muxer:1.9.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/1775810cd60cbb152f4b46ac5f3f58fa/transformed/media3-muxer-1.9.0/AndroidManifest.xml:20:5-44
+MERGED from [androidx.media3:media3-muxer:1.9.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/1775810cd60cbb152f4b46ac5f3f58fa/transformed/media3-muxer-1.9.0/AndroidManifest.xml:20:5-44
+MERGED from [androidx.media3:media3-container:1.9.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/158cde9fc0ef8adb0bcecb9b11118919/transformed/media3-container-1.9.0/AndroidManifest.xml:20:5-44
+MERGED from [androidx.media3:media3-container:1.9.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/158cde9fc0ef8adb0bcecb9b11118919/transformed/media3-container-1.9.0/AndroidManifest.xml:20:5-44
+MERGED from [androidx.media3:media3-common:1.9.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/477bd2ebfc14d1600a43446c152f8ecd/transformed/media3-common-1.9.0/AndroidManifest.xml:20:5-44
+MERGED from [androidx.media3:media3-common:1.9.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/477bd2ebfc14d1600a43446c152f8ecd/transformed/media3-common-1.9.0/AndroidManifest.xml:20:5-44
+MERGED from [androidx.annotation:annotation-experimental:1.4.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/e1761d6765a15c2fccb846d2cf849ae8/transformed/annotation-experimental-1.4.1/AndroidManifest.xml:5:5-44
+MERGED from [androidx.annotation:annotation-experimental:1.4.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/e1761d6765a15c2fccb846d2cf849ae8/transformed/annotation-experimental-1.4.1/AndroidManifest.xml:5:5-44
+MERGED from [androidx.core:core-backported-fixes:1.0.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/c27dc5118b11dcb08cc607fa06aab6e0/transformed/core-backported-fixes-1.0.0/AndroidManifest.xml:5:5-44
+MERGED from [androidx.core:core-backported-fixes:1.0.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/c27dc5118b11dcb08cc607fa06aab6e0/transformed/core-backported-fixes-1.0.0/AndroidManifest.xml:5:5-44
+MERGED from [androidx.camera.featurecombinationquery:featurecombinationquery:1.7.0-alpha02] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/11e3506ea513e04fc3aa7263b3f9985f/transformed/featurecombinationquery-1.7.0-alpha02/AndroidManifest.xml:5:5-44
+MERGED from [androidx.camera.featurecombinationquery:featurecombinationquery:1.7.0-alpha02] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/11e3506ea513e04fc3aa7263b3f9985f/transformed/featurecombinationquery-1.7.0-alpha02/AndroidManifest.xml:5:5-44
+MERGED from [com.facebook.fresco:ui-core:3.7.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/de24c081a3169b00f641d630db5be887/transformed/ui-core-3.7.0/AndroidManifest.xml:5:5-44
+MERGED from [com.facebook.fresco:ui-core:3.7.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/de24c081a3169b00f641d630db5be887/transformed/ui-core-3.7.0/AndroidManifest.xml:5:5-44
+MERGED from [androidx.sqlite:sqlite:2.3.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/15af65b6f1e470ff778e6fb32c0d886a/transformed/sqlite-2.3.0/AndroidManifest.xml:20:5-44
+MERGED from [androidx.sqlite:sqlite:2.3.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/15af65b6f1e470ff778e6fb32c0d886a/transformed/sqlite-2.3.0/AndroidManifest.xml:20:5-44
+MERGED from [com.facebook.hermes:hermes-android:250829098.0.16] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/82e12f5657b78a2f3001648586ffcf26/transformed/hermes-android-250829098.0.16-debug/AndroidManifest.xml:5:5-44
+MERGED from [com.facebook.hermes:hermes-android:250829098.0.16] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/82e12f5657b78a2f3001648586ffcf26/transformed/hermes-android-250829098.0.16-debug/AndroidManifest.xml:5:5-44
+MERGED from [io.github.zhongwuzw:mmkv:2.4.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/671fc0266906f8c204dc1c05dc4b3725/transformed/mmkv-2.4.1/AndroidManifest.xml:5:5-44
+MERGED from [io.github.zhongwuzw:mmkv:2.4.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/671fc0266906f8c204dc1c05dc4b3725/transformed/mmkv-2.4.1/AndroidManifest.xml:5:5-44
+MERGED from [androidx.exifinterface:exifinterface:1.4.2] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/109afa14bebf7b3713ce89af58f99efd/transformed/exifinterface-1.4.2/AndroidManifest.xml:5:5-44
+MERGED from [androidx.exifinterface:exifinterface:1.4.2] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/109afa14bebf7b3713ce89af58f99efd/transformed/exifinterface-1.4.2/AndroidManifest.xml:5:5-44
+MERGED from [androidx.profileinstaller:profileinstaller:1.3.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/6ef67b66dc1bdc1e721aa142990bbc99/transformed/profileinstaller-1.3.1/AndroidManifest.xml:21:5-44
+MERGED from [androidx.profileinstaller:profileinstaller:1.3.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/6ef67b66dc1bdc1e721aa142990bbc99/transformed/profileinstaller-1.3.1/AndroidManifest.xml:21:5-44
+MERGED from [androidx.startup:startup-runtime:1.1.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/9e0b3365c7afa45e31ac52a82a1b8af7/transformed/startup-runtime-1.1.1/AndroidManifest.xml:21:5-23:41
+MERGED from [androidx.startup:startup-runtime:1.1.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/9e0b3365c7afa45e31ac52a82a1b8af7/transformed/startup-runtime-1.1.1/AndroidManifest.xml:21:5-23:41
+MERGED from [io.github.zhongwuzw:annotation:2.4.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/ce81de470e9309fa0b8e27ac81769f79/transformed/annotation-2.4.1/AndroidManifest.xml:5:5-44
+MERGED from [io.github.zhongwuzw:annotation:2.4.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/ce81de470e9309fa0b8e27ac81769f79/transformed/annotation-2.4.1/AndroidManifest.xml:5:5-44
+MERGED from [androidx.cursoradapter:cursoradapter:1.0.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/22d963dd8a35fd2aa4afd881901613a2/transformed/cursoradapter-1.0.0/AndroidManifest.xml:20:5-44
+MERGED from [androidx.cursoradapter:cursoradapter:1.0.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/22d963dd8a35fd2aa4afd881901613a2/transformed/cursoradapter-1.0.0/AndroidManifest.xml:20:5-44
+MERGED from [androidx.interpolator:interpolator:1.0.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/3abc620732fa015aab3613c968b3e1f8/transformed/interpolator-1.0.0/AndroidManifest.xml:20:5-44
+MERGED from [androidx.interpolator:interpolator:1.0.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/3abc620732fa015aab3613c968b3e1f8/transformed/interpolator-1.0.0/AndroidManifest.xml:20:5-44
+MERGED from [androidx.cardview:cardview:1.0.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/db9f59adef89fe931a9edf3f4d7c5ee3/transformed/cardview-1.0.0/AndroidManifest.xml:20:5-44
+MERGED from [androidx.cardview:cardview:1.0.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/db9f59adef89fe931a9edf3f4d7c5ee3/transformed/cardview-1.0.0/AndroidManifest.xml:20:5-44
+MERGED from [androidx.arch.core:core-runtime:2.2.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/1f5d2a831f5f18fb6d8b729e0c5e9cd1/transformed/core-runtime-2.2.0/AndroidManifest.xml:20:5-44
+MERGED from [androidx.arch.core:core-runtime:2.2.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/1f5d2a831f5f18fb6d8b729e0c5e9cd1/transformed/core-runtime-2.2.0/AndroidManifest.xml:20:5-44
+MERGED from [androidx.documentfile:documentfile:1.0.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/8155517dd82f8db683e6d6fe60581546/transformed/documentfile-1.0.0/AndroidManifest.xml:20:5-44
+MERGED from [androidx.documentfile:documentfile:1.0.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/8155517dd82f8db683e6d6fe60581546/transformed/documentfile-1.0.0/AndroidManifest.xml:20:5-44
+MERGED from [androidx.localbroadcastmanager:localbroadcastmanager:1.0.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/d14c1d7af5fbfbc88684026f80e98424/transformed/localbroadcastmanager-1.0.0/AndroidManifest.xml:20:5-44
+MERGED from [androidx.localbroadcastmanager:localbroadcastmanager:1.0.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/d14c1d7af5fbfbc88684026f80e98424/transformed/localbroadcastmanager-1.0.0/AndroidManifest.xml:20:5-44
+MERGED from [androidx.print:print:1.0.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/a69bcaaae6fd860e2ff4965ffb07f56b/transformed/print-1.0.0/AndroidManifest.xml:20:5-44
+MERGED from [androidx.print:print:1.0.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/a69bcaaae6fd860e2ff4965ffb07f56b/transformed/print-1.0.0/AndroidManifest.xml:20:5-44
+MERGED from [androidx.versionedparcelable:versionedparcelable:1.1.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/9c379efd578e486320e561c0cc026ec2/transformed/versionedparcelable-1.1.1/AndroidManifest.xml:20:5-22:41
+MERGED from [androidx.versionedparcelable:versionedparcelable:1.1.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/9c379efd578e486320e561c0cc026ec2/transformed/versionedparcelable-1.1.1/AndroidManifest.xml:20:5-22:41
+MERGED from [androidx.tracing:tracing-ktx:1.3.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/92a3d4d0f556bec91e2258bec8368d57/transformed/tracing-ktx-1.3.0/AndroidManifest.xml:20:5-44
+MERGED from [androidx.tracing:tracing-ktx:1.3.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/92a3d4d0f556bec91e2258bec8368d57/transformed/tracing-ktx-1.3.0/AndroidManifest.xml:20:5-44
+MERGED from [androidx.tracing:tracing-android:1.3.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/c65af69baf8a693b1a4fde6d9a611048/transformed/tracing/AndroidManifest.xml:20:5-44
+MERGED from [androidx.tracing:tracing-android:1.3.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/c65af69baf8a693b1a4fde6d9a611048/transformed/tracing/AndroidManifest.xml:20:5-44
+MERGED from [androidx.core:core-viewtree:1.0.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/1ce8cd10a050c0a2371a020271cac1b0/transformed/core-viewtree-1.0.0/AndroidManifest.xml:5:5-44
+MERGED from [androidx.core:core-viewtree:1.0.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/1ce8cd10a050c0a2371a020271cac1b0/transformed/core-viewtree-1.0.0/AndroidManifest.xml:5:5-44
+MERGED from [io.github.ronickg:openssl:3.3.2-1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/44b57712dd44ef99be496c6c9a8cb14d/transformed/openssl-3.3.2-1/AndroidManifest.xml:2:2-70
+MERGED from [io.github.ronickg:openssl:3.3.2-1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/44b57712dd44ef99be496c6c9a8cb14d/transformed/openssl-3.3.2-1/AndroidManifest.xml:2:2-70
+MERGED from [androidx.biometric:biometric:1.1.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/d430266c78e5cb99e1e98416ad9c263d/transformed/biometric-1.1.0/AndroidManifest.xml:20:5-22:41
+MERGED from [androidx.biometric:biometric:1.1.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/d430266c78e5cb99e1e98416ad9c263d/transformed/biometric-1.1.0/AndroidManifest.xml:20:5-22:41
+MERGED from [com.facebook.fbjni:fbjni:0.7.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/3cb1792e16d0777e9535521c99f0b7b5/transformed/fbjni-0.7.0/AndroidManifest.xml:5:5-44
+MERGED from [com.facebook.fbjni:fbjni:0.7.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/3cb1792e16d0777e9535521c99f0b7b5/transformed/fbjni-0.7.0/AndroidManifest.xml:5:5-44
+MERGED from [com.facebook.soloader:soloader:0.12.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/d24b621da5898bd22d4b2070b09a9d57/transformed/soloader-0.12.1/AndroidManifest.xml:7:5-9:41
+MERGED from [com.facebook.soloader:soloader:0.12.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/d24b621da5898bd22d4b2070b09a9d57/transformed/soloader-0.12.1/AndroidManifest.xml:7:5-9:41
+	tools:overrideLibrary
+		ADDED from [:react-native-keychain] /Users/macprom12020/Project/crm-mobile/node_modules/react-native-keychain/android/build/intermediates/merged_manifest/debug/processDebugManifest/AndroidManifest.xml:8:9-51
+	android:targetSdkVersion
+		INJECTED from /Users/macprom12020/Project/crm-mobile/android/app/src/main/AndroidManifest.xml
+	android:minSdkVersion
+		INJECTED from /Users/macprom12020/Project/crm-mobile/android/app/src/main/AndroidManifest.xml
+uses-permission#android.permission.WRITE_EXTERNAL_STORAGE
+ADDED from [:dr.pogodin_react-native-fs] /Users/macprom12020/Project/crm-mobile/node_modules/@dr.pogodin/react-native-fs/android/build/intermediates/merged_manifest/debug/processDebugManifest/AndroidManifest.xml:7:5-81
+	android:name
+		ADDED from [:dr.pogodin_react-native-fs] /Users/macprom12020/Project/crm-mobile/node_modules/@dr.pogodin/react-native-fs/android/build/intermediates/merged_manifest/debug/processDebugManifest/AndroidManifest.xml:7:22-78
+uses-permission#android.permission.READ_EXTERNAL_STORAGE
+IMPLIED from /Users/macprom12020/Project/crm-mobile/android/app/src/main/AndroidManifest.xml:1:1-36:12 reason: com.drpogodin.reactnativefs requested WRITE_EXTERNAL_STORAGE
+uses-permission#android.permission.USE_BIOMETRIC
+ADDED from [:react-native-keychain] /Users/macprom12020/Project/crm-mobile/node_modules/react-native-keychain/android/build/intermediates/merged_manifest/debug/processDebugManifest/AndroidManifest.xml:10:5-72
+MERGED from [androidx.biometric:biometric:1.1.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/d430266c78e5cb99e1e98416ad9c263d/transformed/biometric-1.1.0/AndroidManifest.xml:24:5-72
+MERGED from [androidx.biometric:biometric:1.1.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/d430266c78e5cb99e1e98416ad9c263d/transformed/biometric-1.1.0/AndroidManifest.xml:24:5-72
+	android:name
+		ADDED from [:react-native-keychain] /Users/macprom12020/Project/crm-mobile/node_modules/react-native-keychain/android/build/intermediates/merged_manifest/debug/processDebugManifest/AndroidManifest.xml:10:22-69
+uses-permission#android.permission.USE_FINGERPRINT
+ADDED from [:react-native-keychain] /Users/macprom12020/Project/crm-mobile/node_modules/react-native-keychain/android/build/intermediates/merged_manifest/debug/processDebugManifest/AndroidManifest.xml:11:5-74
+MERGED from [androidx.biometric:biometric:1.1.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/d430266c78e5cb99e1e98416ad9c263d/transformed/biometric-1.1.0/AndroidManifest.xml:27:5-74
+MERGED from [androidx.biometric:biometric:1.1.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/d430266c78e5cb99e1e98416ad9c263d/transformed/biometric-1.1.0/AndroidManifest.xml:27:5-74
+	android:name
+		ADDED from [:react-native-keychain] /Users/macprom12020/Project/crm-mobile/node_modules/react-native-keychain/android/build/intermediates/merged_manifest/debug/processDebugManifest/AndroidManifest.xml:11:22-71
+uses-permission#android.permission.FOREGROUND_SERVICE
+ADDED from [:react-native-nitro-geolocation] /Users/macprom12020/Project/crm-mobile/node_modules/react-native-nitro-geolocation/android/build/intermediates/merged_manifest/debug/processDebugManifest/AndroidManifest.xml:7:5-77
+MERGED from [androidx.work:work-runtime:2.9.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cfbc11290a4358d7cb3b676f361a1979/transformed/work-runtime-2.9.1/AndroidManifest.xml:26:5-77
+MERGED from [androidx.work:work-runtime:2.9.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cfbc11290a4358d7cb3b676f361a1979/transformed/work-runtime-2.9.1/AndroidManifest.xml:26:5-77
+	android:name
+		ADDED from [:react-native-nitro-geolocation] /Users/macprom12020/Project/crm-mobile/node_modules/react-native-nitro-geolocation/android/build/intermediates/merged_manifest/debug/processDebugManifest/AndroidManifest.xml:7:22-74
+uses-permission#android.permission.FOREGROUND_SERVICE_LOCATION
+ADDED from [:react-native-nitro-geolocation] /Users/macprom12020/Project/crm-mobile/node_modules/react-native-nitro-geolocation/android/build/intermediates/merged_manifest/debug/processDebugManifest/AndroidManifest.xml:8:5-86
+	android:name
+		ADDED from [:react-native-nitro-geolocation] /Users/macprom12020/Project/crm-mobile/node_modules/react-native-nitro-geolocation/android/build/intermediates/merged_manifest/debug/processDebugManifest/AndroidManifest.xml:8:22-83
+uses-permission#android.permission.RECEIVE_BOOT_COMPLETED
+ADDED from [:react-native-nitro-geolocation] /Users/macprom12020/Project/crm-mobile/node_modules/react-native-nitro-geolocation/android/build/intermediates/merged_manifest/debug/processDebugManifest/AndroidManifest.xml:9:5-81
+MERGED from [androidx.work:work-runtime:2.9.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cfbc11290a4358d7cb3b676f361a1979/transformed/work-runtime-2.9.1/AndroidManifest.xml:25:5-81
+MERGED from [androidx.work:work-runtime:2.9.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cfbc11290a4358d7cb3b676f361a1979/transformed/work-runtime-2.9.1/AndroidManifest.xml:25:5-81
+	android:name
+		ADDED from [:react-native-nitro-geolocation] /Users/macprom12020/Project/crm-mobile/node_modules/react-native-nitro-geolocation/android/build/intermediates/merged_manifest/debug/processDebugManifest/AndroidManifest.xml:9:22-78
+uses-permission#android.permission.ACTIVITY_RECOGNITION
+ADDED from [:react-native-nitro-geolocation] /Users/macprom12020/Project/crm-mobile/node_modules/react-native-nitro-geolocation/android/build/intermediates/merged_manifest/debug/processDebugManifest/AndroidManifest.xml:10:5-79
+	android:name
+		ADDED from [:react-native-nitro-geolocation] /Users/macprom12020/Project/crm-mobile/node_modules/react-native-nitro-geolocation/android/build/intermediates/merged_manifest/debug/processDebugManifest/AndroidManifest.xml:10:22-76
+uses-permission#android.permission.WAKE_LOCK
+ADDED from [:react-native-nitro-geolocation] /Users/macprom12020/Project/crm-mobile/node_modules/react-native-nitro-geolocation/android/build/intermediates/merged_manifest/debug/processDebugManifest/AndroidManifest.xml:11:5-68
+MERGED from [androidx.work:work-runtime:2.9.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cfbc11290a4358d7cb3b676f361a1979/transformed/work-runtime-2.9.1/AndroidManifest.xml:23:5-68
+MERGED from [androidx.work:work-runtime:2.9.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cfbc11290a4358d7cb3b676f361a1979/transformed/work-runtime-2.9.1/AndroidManifest.xml:23:5-68
+	android:name
+		ADDED from [:react-native-nitro-geolocation] /Users/macprom12020/Project/crm-mobile/node_modules/react-native-nitro-geolocation/android/build/intermediates/merged_manifest/debug/processDebugManifest/AndroidManifest.xml:11:22-65
+service#com.margelo.nitro.nitrogeolocation.background.NitroBackgroundLocationService
+ADDED from [:react-native-nitro-geolocation] /Users/macprom12020/Project/crm-mobile/node_modules/react-native-nitro-geolocation/android/build/intermediates/merged_manifest/debug/processDebugManifest/AndroidManifest.xml:14:9-17:56
+	android:exported
+		ADDED from [:react-native-nitro-geolocation] /Users/macprom12020/Project/crm-mobile/node_modules/react-native-nitro-geolocation/android/build/intermediates/merged_manifest/debug/processDebugManifest/AndroidManifest.xml:16:13-37
+	android:foregroundServiceType
+		ADDED from [:react-native-nitro-geolocation] /Users/macprom12020/Project/crm-mobile/node_modules/react-native-nitro-geolocation/android/build/intermediates/merged_manifest/debug/processDebugManifest/AndroidManifest.xml:17:13-53
+	android:name
+		ADDED from [:react-native-nitro-geolocation] /Users/macprom12020/Project/crm-mobile/node_modules/react-native-nitro-geolocation/android/build/intermediates/merged_manifest/debug/processDebugManifest/AndroidManifest.xml:15:13-104
+service#com.margelo.nitro.nitrogeolocation.background.NitroBackgroundHeadlessTaskService
+ADDED from [:react-native-nitro-geolocation] /Users/macprom12020/Project/crm-mobile/node_modules/react-native-nitro-geolocation/android/build/intermediates/merged_manifest/debug/processDebugManifest/AndroidManifest.xml:18:9-20:40
+	android:exported
+		ADDED from [:react-native-nitro-geolocation] /Users/macprom12020/Project/crm-mobile/node_modules/react-native-nitro-geolocation/android/build/intermediates/merged_manifest/debug/processDebugManifest/AndroidManifest.xml:20:13-37
+	android:name
+		ADDED from [:react-native-nitro-geolocation] /Users/macprom12020/Project/crm-mobile/node_modules/react-native-nitro-geolocation/android/build/intermediates/merged_manifest/debug/processDebugManifest/AndroidManifest.xml:19:13-108
+receiver#com.margelo.nitro.nitrogeolocation.background.NitroLocationUpdateReceiver
+ADDED from [:react-native-nitro-geolocation] /Users/macprom12020/Project/crm-mobile/node_modules/react-native-nitro-geolocation/android/build/intermediates/merged_manifest/debug/processDebugManifest/AndroidManifest.xml:22:9-24:40
+	android:exported
+		ADDED from [:react-native-nitro-geolocation] /Users/macprom12020/Project/crm-mobile/node_modules/react-native-nitro-geolocation/android/build/intermediates/merged_manifest/debug/processDebugManifest/AndroidManifest.xml:24:13-37
+	android:name
+		ADDED from [:react-native-nitro-geolocation] /Users/macprom12020/Project/crm-mobile/node_modules/react-native-nitro-geolocation/android/build/intermediates/merged_manifest/debug/processDebugManifest/AndroidManifest.xml:23:13-101
+receiver#com.margelo.nitro.nitrogeolocation.background.NitroGeofenceReceiver
+ADDED from [:react-native-nitro-geolocation] /Users/macprom12020/Project/crm-mobile/node_modules/react-native-nitro-geolocation/android/build/intermediates/merged_manifest/debug/processDebugManifest/AndroidManifest.xml:25:9-27:40
+	android:exported
+		ADDED from [:react-native-nitro-geolocation] /Users/macprom12020/Project/crm-mobile/node_modules/react-native-nitro-geolocation/android/build/intermediates/merged_manifest/debug/processDebugManifest/AndroidManifest.xml:27:13-37
+	android:name
+		ADDED from [:react-native-nitro-geolocation] /Users/macprom12020/Project/crm-mobile/node_modules/react-native-nitro-geolocation/android/build/intermediates/merged_manifest/debug/processDebugManifest/AndroidManifest.xml:26:13-95
+receiver#com.margelo.nitro.nitrogeolocation.background.NitroActivityRecognitionReceiver
+ADDED from [:react-native-nitro-geolocation] /Users/macprom12020/Project/crm-mobile/node_modules/react-native-nitro-geolocation/android/build/intermediates/merged_manifest/debug/processDebugManifest/AndroidManifest.xml:28:9-30:40
+	android:exported
+		ADDED from [:react-native-nitro-geolocation] /Users/macprom12020/Project/crm-mobile/node_modules/react-native-nitro-geolocation/android/build/intermediates/merged_manifest/debug/processDebugManifest/AndroidManifest.xml:30:13-37
+	android:name
+		ADDED from [:react-native-nitro-geolocation] /Users/macprom12020/Project/crm-mobile/node_modules/react-native-nitro-geolocation/android/build/intermediates/merged_manifest/debug/processDebugManifest/AndroidManifest.xml:29:13-106
+receiver#com.margelo.nitro.nitrogeolocation.background.NitroBootReceiver
+ADDED from [:react-native-nitro-geolocation] /Users/macprom12020/Project/crm-mobile/node_modules/react-native-nitro-geolocation/android/build/intermediates/merged_manifest/debug/processDebugManifest/AndroidManifest.xml:31:9-40:20
+	android:enabled
+		ADDED from [:react-native-nitro-geolocation] /Users/macprom12020/Project/crm-mobile/node_modules/react-native-nitro-geolocation/android/build/intermediates/merged_manifest/debug/processDebugManifest/AndroidManifest.xml:33:13-35
+	android:exported
+		ADDED from [:react-native-nitro-geolocation] /Users/macprom12020/Project/crm-mobile/node_modules/react-native-nitro-geolocation/android/build/intermediates/merged_manifest/debug/processDebugManifest/AndroidManifest.xml:34:13-36
+	android:permission
+		ADDED from [:react-native-nitro-geolocation] /Users/macprom12020/Project/crm-mobile/node_modules/react-native-nitro-geolocation/android/build/intermediates/merged_manifest/debug/processDebugManifest/AndroidManifest.xml:35:13-75
+	android:name
+		ADDED from [:react-native-nitro-geolocation] /Users/macprom12020/Project/crm-mobile/node_modules/react-native-nitro-geolocation/android/build/intermediates/merged_manifest/debug/processDebugManifest/AndroidManifest.xml:32:13-91
+intent-filter#action:name:android.intent.action.BOOT_COMPLETED+action:name:android.intent.action.LOCKED_BOOT_COMPLETED
+ADDED from [:react-native-nitro-geolocation] /Users/macprom12020/Project/crm-mobile/node_modules/react-native-nitro-geolocation/android/build/intermediates/merged_manifest/debug/processDebugManifest/AndroidManifest.xml:36:13-39:29
+action#android.intent.action.BOOT_COMPLETED
+ADDED from [:react-native-nitro-geolocation] /Users/macprom12020/Project/crm-mobile/node_modules/react-native-nitro-geolocation/android/build/intermediates/merged_manifest/debug/processDebugManifest/AndroidManifest.xml:37:17-79
+	android:name
+		ADDED from [:react-native-nitro-geolocation] /Users/macprom12020/Project/crm-mobile/node_modules/react-native-nitro-geolocation/android/build/intermediates/merged_manifest/debug/processDebugManifest/AndroidManifest.xml:37:25-76
+action#android.intent.action.LOCKED_BOOT_COMPLETED
+ADDED from [:react-native-nitro-geolocation] /Users/macprom12020/Project/crm-mobile/node_modules/react-native-nitro-geolocation/android/build/intermediates/merged_manifest/debug/processDebugManifest/AndroidManifest.xml:38:17-86
+	android:name
+		ADDED from [:react-native-nitro-geolocation] /Users/macprom12020/Project/crm-mobile/node_modules/react-native-nitro-geolocation/android/build/intermediates/merged_manifest/debug/processDebugManifest/AndroidManifest.xml:38:25-83
+uses-feature#android.hardware.camera
+ADDED from [:react-native-vision-camera] /Users/macprom12020/Project/crm-mobile/node_modules/react-native-vision-camera/android/build/intermediates/merged_manifest/debug/processDebugManifest/AndroidManifest.xml:7:5-9:36
+	android:required
+		ADDED from [:react-native-vision-camera] /Users/macprom12020/Project/crm-mobile/node_modules/react-native-vision-camera/android/build/intermediates/merged_manifest/debug/processDebugManifest/AndroidManifest.xml:9:9-33
+	android:name
+		ADDED from [:react-native-vision-camera] /Users/macprom12020/Project/crm-mobile/node_modules/react-native-vision-camera/android/build/intermediates/merged_manifest/debug/processDebugManifest/AndroidManifest.xml:8:9-47
+uses-feature#android.hardware.microphone
+ADDED from [:react-native-vision-camera] /Users/macprom12020/Project/crm-mobile/node_modules/react-native-vision-camera/android/build/intermediates/merged_manifest/debug/processDebugManifest/AndroidManifest.xml:10:5-12:36
+	android:required
+		ADDED from [:react-native-vision-camera] /Users/macprom12020/Project/crm-mobile/node_modules/react-native-vision-camera/android/build/intermediates/merged_manifest/debug/processDebugManifest/AndroidManifest.xml:12:9-33
+	android:name
+		ADDED from [:react-native-vision-camera] /Users/macprom12020/Project/crm-mobile/node_modules/react-native-vision-camera/android/build/intermediates/merged_manifest/debug/processDebugManifest/AndroidManifest.xml:11:9-51
+uses-permission#android.permission.ACCESS_WIFI_STATE
+ADDED from [:react-native-community_netinfo] /Users/macprom12020/Project/crm-mobile/node_modules/@react-native-community/netinfo/android/build/intermediates/merged_manifest/debug/processDebugManifest/AndroidManifest.xml:8:5-76
+	android:name
+		ADDED from [:react-native-community_netinfo] /Users/macprom12020/Project/crm-mobile/node_modules/@react-native-community/netinfo/android/build/intermediates/merged_manifest/debug/processDebugManifest/AndroidManifest.xml:8:22-73
+uses-permission#android.permission.SYSTEM_ALERT_WINDOW
+ADDED from [com.facebook.react:react-android:0.87.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/20ad2d019970f8e91fa7eb3c7227b106/transformed/react-android-0.87.0-debug/AndroidManifest.xml:16:5-78
+	android:name
+		ADDED from [com.facebook.react:react-android:0.87.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/20ad2d019970f8e91fa7eb3c7227b106/transformed/react-android-0.87.0-debug/AndroidManifest.xml:16:22-75
+uses-permission#android.permission.ACCESS_LOCAL_NETWORK
+ADDED from [com.facebook.react:react-android:0.87.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/20ad2d019970f8e91fa7eb3c7227b106/transformed/react-android-0.87.0-debug/AndroidManifest.xml:22:5-79
+	android:name
+		ADDED from [com.facebook.react:react-android:0.87.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/20ad2d019970f8e91fa7eb3c7227b106/transformed/react-android-0.87.0-debug/AndroidManifest.xml:22:22-76
+activity#com.facebook.react.devsupport.DevSettingsActivity
+ADDED from [com.facebook.react:react-android:0.87.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/20ad2d019970f8e91fa7eb3c7227b106/transformed/react-android-0.87.0-debug/AndroidManifest.xml:25:9-27:40
+	android:exported
+		ADDED from [com.facebook.react:react-android:0.87.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/20ad2d019970f8e91fa7eb3c7227b106/transformed/react-android-0.87.0-debug/AndroidManifest.xml:27:13-37
+	android:name
+		ADDED from [com.facebook.react:react-android:0.87.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/20ad2d019970f8e91fa7eb3c7227b106/transformed/react-android-0.87.0-debug/AndroidManifest.xml:26:13-77
+provider#androidx.startup.InitializationProvider
+ADDED from [androidx.work:work-runtime:2.9.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cfbc11290a4358d7cb3b676f361a1979/transformed/work-runtime-2.9.1/AndroidManifest.xml:29:9-37:20
+MERGED from [androidx.emoji2:emoji2:1.3.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/28e696fcf5719a4a7310588b66326deb/transformed/emoji2-1.3.0/AndroidManifest.xml:24:9-32:20
+MERGED from [androidx.emoji2:emoji2:1.3.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/28e696fcf5719a4a7310588b66326deb/transformed/emoji2-1.3.0/AndroidManifest.xml:24:9-32:20
+MERGED from [androidx.lifecycle:lifecycle-process:2.6.2] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/6455de05fb5326832daa27b51d0f3858/transformed/lifecycle-process-2.6.2/AndroidManifest.xml:24:9-32:20
+MERGED from [androidx.lifecycle:lifecycle-process:2.6.2] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/6455de05fb5326832daa27b51d0f3858/transformed/lifecycle-process-2.6.2/AndroidManifest.xml:24:9-32:20
+MERGED from [androidx.profileinstaller:profileinstaller:1.3.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/6ef67b66dc1bdc1e721aa142990bbc99/transformed/profileinstaller-1.3.1/AndroidManifest.xml:24:9-32:20
+MERGED from [androidx.profileinstaller:profileinstaller:1.3.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/6ef67b66dc1bdc1e721aa142990bbc99/transformed/profileinstaller-1.3.1/AndroidManifest.xml:24:9-32:20
+MERGED from [androidx.startup:startup-runtime:1.1.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/9e0b3365c7afa45e31ac52a82a1b8af7/transformed/startup-runtime-1.1.1/AndroidManifest.xml:26:9-30:34
+MERGED from [androidx.startup:startup-runtime:1.1.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/9e0b3365c7afa45e31ac52a82a1b8af7/transformed/startup-runtime-1.1.1/AndroidManifest.xml:26:9-30:34
+	tools:node
+		ADDED from [androidx.work:work-runtime:2.9.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cfbc11290a4358d7cb3b676f361a1979/transformed/work-runtime-2.9.1/AndroidManifest.xml:33:13-31
+	android:authorities
+		ADDED from [androidx.work:work-runtime:2.9.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cfbc11290a4358d7cb3b676f361a1979/transformed/work-runtime-2.9.1/AndroidManifest.xml:31:13-68
+	android:exported
+		ADDED from [androidx.work:work-runtime:2.9.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cfbc11290a4358d7cb3b676f361a1979/transformed/work-runtime-2.9.1/AndroidManifest.xml:32:13-37
+	android:name
+		ADDED from [androidx.work:work-runtime:2.9.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cfbc11290a4358d7cb3b676f361a1979/transformed/work-runtime-2.9.1/AndroidManifest.xml:30:13-67
+meta-data#androidx.work.WorkManagerInitializer
+ADDED from [androidx.work:work-runtime:2.9.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cfbc11290a4358d7cb3b676f361a1979/transformed/work-runtime-2.9.1/AndroidManifest.xml:34:13-36:52
+	android:value
+		ADDED from [androidx.work:work-runtime:2.9.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cfbc11290a4358d7cb3b676f361a1979/transformed/work-runtime-2.9.1/AndroidManifest.xml:36:17-49
+	android:name
+		ADDED from [androidx.work:work-runtime:2.9.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cfbc11290a4358d7cb3b676f361a1979/transformed/work-runtime-2.9.1/AndroidManifest.xml:35:17-68
+service#androidx.work.impl.background.systemalarm.SystemAlarmService
+ADDED from [androidx.work:work-runtime:2.9.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cfbc11290a4358d7cb3b676f361a1979/transformed/work-runtime-2.9.1/AndroidManifest.xml:39:9-45:35
+	android:enabled
+		ADDED from [androidx.work:work-runtime:2.9.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cfbc11290a4358d7cb3b676f361a1979/transformed/work-runtime-2.9.1/AndroidManifest.xml:42:13-72
+	android:exported
+		ADDED from [androidx.work:work-runtime:2.9.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cfbc11290a4358d7cb3b676f361a1979/transformed/work-runtime-2.9.1/AndroidManifest.xml:43:13-37
+	tools:ignore
+		ADDED from [androidx.work:work-runtime:2.9.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cfbc11290a4358d7cb3b676f361a1979/transformed/work-runtime-2.9.1/AndroidManifest.xml:44:13-60
+	tools:targetApi
+		ADDED from [androidx.work:work-runtime:2.9.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cfbc11290a4358d7cb3b676f361a1979/transformed/work-runtime-2.9.1/AndroidManifest.xml:45:13-32
+	android:directBootAware
+		ADDED from [androidx.work:work-runtime:2.9.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cfbc11290a4358d7cb3b676f361a1979/transformed/work-runtime-2.9.1/AndroidManifest.xml:41:13-44
+	android:name
+		ADDED from [androidx.work:work-runtime:2.9.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cfbc11290a4358d7cb3b676f361a1979/transformed/work-runtime-2.9.1/AndroidManifest.xml:40:13-88
+service#androidx.work.impl.background.systemjob.SystemJobService
+ADDED from [androidx.work:work-runtime:2.9.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cfbc11290a4358d7cb3b676f361a1979/transformed/work-runtime-2.9.1/AndroidManifest.xml:46:9-52:35
+	android:enabled
+		ADDED from [androidx.work:work-runtime:2.9.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cfbc11290a4358d7cb3b676f361a1979/transformed/work-runtime-2.9.1/AndroidManifest.xml:49:13-70
+	android:exported
+		ADDED from [androidx.work:work-runtime:2.9.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cfbc11290a4358d7cb3b676f361a1979/transformed/work-runtime-2.9.1/AndroidManifest.xml:50:13-36
+	android:permission
+		ADDED from [androidx.work:work-runtime:2.9.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cfbc11290a4358d7cb3b676f361a1979/transformed/work-runtime-2.9.1/AndroidManifest.xml:51:13-69
+	tools:targetApi
+		ADDED from [androidx.work:work-runtime:2.9.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cfbc11290a4358d7cb3b676f361a1979/transformed/work-runtime-2.9.1/AndroidManifest.xml:52:13-32
+	android:directBootAware
+		ADDED from [androidx.work:work-runtime:2.9.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cfbc11290a4358d7cb3b676f361a1979/transformed/work-runtime-2.9.1/AndroidManifest.xml:48:13-44
+	android:name
+		ADDED from [androidx.work:work-runtime:2.9.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cfbc11290a4358d7cb3b676f361a1979/transformed/work-runtime-2.9.1/AndroidManifest.xml:47:13-84
+service#androidx.work.impl.foreground.SystemForegroundService
+ADDED from [androidx.work:work-runtime:2.9.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cfbc11290a4358d7cb3b676f361a1979/transformed/work-runtime-2.9.1/AndroidManifest.xml:53:9-59:35
+	android:enabled
+		ADDED from [androidx.work:work-runtime:2.9.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cfbc11290a4358d7cb3b676f361a1979/transformed/work-runtime-2.9.1/AndroidManifest.xml:56:13-77
+	android:exported
+		ADDED from [androidx.work:work-runtime:2.9.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cfbc11290a4358d7cb3b676f361a1979/transformed/work-runtime-2.9.1/AndroidManifest.xml:57:13-37
+	tools:ignore
+		ADDED from [androidx.work:work-runtime:2.9.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cfbc11290a4358d7cb3b676f361a1979/transformed/work-runtime-2.9.1/AndroidManifest.xml:58:13-60
+	tools:targetApi
+		ADDED from [androidx.work:work-runtime:2.9.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cfbc11290a4358d7cb3b676f361a1979/transformed/work-runtime-2.9.1/AndroidManifest.xml:59:13-32
+	android:directBootAware
+		ADDED from [androidx.work:work-runtime:2.9.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cfbc11290a4358d7cb3b676f361a1979/transformed/work-runtime-2.9.1/AndroidManifest.xml:55:13-44
+	android:name
+		ADDED from [androidx.work:work-runtime:2.9.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cfbc11290a4358d7cb3b676f361a1979/transformed/work-runtime-2.9.1/AndroidManifest.xml:54:13-81
+receiver#androidx.work.impl.utils.ForceStopRunnable$BroadcastReceiver
+ADDED from [androidx.work:work-runtime:2.9.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cfbc11290a4358d7cb3b676f361a1979/transformed/work-runtime-2.9.1/AndroidManifest.xml:61:9-66:35
+	android:enabled
+		ADDED from [androidx.work:work-runtime:2.9.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cfbc11290a4358d7cb3b676f361a1979/transformed/work-runtime-2.9.1/AndroidManifest.xml:64:13-35
+	android:exported
+		ADDED from [androidx.work:work-runtime:2.9.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cfbc11290a4358d7cb3b676f361a1979/transformed/work-runtime-2.9.1/AndroidManifest.xml:65:13-37
+	tools:targetApi
+		ADDED from [androidx.work:work-runtime:2.9.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cfbc11290a4358d7cb3b676f361a1979/transformed/work-runtime-2.9.1/AndroidManifest.xml:66:13-32
+	android:directBootAware
+		ADDED from [androidx.work:work-runtime:2.9.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cfbc11290a4358d7cb3b676f361a1979/transformed/work-runtime-2.9.1/AndroidManifest.xml:63:13-44
+	android:name
+		ADDED from [androidx.work:work-runtime:2.9.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cfbc11290a4358d7cb3b676f361a1979/transformed/work-runtime-2.9.1/AndroidManifest.xml:62:13-88
+receiver#androidx.work.impl.background.systemalarm.ConstraintProxy$BatteryChargingProxy
+ADDED from [androidx.work:work-runtime:2.9.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cfbc11290a4358d7cb3b676f361a1979/transformed/work-runtime-2.9.1/AndroidManifest.xml:67:9-77:20
+	android:enabled
+		ADDED from [androidx.work:work-runtime:2.9.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cfbc11290a4358d7cb3b676f361a1979/transformed/work-runtime-2.9.1/AndroidManifest.xml:70:13-36
+	android:exported
+		ADDED from [androidx.work:work-runtime:2.9.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cfbc11290a4358d7cb3b676f361a1979/transformed/work-runtime-2.9.1/AndroidManifest.xml:71:13-37
+	tools:targetApi
+		ADDED from [androidx.work:work-runtime:2.9.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cfbc11290a4358d7cb3b676f361a1979/transformed/work-runtime-2.9.1/AndroidManifest.xml:72:13-32
+	android:directBootAware
+		ADDED from [androidx.work:work-runtime:2.9.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cfbc11290a4358d7cb3b676f361a1979/transformed/work-runtime-2.9.1/AndroidManifest.xml:69:13-44
+	android:name
+		ADDED from [androidx.work:work-runtime:2.9.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cfbc11290a4358d7cb3b676f361a1979/transformed/work-runtime-2.9.1/AndroidManifest.xml:68:13-106
+intent-filter#action:name:android.intent.action.ACTION_POWER_CONNECTED+action:name:android.intent.action.ACTION_POWER_DISCONNECTED
+ADDED from [androidx.work:work-runtime:2.9.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cfbc11290a4358d7cb3b676f361a1979/transformed/work-runtime-2.9.1/AndroidManifest.xml:73:13-76:29
+action#android.intent.action.ACTION_POWER_CONNECTED
+ADDED from [androidx.work:work-runtime:2.9.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cfbc11290a4358d7cb3b676f361a1979/transformed/work-runtime-2.9.1/AndroidManifest.xml:74:17-87
+	android:name
+		ADDED from [androidx.work:work-runtime:2.9.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cfbc11290a4358d7cb3b676f361a1979/transformed/work-runtime-2.9.1/AndroidManifest.xml:74:25-84
+action#android.intent.action.ACTION_POWER_DISCONNECTED
+ADDED from [androidx.work:work-runtime:2.9.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cfbc11290a4358d7cb3b676f361a1979/transformed/work-runtime-2.9.1/AndroidManifest.xml:75:17-90
+	android:name
+		ADDED from [androidx.work:work-runtime:2.9.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cfbc11290a4358d7cb3b676f361a1979/transformed/work-runtime-2.9.1/AndroidManifest.xml:75:25-87
+receiver#androidx.work.impl.background.systemalarm.ConstraintProxy$BatteryNotLowProxy
+ADDED from [androidx.work:work-runtime:2.9.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cfbc11290a4358d7cb3b676f361a1979/transformed/work-runtime-2.9.1/AndroidManifest.xml:78:9-88:20
+	android:enabled
+		ADDED from [androidx.work:work-runtime:2.9.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cfbc11290a4358d7cb3b676f361a1979/transformed/work-runtime-2.9.1/AndroidManifest.xml:81:13-36
+	android:exported
+		ADDED from [androidx.work:work-runtime:2.9.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cfbc11290a4358d7cb3b676f361a1979/transformed/work-runtime-2.9.1/AndroidManifest.xml:82:13-37
+	tools:targetApi
+		ADDED from [androidx.work:work-runtime:2.9.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cfbc11290a4358d7cb3b676f361a1979/transformed/work-runtime-2.9.1/AndroidManifest.xml:83:13-32
+	android:directBootAware
+		ADDED from [androidx.work:work-runtime:2.9.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cfbc11290a4358d7cb3b676f361a1979/transformed/work-runtime-2.9.1/AndroidManifest.xml:80:13-44
+	android:name
+		ADDED from [androidx.work:work-runtime:2.9.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cfbc11290a4358d7cb3b676f361a1979/transformed/work-runtime-2.9.1/AndroidManifest.xml:79:13-104
+intent-filter#action:name:android.intent.action.BATTERY_LOW+action:name:android.intent.action.BATTERY_OKAY
+ADDED from [androidx.work:work-runtime:2.9.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cfbc11290a4358d7cb3b676f361a1979/transformed/work-runtime-2.9.1/AndroidManifest.xml:84:13-87:29
+action#android.intent.action.BATTERY_OKAY
+ADDED from [androidx.work:work-runtime:2.9.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cfbc11290a4358d7cb3b676f361a1979/transformed/work-runtime-2.9.1/AndroidManifest.xml:85:17-77
+	android:name
+		ADDED from [androidx.work:work-runtime:2.9.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cfbc11290a4358d7cb3b676f361a1979/transformed/work-runtime-2.9.1/AndroidManifest.xml:85:25-74
+action#android.intent.action.BATTERY_LOW
+ADDED from [androidx.work:work-runtime:2.9.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cfbc11290a4358d7cb3b676f361a1979/transformed/work-runtime-2.9.1/AndroidManifest.xml:86:17-76
+	android:name
+		ADDED from [androidx.work:work-runtime:2.9.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cfbc11290a4358d7cb3b676f361a1979/transformed/work-runtime-2.9.1/AndroidManifest.xml:86:25-73
+receiver#androidx.work.impl.background.systemalarm.ConstraintProxy$StorageNotLowProxy
+ADDED from [androidx.work:work-runtime:2.9.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cfbc11290a4358d7cb3b676f361a1979/transformed/work-runtime-2.9.1/AndroidManifest.xml:89:9-99:20
+	android:enabled
+		ADDED from [androidx.work:work-runtime:2.9.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cfbc11290a4358d7cb3b676f361a1979/transformed/work-runtime-2.9.1/AndroidManifest.xml:92:13-36
+	android:exported
+		ADDED from [androidx.work:work-runtime:2.9.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cfbc11290a4358d7cb3b676f361a1979/transformed/work-runtime-2.9.1/AndroidManifest.xml:93:13-37
+	tools:targetApi
+		ADDED from [androidx.work:work-runtime:2.9.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cfbc11290a4358d7cb3b676f361a1979/transformed/work-runtime-2.9.1/AndroidManifest.xml:94:13-32
+	android:directBootAware
+		ADDED from [androidx.work:work-runtime:2.9.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cfbc11290a4358d7cb3b676f361a1979/transformed/work-runtime-2.9.1/AndroidManifest.xml:91:13-44
+	android:name
+		ADDED from [androidx.work:work-runtime:2.9.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cfbc11290a4358d7cb3b676f361a1979/transformed/work-runtime-2.9.1/AndroidManifest.xml:90:13-104
+intent-filter#action:name:android.intent.action.DEVICE_STORAGE_LOW+action:name:android.intent.action.DEVICE_STORAGE_OK
+ADDED from [androidx.work:work-runtime:2.9.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cfbc11290a4358d7cb3b676f361a1979/transformed/work-runtime-2.9.1/AndroidManifest.xml:95:13-98:29
+action#android.intent.action.DEVICE_STORAGE_LOW
+ADDED from [androidx.work:work-runtime:2.9.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cfbc11290a4358d7cb3b676f361a1979/transformed/work-runtime-2.9.1/AndroidManifest.xml:96:17-83
+	android:name
+		ADDED from [androidx.work:work-runtime:2.9.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cfbc11290a4358d7cb3b676f361a1979/transformed/work-runtime-2.9.1/AndroidManifest.xml:96:25-80
+action#android.intent.action.DEVICE_STORAGE_OK
+ADDED from [androidx.work:work-runtime:2.9.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cfbc11290a4358d7cb3b676f361a1979/transformed/work-runtime-2.9.1/AndroidManifest.xml:97:17-82
+	android:name
+		ADDED from [androidx.work:work-runtime:2.9.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cfbc11290a4358d7cb3b676f361a1979/transformed/work-runtime-2.9.1/AndroidManifest.xml:97:25-79
+receiver#androidx.work.impl.background.systemalarm.ConstraintProxy$NetworkStateProxy
+ADDED from [androidx.work:work-runtime:2.9.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cfbc11290a4358d7cb3b676f361a1979/transformed/work-runtime-2.9.1/AndroidManifest.xml:100:9-109:20
+	android:enabled
+		ADDED from [androidx.work:work-runtime:2.9.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cfbc11290a4358d7cb3b676f361a1979/transformed/work-runtime-2.9.1/AndroidManifest.xml:103:13-36
+	android:exported
+		ADDED from [androidx.work:work-runtime:2.9.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cfbc11290a4358d7cb3b676f361a1979/transformed/work-runtime-2.9.1/AndroidManifest.xml:104:13-37
+	tools:targetApi
+		ADDED from [androidx.work:work-runtime:2.9.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cfbc11290a4358d7cb3b676f361a1979/transformed/work-runtime-2.9.1/AndroidManifest.xml:105:13-32
+	android:directBootAware
+		ADDED from [androidx.work:work-runtime:2.9.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cfbc11290a4358d7cb3b676f361a1979/transformed/work-runtime-2.9.1/AndroidManifest.xml:102:13-44
+	android:name
+		ADDED from [androidx.work:work-runtime:2.9.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cfbc11290a4358d7cb3b676f361a1979/transformed/work-runtime-2.9.1/AndroidManifest.xml:101:13-103
+intent-filter#action:name:android.net.conn.CONNECTIVITY_CHANGE
+ADDED from [androidx.work:work-runtime:2.9.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cfbc11290a4358d7cb3b676f361a1979/transformed/work-runtime-2.9.1/AndroidManifest.xml:106:13-108:29
+action#android.net.conn.CONNECTIVITY_CHANGE
+ADDED from [androidx.work:work-runtime:2.9.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cfbc11290a4358d7cb3b676f361a1979/transformed/work-runtime-2.9.1/AndroidManifest.xml:107:17-79
+	android:name
+		ADDED from [androidx.work:work-runtime:2.9.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cfbc11290a4358d7cb3b676f361a1979/transformed/work-runtime-2.9.1/AndroidManifest.xml:107:25-76
+receiver#androidx.work.impl.background.systemalarm.RescheduleReceiver
+ADDED from [androidx.work:work-runtime:2.9.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cfbc11290a4358d7cb3b676f361a1979/transformed/work-runtime-2.9.1/AndroidManifest.xml:110:9-121:20
+	android:enabled
+		ADDED from [androidx.work:work-runtime:2.9.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cfbc11290a4358d7cb3b676f361a1979/transformed/work-runtime-2.9.1/AndroidManifest.xml:113:13-36
+	android:exported
+		ADDED from [androidx.work:work-runtime:2.9.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cfbc11290a4358d7cb3b676f361a1979/transformed/work-runtime-2.9.1/AndroidManifest.xml:114:13-37
+	tools:targetApi
+		ADDED from [androidx.work:work-runtime:2.9.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cfbc11290a4358d7cb3b676f361a1979/transformed/work-runtime-2.9.1/AndroidManifest.xml:115:13-32
+	android:directBootAware
+		ADDED from [androidx.work:work-runtime:2.9.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cfbc11290a4358d7cb3b676f361a1979/transformed/work-runtime-2.9.1/AndroidManifest.xml:112:13-44
+	android:name
+		ADDED from [androidx.work:work-runtime:2.9.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cfbc11290a4358d7cb3b676f361a1979/transformed/work-runtime-2.9.1/AndroidManifest.xml:111:13-88
+intent-filter#action:name:android.intent.action.BOOT_COMPLETED+action:name:android.intent.action.TIMEZONE_CHANGED+action:name:android.intent.action.TIME_SET
+ADDED from [androidx.work:work-runtime:2.9.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cfbc11290a4358d7cb3b676f361a1979/transformed/work-runtime-2.9.1/AndroidManifest.xml:116:13-120:29
+action#android.intent.action.TIME_SET
+ADDED from [androidx.work:work-runtime:2.9.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cfbc11290a4358d7cb3b676f361a1979/transformed/work-runtime-2.9.1/AndroidManifest.xml:118:17-73
+	android:name
+		ADDED from [androidx.work:work-runtime:2.9.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cfbc11290a4358d7cb3b676f361a1979/transformed/work-runtime-2.9.1/AndroidManifest.xml:118:25-70
+action#android.intent.action.TIMEZONE_CHANGED
+ADDED from [androidx.work:work-runtime:2.9.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cfbc11290a4358d7cb3b676f361a1979/transformed/work-runtime-2.9.1/AndroidManifest.xml:119:17-81
+	android:name
+		ADDED from [androidx.work:work-runtime:2.9.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cfbc11290a4358d7cb3b676f361a1979/transformed/work-runtime-2.9.1/AndroidManifest.xml:119:25-78
+receiver#androidx.work.impl.background.systemalarm.ConstraintProxyUpdateReceiver
+ADDED from [androidx.work:work-runtime:2.9.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cfbc11290a4358d7cb3b676f361a1979/transformed/work-runtime-2.9.1/AndroidManifest.xml:122:9-131:20
+	android:enabled
+		ADDED from [androidx.work:work-runtime:2.9.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cfbc11290a4358d7cb3b676f361a1979/transformed/work-runtime-2.9.1/AndroidManifest.xml:125:13-72
+	android:exported
+		ADDED from [androidx.work:work-runtime:2.9.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cfbc11290a4358d7cb3b676f361a1979/transformed/work-runtime-2.9.1/AndroidManifest.xml:126:13-37
+	tools:targetApi
+		ADDED from [androidx.work:work-runtime:2.9.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cfbc11290a4358d7cb3b676f361a1979/transformed/work-runtime-2.9.1/AndroidManifest.xml:127:13-32
+	android:directBootAware
+		ADDED from [androidx.work:work-runtime:2.9.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cfbc11290a4358d7cb3b676f361a1979/transformed/work-runtime-2.9.1/AndroidManifest.xml:124:13-44
+	android:name
+		ADDED from [androidx.work:work-runtime:2.9.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cfbc11290a4358d7cb3b676f361a1979/transformed/work-runtime-2.9.1/AndroidManifest.xml:123:13-99
+intent-filter#action:name:androidx.work.impl.background.systemalarm.UpdateProxies
+ADDED from [androidx.work:work-runtime:2.9.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cfbc11290a4358d7cb3b676f361a1979/transformed/work-runtime-2.9.1/AndroidManifest.xml:128:13-130:29
+action#androidx.work.impl.background.systemalarm.UpdateProxies
+ADDED from [androidx.work:work-runtime:2.9.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cfbc11290a4358d7cb3b676f361a1979/transformed/work-runtime-2.9.1/AndroidManifest.xml:129:17-98
+	android:name
+		ADDED from [androidx.work:work-runtime:2.9.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cfbc11290a4358d7cb3b676f361a1979/transformed/work-runtime-2.9.1/AndroidManifest.xml:129:25-95
+receiver#androidx.work.impl.diagnostics.DiagnosticsReceiver
+ADDED from [androidx.work:work-runtime:2.9.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cfbc11290a4358d7cb3b676f361a1979/transformed/work-runtime-2.9.1/AndroidManifest.xml:132:9-142:20
+	android:enabled
+		ADDED from [androidx.work:work-runtime:2.9.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cfbc11290a4358d7cb3b676f361a1979/transformed/work-runtime-2.9.1/AndroidManifest.xml:135:13-35
+	android:exported
+		ADDED from [androidx.work:work-runtime:2.9.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cfbc11290a4358d7cb3b676f361a1979/transformed/work-runtime-2.9.1/AndroidManifest.xml:136:13-36
+	android:permission
+		ADDED from [androidx.work:work-runtime:2.9.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cfbc11290a4358d7cb3b676f361a1979/transformed/work-runtime-2.9.1/AndroidManifest.xml:137:13-57
+	tools:targetApi
+		ADDED from [androidx.work:work-runtime:2.9.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cfbc11290a4358d7cb3b676f361a1979/transformed/work-runtime-2.9.1/AndroidManifest.xml:138:13-32
+	android:directBootAware
+		ADDED from [androidx.work:work-runtime:2.9.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cfbc11290a4358d7cb3b676f361a1979/transformed/work-runtime-2.9.1/AndroidManifest.xml:134:13-44
+	android:name
+		ADDED from [androidx.work:work-runtime:2.9.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cfbc11290a4358d7cb3b676f361a1979/transformed/work-runtime-2.9.1/AndroidManifest.xml:133:13-78
+intent-filter#action:name:androidx.work.diagnostics.REQUEST_DIAGNOSTICS
+ADDED from [androidx.work:work-runtime:2.9.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cfbc11290a4358d7cb3b676f361a1979/transformed/work-runtime-2.9.1/AndroidManifest.xml:139:13-141:29
+action#androidx.work.diagnostics.REQUEST_DIAGNOSTICS
+ADDED from [androidx.work:work-runtime:2.9.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cfbc11290a4358d7cb3b676f361a1979/transformed/work-runtime-2.9.1/AndroidManifest.xml:140:17-88
+	android:name
+		ADDED from [androidx.work:work-runtime:2.9.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/cfbc11290a4358d7cb3b676f361a1979/transformed/work-runtime-2.9.1/AndroidManifest.xml:140:25-85
+meta-data#com.google.android.gms.version
+ADDED from [com.google.maps.android:android-maps-utils:3.10.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/8c1c093590a431121b62838c12cebb04/transformed/android-maps-utils-3.10.0/AndroidManifest.xml:23:9-25:69
+MERGED from [com.google.android.gms:play-services-basement:18.4.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/e3d6ca69365f1245e5f59965ee189ff8/transformed/play-services-basement-18.4.0/AndroidManifest.xml:6:9-122
+MERGED from [com.google.android.gms:play-services-basement:18.4.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/e3d6ca69365f1245e5f59965ee189ff8/transformed/play-services-basement-18.4.0/AndroidManifest.xml:6:9-122
+	android:value
+		ADDED from [com.google.maps.android:android-maps-utils:3.10.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/8c1c093590a431121b62838c12cebb04/transformed/android-maps-utils-3.10.0/AndroidManifest.xml:25:13-66
+	android:name
+		ADDED from [com.google.maps.android:android-maps-utils:3.10.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/8c1c093590a431121b62838c12cebb04/transformed/android-maps-utils-3.10.0/AndroidManifest.xml:24:13-58
+queries
+ADDED from [androidx.camera:camera-extensions:1.7.0-alpha02] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/ceaf89110f2f6b8ea2ec82fd4854f10e/transformed/camera-extensions-1.7.0-alpha02/AndroidManifest.xml:22:5-26:15
+MERGED from [com.google.android.gms:play-services-maps:19.1.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/e6ec427d553d8f0442f01775741f7bd3/transformed/play-services-maps-19.1.0/AndroidManifest.xml:27:5-30:15
+MERGED from [com.google.android.gms:play-services-maps:19.1.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/e6ec427d553d8f0442f01775741f7bd3/transformed/play-services-maps-19.1.0/AndroidManifest.xml:27:5-30:15
+intent#action:name:androidx.camera.extensions.action.VENDOR_ACTION
+ADDED from [androidx.camera:camera-extensions:1.7.0-alpha02] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/ceaf89110f2f6b8ea2ec82fd4854f10e/transformed/camera-extensions-1.7.0-alpha02/AndroidManifest.xml:23:9-25:18
+action#androidx.camera.extensions.action.VENDOR_ACTION
+ADDED from [androidx.camera:camera-extensions:1.7.0-alpha02] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/ceaf89110f2f6b8ea2ec82fd4854f10e/transformed/camera-extensions-1.7.0-alpha02/AndroidManifest.xml:24:13-86
+	android:name
+		ADDED from [androidx.camera:camera-extensions:1.7.0-alpha02] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/ceaf89110f2f6b8ea2ec82fd4854f10e/transformed/camera-extensions-1.7.0-alpha02/AndroidManifest.xml:24:21-83
+uses-library#androidx.camera.extensions.impl
+ADDED from [androidx.camera:camera-extensions:1.7.0-alpha02] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/ceaf89110f2f6b8ea2ec82fd4854f10e/transformed/camera-extensions-1.7.0-alpha02/AndroidManifest.xml:29:9-31:40
+	android:required
+		ADDED from [androidx.camera:camera-extensions:1.7.0-alpha02] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/ceaf89110f2f6b8ea2ec82fd4854f10e/transformed/camera-extensions-1.7.0-alpha02/AndroidManifest.xml:31:13-37
+	android:name
+		ADDED from [androidx.camera:camera-extensions:1.7.0-alpha02] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/ceaf89110f2f6b8ea2ec82fd4854f10e/transformed/camera-extensions-1.7.0-alpha02/AndroidManifest.xml:30:13-59
+service#androidx.camera.core.impl.MetadataHolderService
+ADDED from [androidx.camera:camera-camera2:1.7.0-alpha02] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/1e39a74d4ed1ae1965030050df09dfa8/transformed/camera-camera2-1.7.0-alpha02/AndroidManifest.xml:24:9-33:19
+MERGED from [androidx.camera:camera-core:1.7.0-alpha02] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/ca07a269539aae34a968667247cee21f/transformed/camera-core-1.7.0-alpha02/AndroidManifest.xml:29:9-33:78
+MERGED from [androidx.camera:camera-core:1.7.0-alpha02] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/ca07a269539aae34a968667247cee21f/transformed/camera-core-1.7.0-alpha02/AndroidManifest.xml:29:9-33:78
+	tools:node
+		ADDED from [androidx.camera:camera-camera2:1.7.0-alpha02] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/1e39a74d4ed1ae1965030050df09dfa8/transformed/camera-camera2-1.7.0-alpha02/AndroidManifest.xml:29:13-31
+	android:enabled
+		ADDED from [androidx.camera:camera-camera2:1.7.0-alpha02] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/1e39a74d4ed1ae1965030050df09dfa8/transformed/camera-camera2-1.7.0-alpha02/AndroidManifest.xml:26:13-36
+	android:exported
+		ADDED from [androidx.camera:camera-camera2:1.7.0-alpha02] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/1e39a74d4ed1ae1965030050df09dfa8/transformed/camera-camera2-1.7.0-alpha02/AndroidManifest.xml:27:13-37
+	tools:ignore
+		ADDED from [androidx.camera:camera-camera2:1.7.0-alpha02] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/1e39a74d4ed1ae1965030050df09dfa8/transformed/camera-camera2-1.7.0-alpha02/AndroidManifest.xml:28:13-75
+	android:name
+		ADDED from [androidx.camera:camera-camera2:1.7.0-alpha02] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/1e39a74d4ed1ae1965030050df09dfa8/transformed/camera-camera2-1.7.0-alpha02/AndroidManifest.xml:25:13-75
+meta-data#androidx.camera.core.impl.MetadataHolderService.DEFAULT_CONFIG_PROVIDER
+ADDED from [androidx.camera:camera-camera2:1.7.0-alpha02] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/1e39a74d4ed1ae1965030050df09dfa8/transformed/camera-camera2-1.7.0-alpha02/AndroidManifest.xml:30:13-32:89
+	android:value
+		ADDED from [androidx.camera:camera-camera2:1.7.0-alpha02] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/1e39a74d4ed1ae1965030050df09dfa8/transformed/camera-camera2-1.7.0-alpha02/AndroidManifest.xml:32:17-86
+	android:name
+		ADDED from [androidx.camera:camera-camera2:1.7.0-alpha02] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/1e39a74d4ed1ae1965030050df09dfa8/transformed/camera-camera2-1.7.0-alpha02/AndroidManifest.xml:31:17-103
+uses-feature#0x00020000
+ADDED from [com.google.android.gms:play-services-maps:19.1.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/e6ec427d553d8f0442f01775741f7bd3/transformed/play-services-maps-19.1.0/AndroidManifest.xml:22:5-24:33
+	android:glEsVersion
+		ADDED from [com.google.android.gms:play-services-maps:19.1.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/e6ec427d553d8f0442f01775741f7bd3/transformed/play-services-maps-19.1.0/AndroidManifest.xml:23:8-40
+	android:required
+		ADDED from [com.google.android.gms:play-services-maps:19.1.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/e6ec427d553d8f0442f01775741f7bd3/transformed/play-services-maps-19.1.0/AndroidManifest.xml:24:8-31
+package#com.google.android.apps.maps
+ADDED from [com.google.android.gms:play-services-maps:19.1.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/e6ec427d553d8f0442f01775741f7bd3/transformed/play-services-maps-19.1.0/AndroidManifest.xml:29:7-61
+	android:name
+		ADDED from [com.google.android.gms:play-services-maps:19.1.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/e6ec427d553d8f0442f01775741f7bd3/transformed/play-services-maps-19.1.0/AndroidManifest.xml:29:16-59
+uses-library#org.apache.http.legacy
+ADDED from [com.google.android.gms:play-services-maps:19.1.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/e6ec427d553d8f0442f01775741f7bd3/transformed/play-services-maps-19.1.0/AndroidManifest.xml:33:7-86
+	android:required
+		ADDED from [com.google.android.gms:play-services-maps:19.1.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/e6ec427d553d8f0442f01775741f7bd3/transformed/play-services-maps-19.1.0/AndroidManifest.xml:33:59-83
+	android:name
+		ADDED from [com.google.android.gms:play-services-maps:19.1.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/e6ec427d553d8f0442f01775741f7bd3/transformed/play-services-maps-19.1.0/AndroidManifest.xml:33:21-58
+activity#com.google.android.gms.common.api.GoogleApiActivity
+ADDED from [com.google.android.gms:play-services-base:18.5.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/8ba622aaeec82932b5a56955961a11ef/transformed/play-services-base-18.5.0/AndroidManifest.xml:5:9-173
+	android:exported
+		ADDED from [com.google.android.gms:play-services-base:18.5.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/8ba622aaeec82932b5a56955961a11ef/transformed/play-services-base-18.5.0/AndroidManifest.xml:5:146-170
+	android:theme
+		ADDED from [com.google.android.gms:play-services-base:18.5.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/8ba622aaeec82932b5a56955961a11ef/transformed/play-services-base-18.5.0/AndroidManifest.xml:5:86-145
+	android:name
+		ADDED from [com.google.android.gms:play-services-base:18.5.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/8ba622aaeec82932b5a56955961a11ef/transformed/play-services-base-18.5.0/AndroidManifest.xml:5:19-85
+uses-library#androidx.window.extensions
+ADDED from [androidx.window:window:1.5.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/39179a95061da83d4e635ddc46fd300b/transformed/window-1.5.1/AndroidManifest.xml:23:9-25:40
+	android:required
+		ADDED from [androidx.window:window:1.5.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/39179a95061da83d4e635ddc46fd300b/transformed/window-1.5.1/AndroidManifest.xml:25:13-37
+	android:name
+		ADDED from [androidx.window:window:1.5.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/39179a95061da83d4e635ddc46fd300b/transformed/window-1.5.1/AndroidManifest.xml:24:13-54
+uses-library#androidx.window.sidecar
+ADDED from [androidx.window:window:1.5.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/39179a95061da83d4e635ddc46fd300b/transformed/window-1.5.1/AndroidManifest.xml:26:9-28:40
+	android:required
+		ADDED from [androidx.window:window:1.5.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/39179a95061da83d4e635ddc46fd300b/transformed/window-1.5.1/AndroidManifest.xml:28:13-37
+	android:name
+		ADDED from [androidx.window:window:1.5.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/39179a95061da83d4e635ddc46fd300b/transformed/window-1.5.1/AndroidManifest.xml:27:13-51
+meta-data#androidx.emoji2.text.EmojiCompatInitializer
+ADDED from [androidx.emoji2:emoji2:1.3.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/28e696fcf5719a4a7310588b66326deb/transformed/emoji2-1.3.0/AndroidManifest.xml:29:13-31:52
+	android:value
+		ADDED from [androidx.emoji2:emoji2:1.3.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/28e696fcf5719a4a7310588b66326deb/transformed/emoji2-1.3.0/AndroidManifest.xml:31:17-49
+	android:name
+		ADDED from [androidx.emoji2:emoji2:1.3.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/28e696fcf5719a4a7310588b66326deb/transformed/emoji2-1.3.0/AndroidManifest.xml:30:17-75
+permission#${applicationId}.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION
+ADDED from [androidx.core:core:1.17.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/bda5dc46d04cebe26f23f5b9298bf3a5/transformed/core-1.17.0/AndroidManifest.xml:22:5-24:47
+	android:protectionLevel
+		ADDED from [androidx.core:core:1.17.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/bda5dc46d04cebe26f23f5b9298bf3a5/transformed/core-1.17.0/AndroidManifest.xml:24:9-44
+	android:name
+		ADDED from [androidx.core:core:1.17.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/bda5dc46d04cebe26f23f5b9298bf3a5/transformed/core-1.17.0/AndroidManifest.xml:23:9-81
+permission#com.crmmobile.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION
+ADDED from [androidx.core:core:1.17.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/bda5dc46d04cebe26f23f5b9298bf3a5/transformed/core-1.17.0/AndroidManifest.xml:22:5-24:47
+	android:protectionLevel
+		ADDED from [androidx.core:core:1.17.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/bda5dc46d04cebe26f23f5b9298bf3a5/transformed/core-1.17.0/AndroidManifest.xml:24:9-44
+	android:name
+		ADDED from [androidx.core:core:1.17.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/bda5dc46d04cebe26f23f5b9298bf3a5/transformed/core-1.17.0/AndroidManifest.xml:23:9-81
+uses-permission#${applicationId}.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION
+ADDED from [androidx.core:core:1.17.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/bda5dc46d04cebe26f23f5b9298bf3a5/transformed/core-1.17.0/AndroidManifest.xml:26:5-97
+	android:name
+		ADDED from [androidx.core:core:1.17.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/bda5dc46d04cebe26f23f5b9298bf3a5/transformed/core-1.17.0/AndroidManifest.xml:26:22-94
+uses-permission#com.crmmobile.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION
+ADDED from [androidx.core:core:1.17.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/bda5dc46d04cebe26f23f5b9298bf3a5/transformed/core-1.17.0/AndroidManifest.xml:26:5-97
+	android:name
+		ADDED from [androidx.core:core:1.17.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/bda5dc46d04cebe26f23f5b9298bf3a5/transformed/core-1.17.0/AndroidManifest.xml:26:22-94
+meta-data#androidx.lifecycle.ProcessLifecycleInitializer
+ADDED from [androidx.lifecycle:lifecycle-process:2.6.2] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/6455de05fb5326832daa27b51d0f3858/transformed/lifecycle-process-2.6.2/AndroidManifest.xml:29:13-31:52
+	android:value
+		ADDED from [androidx.lifecycle:lifecycle-process:2.6.2] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/6455de05fb5326832daa27b51d0f3858/transformed/lifecycle-process-2.6.2/AndroidManifest.xml:31:17-49
+	android:name
+		ADDED from [androidx.lifecycle:lifecycle-process:2.6.2] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/6455de05fb5326832daa27b51d0f3858/transformed/lifecycle-process-2.6.2/AndroidManifest.xml:30:17-78
+service#androidx.room.MultiInstanceInvalidationService
+ADDED from [androidx.room:room-runtime:2.5.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/1aa931eb04bf1d7b9fa4b3d0f5b4b1b6/transformed/room-runtime-2.5.0/AndroidManifest.xml:24:9-28:63
+	android:exported
+		ADDED from [androidx.room:room-runtime:2.5.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/1aa931eb04bf1d7b9fa4b3d0f5b4b1b6/transformed/room-runtime-2.5.0/AndroidManifest.xml:27:13-37
+	tools:ignore
+		ADDED from [androidx.room:room-runtime:2.5.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/1aa931eb04bf1d7b9fa4b3d0f5b4b1b6/transformed/room-runtime-2.5.0/AndroidManifest.xml:28:13-60
+	android:directBootAware
+		ADDED from [androidx.room:room-runtime:2.5.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/1aa931eb04bf1d7b9fa4b3d0f5b4b1b6/transformed/room-runtime-2.5.0/AndroidManifest.xml:26:13-43
+	android:name
+		ADDED from [androidx.room:room-runtime:2.5.0] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/1aa931eb04bf1d7b9fa4b3d0f5b4b1b6/transformed/room-runtime-2.5.0/AndroidManifest.xml:25:13-74
+meta-data#androidx.profileinstaller.ProfileInstallerInitializer
+ADDED from [androidx.profileinstaller:profileinstaller:1.3.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/6ef67b66dc1bdc1e721aa142990bbc99/transformed/profileinstaller-1.3.1/AndroidManifest.xml:29:13-31:52
+	android:value
+		ADDED from [androidx.profileinstaller:profileinstaller:1.3.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/6ef67b66dc1bdc1e721aa142990bbc99/transformed/profileinstaller-1.3.1/AndroidManifest.xml:31:17-49
+	android:name
+		ADDED from [androidx.profileinstaller:profileinstaller:1.3.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/6ef67b66dc1bdc1e721aa142990bbc99/transformed/profileinstaller-1.3.1/AndroidManifest.xml:30:17-85
+receiver#androidx.profileinstaller.ProfileInstallReceiver
+ADDED from [androidx.profileinstaller:profileinstaller:1.3.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/6ef67b66dc1bdc1e721aa142990bbc99/transformed/profileinstaller-1.3.1/AndroidManifest.xml:34:9-52:20
+	android:enabled
+		ADDED from [androidx.profileinstaller:profileinstaller:1.3.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/6ef67b66dc1bdc1e721aa142990bbc99/transformed/profileinstaller-1.3.1/AndroidManifest.xml:37:13-35
+	android:exported
+		ADDED from [androidx.profileinstaller:profileinstaller:1.3.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/6ef67b66dc1bdc1e721aa142990bbc99/transformed/profileinstaller-1.3.1/AndroidManifest.xml:38:13-36
+	android:permission
+		ADDED from [androidx.profileinstaller:profileinstaller:1.3.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/6ef67b66dc1bdc1e721aa142990bbc99/transformed/profileinstaller-1.3.1/AndroidManifest.xml:39:13-57
+	android:directBootAware
+		ADDED from [androidx.profileinstaller:profileinstaller:1.3.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/6ef67b66dc1bdc1e721aa142990bbc99/transformed/profileinstaller-1.3.1/AndroidManifest.xml:36:13-44
+	android:name
+		ADDED from [androidx.profileinstaller:profileinstaller:1.3.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/6ef67b66dc1bdc1e721aa142990bbc99/transformed/profileinstaller-1.3.1/AndroidManifest.xml:35:13-76
+intent-filter#action:name:androidx.profileinstaller.action.INSTALL_PROFILE
+ADDED from [androidx.profileinstaller:profileinstaller:1.3.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/6ef67b66dc1bdc1e721aa142990bbc99/transformed/profileinstaller-1.3.1/AndroidManifest.xml:40:13-42:29
+action#androidx.profileinstaller.action.INSTALL_PROFILE
+ADDED from [androidx.profileinstaller:profileinstaller:1.3.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/6ef67b66dc1bdc1e721aa142990bbc99/transformed/profileinstaller-1.3.1/AndroidManifest.xml:41:17-91
+	android:name
+		ADDED from [androidx.profileinstaller:profileinstaller:1.3.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/6ef67b66dc1bdc1e721aa142990bbc99/transformed/profileinstaller-1.3.1/AndroidManifest.xml:41:25-88
+intent-filter#action:name:androidx.profileinstaller.action.SKIP_FILE
+ADDED from [androidx.profileinstaller:profileinstaller:1.3.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/6ef67b66dc1bdc1e721aa142990bbc99/transformed/profileinstaller-1.3.1/AndroidManifest.xml:43:13-45:29
+action#androidx.profileinstaller.action.SKIP_FILE
+ADDED from [androidx.profileinstaller:profileinstaller:1.3.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/6ef67b66dc1bdc1e721aa142990bbc99/transformed/profileinstaller-1.3.1/AndroidManifest.xml:44:17-85
+	android:name
+		ADDED from [androidx.profileinstaller:profileinstaller:1.3.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/6ef67b66dc1bdc1e721aa142990bbc99/transformed/profileinstaller-1.3.1/AndroidManifest.xml:44:25-82
+intent-filter#action:name:androidx.profileinstaller.action.SAVE_PROFILE
+ADDED from [androidx.profileinstaller:profileinstaller:1.3.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/6ef67b66dc1bdc1e721aa142990bbc99/transformed/profileinstaller-1.3.1/AndroidManifest.xml:46:13-48:29
+action#androidx.profileinstaller.action.SAVE_PROFILE
+ADDED from [androidx.profileinstaller:profileinstaller:1.3.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/6ef67b66dc1bdc1e721aa142990bbc99/transformed/profileinstaller-1.3.1/AndroidManifest.xml:47:17-88
+	android:name
+		ADDED from [androidx.profileinstaller:profileinstaller:1.3.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/6ef67b66dc1bdc1e721aa142990bbc99/transformed/profileinstaller-1.3.1/AndroidManifest.xml:47:25-85
+intent-filter#action:name:androidx.profileinstaller.action.BENCHMARK_OPERATION
+ADDED from [androidx.profileinstaller:profileinstaller:1.3.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/6ef67b66dc1bdc1e721aa142990bbc99/transformed/profileinstaller-1.3.1/AndroidManifest.xml:49:13-51:29
+action#androidx.profileinstaller.action.BENCHMARK_OPERATION
+ADDED from [androidx.profileinstaller:profileinstaller:1.3.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/6ef67b66dc1bdc1e721aa142990bbc99/transformed/profileinstaller-1.3.1/AndroidManifest.xml:50:17-95
+	android:name
+		ADDED from [androidx.profileinstaller:profileinstaller:1.3.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/6ef67b66dc1bdc1e721aa142990bbc99/transformed/profileinstaller-1.3.1/AndroidManifest.xml:50:25-92
+meta-data#com.facebook.soloader.enabled
+ADDED from [com.facebook.soloader:soloader:0.12.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/d24b621da5898bd22d4b2070b09a9d57/transformed/soloader-0.12.1/AndroidManifest.xml:12:9-14:37
+	android:value
+		ADDED from [com.facebook.soloader:soloader:0.12.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/d24b621da5898bd22d4b2070b09a9d57/transformed/soloader-0.12.1/AndroidManifest.xml:14:13-34
+	android:name
+		ADDED from [com.facebook.soloader:soloader:0.12.1] /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/d24b621da5898bd22d4b2070b09a9d57/transformed/soloader-0.12.1/AndroidManifest.xml:13:13-57

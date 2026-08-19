@@ -1,10 +1,23 @@
 import 'package:flutter/material.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../constants/app_colors.dart';
 import '../../constants/app_text_styles.dart';
 import '../../models/geu/visit_planner_models.dart';
 import '../../services/geu/visit_planner_service.dart';
+import '../../services/geu/visit_sync_service.dart';
+import '../../services/geu/gps_service.dart';
+import '../../services/geu/active_visit_service.dart';
+import '../../services/geu/reverse_geocoding_service.dart';
+import '../../services/geu/visit_gps_mode_service.dart';
+import '../../services/geu/visit_gps_ping_service.dart';
+import '../../utils/wa_format.dart';
 import 'checkin_dialog.dart';
+import 'checkout_dialog.dart';
+import 'skip_mission_sheet.dart';
+import 'add_work_order_sheet.dart';
+import 'sync_status_screen.dart';
+import 'visit_history_screen.dart';
 
 /// FR-VP-01: mission hari ini, urut sort_order, tersedia offline dari cache
 /// terakhir dengan penanda waktu (§4 A1). Peta (FR-VP-02) dan check-in
@@ -20,6 +33,8 @@ class _MissionTodayScreenState extends State<MissionTodayScreen> {
   TodaysMission? _mission;
   String? _error;
   bool _isLoading = true;
+  final List<int> _activeWorkOrderIds = [];
+  bool _manualOffline = false;
 
   // shrinkWrap tap target so wrapped action rows don't get Material's
   // default 48dp minimum touch target, which overlapped adjacent rows'
@@ -33,6 +48,19 @@ class _MissionTodayScreenState extends State<MissionTodayScreen> {
   void initState() {
     super.initState();
     _load();
+    _loadGpsMode();
+    VisitGpsPingService.start();
+  }
+
+  @override
+  void dispose() {
+    VisitGpsPingService.stop();
+    super.dispose();
+  }
+
+  Future<void> _loadGpsMode() async {
+    final value = await VisitGpsModeService.isManualOffline();
+    if (mounted) setState(() => _manualOffline = value);
   }
 
   Future<void> _load() async {
@@ -64,22 +92,144 @@ class _MissionTodayScreenState extends State<MissionTodayScreen> {
         title: const Text('Mission Hari Ini'),
         backgroundColor: AppColors.primaryGreen,
         foregroundColor: AppColors.white,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.history),
+            tooltip: 'Riwayat kunjungan',
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const VisitHistoryScreen()),
+            ),
+          ),
+          FutureBuilder<List>(
+            future: VisitSyncService.pendingItems(),
+            builder: (_, snapshot) => IconButton(
+              icon: Badge(
+                isLabelVisible: (snapshot.data?.isNotEmpty ?? false),
+                label: Text('${snapshot.data?.length ?? 0}'),
+                child: const Icon(Icons.sync),
+              ),
+              tooltip: 'Status sinkronisasi',
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const SyncStatusScreen()),
+              ),
+            ),
+          ),
+          IconButton(
+            icon: Icon(_manualOffline ? Icons.cloud_off : Icons.cloud_queue),
+            tooltip: _manualOffline
+                ? 'Mode offline manual aktif'
+                : 'Aktifkan mode offline manual',
+            onPressed: () async {
+              final next = !_manualOffline;
+              await VisitGpsModeService.setManualOffline(next);
+              if (next) {
+                await VisitGpsPingService.stop();
+              } else {
+                await VisitGpsPingService.start();
+              }
+              if (mounted) setState(() => _manualOffline = next);
+            },
+          ),
+          if (_mission?.items.any((item) => item.hasCoordinates) ?? false)
+            IconButton(
+              icon: const Icon(Icons.map_outlined),
+              tooltip: 'Peta mission',
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => _MissionMapScreen(items: _mission!.items),
+                ),
+              ),
+            ),
+        ],
       ),
       body: RefreshIndicator(onRefresh: _load, child: _buildBody()),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _addPoi,
+        icon: const Icon(Icons.add_location_alt_outlined),
+        label: const Text('Tambah POI'),
+      ),
     );
   }
 
   Widget _buildBody() {
     if (_isLoading && _mission == null) {
-      return const Center(child: CircularProgressIndicator(color: AppColors.primaryGreen));
+      return const Center(
+        child: CircularProgressIndicator(color: AppColors.primaryGreen),
+      );
     }
     if (_error != null && _mission == null) {
       return _buildError();
     }
     final mission = _mission!;
+    final completed = mission.items
+        .where((item) => item.status.toUpperCase() == 'VISITED')
+        .length;
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
+        Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: AppColors.primaryGreen,
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '$completed / ${mission.items.length} kunjungan selesai',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 8),
+              LinearProgressIndicator(
+                value: mission.items.isEmpty
+                    ? 0
+                    : completed / mission.items.length,
+                minHeight: 7,
+                backgroundColor: Colors.white24,
+                valueColor: const AlwaysStoppedAnimation(
+                  AppColors.accentOrange,
+                ),
+              ),
+            ],
+          ),
+        ),
+        ValueListenableBuilder<ActiveVisitState>(
+          valueListenable: ActiveVisitService.current,
+          builder: (_, state, __) => state.isActive
+              ? Container(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppColors.accentOrange.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.place_outlined,
+                        color: AppColors.accentOrange,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          state.isPendingLocal
+                              ? 'Check-in tersimpan di perangkat dan menunggu sinkronisasi.'
+                              : 'Anda sedang check-in di lokasi supplier.',
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              : const SizedBox.shrink(),
+        ),
         if (mission.cachedAt != null) _buildCacheBanner(mission.cachedAt!),
         if (mission.items.isEmpty) _buildEmpty(),
         ...mission.items.map(_buildMissionCard),
@@ -94,9 +244,17 @@ class _MissionTodayScreenState extends State<MissionTodayScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.wifi_off, size: 48, color: AppColors.textSecondary),
+            const Icon(
+              Icons.wifi_off,
+              size: 48,
+              color: AppColors.textSecondary,
+            ),
             const SizedBox(height: 12),
-            Text(_error ?? 'Gagal memuat data', style: AppTextStyles.bodyMedium, textAlign: TextAlign.center),
+            Text(
+              _error ?? 'Gagal memuat data',
+              style: AppTextStyles.bodyMedium,
+              textAlign: TextAlign.center,
+            ),
             const SizedBox(height: 16),
             ElevatedButton(onPressed: _load, child: const Text('Coba lagi')),
           ],
@@ -110,9 +268,18 @@ class _MissionTodayScreenState extends State<MissionTodayScreen> {
       padding: const EdgeInsets.symmetric(vertical: 48),
       child: Column(
         children: [
-          const Icon(Icons.event_available, size: 48, color: AppColors.textSecondary),
+          const Icon(
+            Icons.event_available,
+            size: 48,
+            color: AppColors.textSecondary,
+          ),
           const SizedBox(height: 12),
-          Text('Belum ada mission hari ini', style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary)),
+          Text(
+            'Belum ada mission hari ini',
+            style: AppTextStyles.bodyMedium.copyWith(
+              color: AppColors.textSecondary,
+            ),
+          ),
         ],
       ),
     );
@@ -133,7 +300,10 @@ class _MissionTodayScreenState extends State<MissionTodayScreen> {
           const Icon(Icons.history, size: 16, color: AppColors.darkGrey),
           const SizedBox(width: 8),
           Expanded(
-            child: Text('Data per $formatted (offline)', style: AppTextStyles.caption),
+            child: Text(
+              'Data per $formatted (offline)',
+              style: AppTextStyles.caption,
+            ),
           ),
         ],
       ),
@@ -163,7 +333,9 @@ class _MissionTodayScreenState extends State<MissionTodayScreen> {
               Expanded(
                 child: Text(
                   item.supplierName,
-                  style: AppTextStyles.bodyLarge.copyWith(fontWeight: FontWeight.w600),
+                  style: AppTextStyles.bodyLarge.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
               Container(
@@ -174,13 +346,21 @@ class _MissionTodayScreenState extends State<MissionTodayScreen> {
                 ),
                 child: Text(
                   item.status,
-                  style: AppTextStyles.caption.copyWith(color: statusColor, fontWeight: FontWeight.w600),
+                  style: AppTextStyles.caption.copyWith(
+                    color: statusColor,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
             ],
           ),
           const SizedBox(height: 4),
-          Text(item.address, style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary)),
+          Text(
+            item.address,
+            style: AppTextStyles.bodyMedium.copyWith(
+              color: AppColors.textSecondary,
+            ),
+          ),
           const SizedBox(height: 10),
           Wrap(
             spacing: 4,
@@ -193,6 +373,13 @@ class _MissionTodayScreenState extends State<MissionTodayScreen> {
                   icon: const Icon(Icons.phone, size: 16),
                   label: const Text('Telepon'),
                 ),
+              if (item.supplierPhone.isNotEmpty)
+                TextButton.icon(
+                  style: _actionButtonStyle,
+                  onPressed: () => _whatsApp(item),
+                  icon: const Icon(Icons.chat_bubble_outline, size: 16),
+                  label: const Text('WhatsApp'),
+                ),
               if (item.hasCoordinates)
                 TextButton.icon(
                   style: _actionButtonStyle,
@@ -200,6 +387,18 @@ class _MissionTodayScreenState extends State<MissionTodayScreen> {
                   icon: const Icon(Icons.directions, size: 16),
                   label: const Text('Navigasi'),
                 ),
+              ValueListenableBuilder<ActiveVisitState>(
+                valueListenable: ActiveVisitService.current,
+                builder: (_, state, __) =>
+                    state.isActive && state.supplierId == item.supplierId
+                    ? TextButton.icon(
+                        style: _actionButtonStyle,
+                        onPressed: () => _addWorkOrder(item),
+                        icon: const Icon(Icons.note_add_outlined, size: 16),
+                        label: const Text('Tambah WO'),
+                      )
+                    : const SizedBox.shrink(),
+              ),
               if (item.status.toUpperCase() != 'VISITED' && item.hasCoordinates)
                 TextButton.icon(
                   style: _actionButtonStyle,
@@ -207,6 +406,45 @@ class _MissionTodayScreenState extends State<MissionTodayScreen> {
                   icon: const Icon(Icons.login, size: 16),
                   label: const Text('Check-in'),
                 ),
+              ValueListenableBuilder<ActiveVisitState>(
+                valueListenable: ActiveVisitService.current,
+                builder: (_, state, __) =>
+                    state.isActive && state.supplierId == item.supplierId
+                    ? TextButton.icon(
+                        style: _actionButtonStyle,
+                        onPressed: () => _checkout(item),
+                        icon: const Icon(Icons.logout, size: 16),
+                        label: const Text('Check-out'),
+                      )
+                    : const SizedBox.shrink(),
+              ),
+              if (item.status.toUpperCase() != 'VISITED' &&
+                  item.status.toUpperCase() != 'SKIPPED')
+                TextButton.icon(
+                  style: _actionButtonStyle,
+                  onPressed: () => _skip(item),
+                  icon: const Icon(Icons.skip_next_outlined, size: 16),
+                  label: const Text('Lewati'),
+                ),
+              ValueListenableBuilder<ActiveVisitState>(
+                valueListenable: ActiveVisitService.current,
+                builder: (_, state, __) =>
+                    state.isActive && state.supplierId == item.supplierId
+                    ? const SizedBox.shrink()
+                    : TextButton.icon(
+                        style: _actionButtonStyle,
+                        onPressed: () => _remove(item),
+                        icon: const Icon(
+                          Icons.delete_outline,
+                          size: 16,
+                          color: AppColors.error,
+                        ),
+                        label: const Text(
+                          'Hapus',
+                          style: TextStyle(color: AppColors.error),
+                        ),
+                      ),
+              ),
             ],
           ),
         ],
@@ -219,17 +457,393 @@ class _MissionTodayScreenState extends State<MissionTodayScreen> {
   }
 
   Future<void> _navigate(double lat, double lng) async {
-    await launchUrl(Uri.parse('https://www.google.com/maps/search/?api=1&query=$lat,$lng'));
+    await launchUrl(
+      Uri.parse('https://www.google.com/maps/search/?api=1&query=$lat,$lng'),
+    );
+  }
+
+  Future<void> _whatsApp(MissionItem item) async {
+    final message =
+        'Halo ${item.supplierName}, saya dari One Link terkait kunjungan hari ini.';
+    final launched = await launchUrl(
+      Uri.parse(waUrl(item.supplierPhone, text: message)),
+      mode: LaunchMode.externalApplication,
+    );
+    if (!launched && mounted)
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('WhatsApp tidak tersedia di perangkat ini.'),
+        ),
+      );
   }
 
   Future<void> _checkin(MissionItem item) async {
     final draft = await showCheckinDialog(context, item);
     if (draft == null || !mounted) return;
-    // Submission to POST /api/visits/checkin (with photo + Idempotency-Key)
-    // is the sync-engine task — this just confirms the gate passed.
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(
-      'Siap check-in (${(draft.distanceKm * 1000).round()}m'
-      '${draft.confirmFar ? ", confirm_far" : ""}) — menunggu foto & submit.',
-    )));
+    final address = await ReverseGeocodingService.resolve(
+      draft.fix.latitude,
+      draft.fix.longitude,
+    );
+    await VisitSyncService.enqueueCheckin(
+      supplierId: item.supplierId,
+      latitude: draft.fix.latitude,
+      longitude: draft.fix.longitude,
+      address: address,
+      photoPath: draft.photo.file.path,
+      gpsAccuracyMeters: draft.fix.accuracyMeters,
+      isMockLocation: draft.fix.isMocked,
+    );
+    ActiveVisitService.markPendingCheckin(item.supplierId);
+    await VisitSyncService.syncNow();
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'Check-in disimpan untuk sinkronisasi (${(draft.distanceKm * 1000).round()}m'
+          '${draft.confirmFar ? ", confirm_far" : ""}).',
+        ),
+      ),
+    );
   }
+
+  Future<void> _checkout(MissionItem item) async {
+    final draft = await showCheckoutDialog(context, item);
+    if (draft == null || !mounted) return;
+    final address = await ReverseGeocodingService.resolve(
+      draft.fix.latitude,
+      draft.fix.longitude,
+    );
+    await VisitSyncService.enqueueCheckout(
+      latitude: draft.fix.latitude,
+      longitude: draft.fix.longitude,
+      address: address,
+      notes: draft.notes,
+      photoPath: draft.photo.file.path,
+      workOrderIds: _activeWorkOrderIds,
+      gpsAccuracyMeters: draft.fix.accuracyMeters,
+      isMockLocation: draft.fix.isMocked,
+    );
+    await VisitSyncService.syncNow();
+    try {
+      await VisitPlannerService.updateMissionStatus(
+        planDetailId: item.planDetailId,
+        status: 'VISITED',
+      );
+      await _load();
+    } catch (_) {
+      // The check-out remains safely queued; status can be retried on refresh.
+    }
+    ActiveVisitService.markCheckoutQueued();
+    _activeWorkOrderIds.clear();
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Check-out disimpan untuk sinkronisasi.')),
+    );
+  }
+
+  Future<void> _skip(MissionItem item) async {
+    final draft = await showSkipMissionSheet(context, item);
+    if (draft == null || !mounted) return;
+    try {
+      await VisitPlannerService.updateMissionStatus(
+        planDetailId: item.planDetailId,
+        status: 'SKIPPED',
+        skipReason: draft.reason,
+        rescheduleDate: draft.rescheduleDate,
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Mission ditandai dilewati.')),
+      );
+      await _load();
+    } catch (error) {
+      if (mounted)
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.toString())));
+    }
+  }
+
+  Future<void> _addWorkOrder(MissionItem item) async {
+    final workOrderId = await showAddWorkOrderSheet(context, item);
+    if (workOrderId != null && mounted) {
+      setState(() => _activeWorkOrderIds.add(workOrderId));
+      _load();
+    }
+  }
+
+  Future<void> _remove(MissionItem item) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Hapus dari Mission?'),
+        content: Text(
+          '${item.supplierName} akan dihapus dari daftar mission hari ini.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Batal'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            style: FilledButton.styleFrom(backgroundColor: AppColors.error),
+            child: const Text('Hapus'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    try {
+      await VisitPlannerService.removeFromMission(item.planDetailId);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Item dihapus dari Mission.')),
+      );
+      await _load();
+    } catch (error) {
+      if (mounted)
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.toString())));
+    }
+  }
+
+  Future<void> _addPoi() async {
+    final name = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) {
+        final controller = TextEditingController();
+        return AlertDialog(
+          title: const Text('Tambah Titik (POI)'),
+          content: TextField(
+            controller: controller,
+            autofocus: true,
+            decoration: const InputDecoration(
+              labelText: 'Nama lokasi *',
+              hintText: 'Contoh: Warung Bu Siti',
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Batal'),
+            ),
+            FilledButton(
+              onPressed: () =>
+                  Navigator.pop(dialogContext, controller.text.trim()),
+              child: const Text('Pakai lokasi saat ini'),
+            ),
+          ],
+        );
+      },
+    );
+    if (name == null || name.isEmpty || !mounted) return;
+    try {
+      final fix = await GpsService.getCurrentFix();
+      final address = await ReverseGeocodingService.resolve(
+        fix.latitude,
+        fix.longitude,
+      );
+      await VisitPlannerService.addPoiToMission(
+        name: name,
+        latitude: fix.latitude,
+        longitude: fix.longitude,
+        address: address,
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('POI ditambahkan ke Mission.')),
+      );
+      await _load();
+    } catch (error) {
+      if (mounted)
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.toString())));
+    }
+  }
+}
+
+class _MissionMapScreen extends StatefulWidget {
+  final List<MissionItem> items;
+  const _MissionMapScreen({required this.items});
+
+  @override
+  State<_MissionMapScreen> createState() => _MissionMapScreenState();
+}
+
+class _MissionMapScreenState extends State<_MissionMapScreen> {
+  LatLng? _currentPosition;
+  GoogleMapController? _mapController;
+  MissionItem? _selectedItem;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCurrentPosition();
+  }
+
+  Future<void> _loadCurrentPosition() async {
+    try {
+      final fix = await GpsService.getCurrentFix();
+      if (mounted) {
+        setState(() => _currentPosition = LatLng(fix.latitude, fix.longitude));
+        _fitMarkers();
+      }
+    } catch (_) {
+      // Supplier markers remain useful when the user's GPS is unavailable.
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final mappable = widget.items.where((item) => item.hasCoordinates).toList();
+    final center =
+        _currentPosition ?? LatLng(mappable.first.lat!, mappable.first.lng!);
+    final markers = <Marker>{
+      ...mappable.map(
+        (item) => Marker(
+          markerId: MarkerId('supplier-${item.supplierId}'),
+          position: LatLng(item.lat!, item.lng!),
+          infoWindow: InfoWindow(
+            title: item.supplierName,
+            snippet: item.status,
+          ),
+          icon: BitmapDescriptor.defaultMarkerWithHue(_statusHue(item.status)),
+          onTap: () => setState(() => _selectedItem = item),
+        ),
+      ),
+      if (_currentPosition != null)
+        Marker(
+          markerId: const MarkerId('current-position'),
+          position: _currentPosition!,
+          infoWindow: const InfoWindow(title: 'Posisi Anda'),
+          icon: BitmapDescriptor.defaultMarkerWithHue(
+            BitmapDescriptor.hueAzure,
+          ),
+        ),
+    };
+    return Scaffold(
+      appBar: AppBar(title: const Text('Peta Mission')),
+      body: Stack(
+        children: [
+          GoogleMap(
+            initialCameraPosition: CameraPosition(target: center, zoom: 12),
+            markers: markers,
+            myLocationEnabled: _currentPosition != null,
+            myLocationButtonEnabled: true,
+            onMapCreated: (controller) {
+              _mapController = controller;
+              _fitMarkers();
+            },
+            onTap: (_) => setState(() => _selectedItem = null),
+          ),
+          if (_selectedItem != null)
+            SafeArea(
+              child: Align(
+                alignment: Alignment.bottomCenter,
+                child: Container(
+                  margin: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: AppColors.cardBackground,
+                    borderRadius: BorderRadius.circular(14),
+                    boxShadow: const [
+                      BoxShadow(color: Color(0x22000000), blurRadius: 10),
+                    ],
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              _selectedItem!.supplierName,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppTextStyles.bodyLarge.copyWith(
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            const SizedBox(height: 3),
+                            Text(
+                              _selectedItem!.status,
+                              style: AppTextStyles.caption.copyWith(
+                                color: _statusColor(_selectedItem!.status),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      TextButton.icon(
+                        onPressed: () => _navigateTo(_selectedItem!),
+                        icon: const Icon(Icons.directions_outlined),
+                        label: const Text('Navigasi'),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _navigateTo(MissionItem item) => launchUrl(
+    Uri.parse(
+      'https://www.google.com/maps/search/?api=1&query=${item.lat},${item.lng}',
+    ),
+  );
+
+  void _fitMarkers() {
+    final controller = _mapController;
+    final points = <LatLng>[
+      ...widget.items
+          .where((item) => item.hasCoordinates)
+          .map((item) => LatLng(item.lat!, item.lng!)),
+      if (_currentPosition != null) _currentPosition!,
+    ];
+    if (controller == null || points.isEmpty) return;
+    if (points.length == 1) {
+      controller.animateCamera(CameraUpdate.newLatLngZoom(points.first, 14));
+      return;
+    }
+    var south = points.first.latitude,
+        north = south,
+        west = points.first.longitude,
+        east = west;
+    for (final point in points.skip(1)) {
+      south = point.latitude < south ? point.latitude : south;
+      north = point.latitude > north ? point.latitude : north;
+      west = point.longitude < west ? point.longitude : west;
+      east = point.longitude > east ? point.longitude : east;
+    }
+    controller.animateCamera(
+      CameraUpdate.newLatLngBounds(
+        LatLngBounds(
+          southwest: LatLng(south, west),
+          northeast: LatLng(north, east),
+        ),
+        56,
+      ),
+    );
+  }
+
+  double _statusHue(String status) => switch (status.toUpperCase()) {
+    'VISITED' => BitmapDescriptor.hueGreen,
+    'SKIPPED' => BitmapDescriptor.hueRed,
+    'ACTIVE' => BitmapDescriptor.hueOrange,
+    _ => BitmapDescriptor.hueYellow,
+  };
+
+  Color _statusColor(String status) => switch (status.toUpperCase()) {
+    'VISITED' => AppColors.success,
+    'SKIPPED' => AppColors.error,
+    'ACTIVE' => AppColors.accentOrange,
+    _ => AppColors.info,
+  };
 }

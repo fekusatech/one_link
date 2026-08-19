@@ -1,12 +1,16 @@
+import 'dart:async';
+
+import 'package:app_links/app_links.dart';
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../constants/app_colors.dart';
 import '../constants/app_text_styles.dart';
 import '../config/app_config.dart';
-import '../services/update_service.dart';
 import '../services/auth_service.dart';
 import '../services/user_storage.dart';
 import '../services/persistent_auth_service.dart';
 import '../services/geu/geu_auth_service.dart';
+import '../services/auth_debug_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -19,21 +23,131 @@ class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
+  final _appLinks = AppLinks();
   bool _isLoading = false;
+  bool _isGoogleLoading = false;
   bool _obscurePassword = true;
+  StreamSubscription<Uri>? _ssoLinkSubscription;
+  final Set<String> _handledSsoCodes = {};
+
 
   @override
   void initState() {
     super.initState();
+    unawaited(_listenForSsoCallback());
     // Update check hanya dilakukan di dashboard setelah login berhasil
     // Tidak perlu cek di sini karena belum ada token
   }
 
   @override
   void dispose() {
+    _ssoLinkSubscription?.cancel();
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
+  }
+
+  Future<void> _listenForSsoCallback() async {
+    _ssoLinkSubscription = _appLinks.uriLinkStream.listen(
+      _handleSsoCallback,
+      onError: (_) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Tautan login tidak dapat dibuka.')),
+        );
+      },
+    );
+
+    final initialLink = await _appLinks.getInitialLink();
+    if (initialLink != null) await _handleSsoCallback(initialLink);
+  }
+
+  Future<void> _handleSsoCallback(Uri uri) async {
+    if (uri.scheme != 'onelink' ||
+        uri.host != 'auth' ||
+        uri.path != '/callback') {
+      return;
+    }
+    final code = uri.queryParameters['code'];
+    if (code == null || code.isEmpty || !_handledSsoCodes.add(code)) return;
+
+    if (mounted) setState(() => _isGoogleLoading = true);
+    try {
+      final geuUser = await GeuAuthService.loginWithSsoCode(code);
+
+      final userMap = {
+        'id': geuUser.id,
+        'name': geuUser.name,
+        'email': geuUser.email,
+        'phone': '',
+        'groups': geuUser.roles,
+        'roles': geuUser.roles,
+      };
+
+      await UserStorage.saveUser(user: userMap, token: '');
+      await PersistentAuthService.instance.saveLoginData(
+        token: '',
+        userId: geuUser.id.toString(),
+        userName: geuUser.name,
+        userPhone: '',
+        userEmail: geuUser.email,
+        tokenExpiry: DateTime.now().add(const Duration(days: 30)).toIso8601String(),
+      );
+
+      if (!mounted) return;
+      Navigator.pushNamedAndRemoveUntil(
+        context,
+        '/role-selection',
+        (route) => false,
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(error.toString().replaceFirst('Exception: ', '')),
+          backgroundColor: AppColors.error,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isGoogleLoading = false);
+    }
+  }
+
+  static final Uri _googleLoginUri = Uri.https(
+    'login.greenenergiutama.co.id',
+    '/api/auth/google/start',
+    {'app_redirect': 'onelink://auth/callback'},
+  );
+
+  Future<void> _startGoogleLogin() async {
+    if (_isLoading || _isGoogleLoading) return;
+    setState(() => _isGoogleLoading = true);
+    try {
+      final opened = await launchUrl(
+        _googleLoginUri,
+        mode: LaunchMode.externalApplication,
+      );
+      if (!opened && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Browser tidak tersedia untuk melanjutkan login Google.',
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Gagal memulai login Google: $e'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isGoogleLoading = false);
+    }
   }
 
   Future<void> _silentGeuLogin(String email, String password) async {
@@ -64,7 +178,16 @@ class _LoginScreenState extends State<LoginScreen> {
         if (response['data'] != null) {
           final data = response['data'];
 
-          final userMap = data['user'] ?? data;
+          final rawUser = data['user'] ?? data;
+          final userMap = Map<String, dynamic>.from(rawUser as Map);
+          // Some ERP login responses place groups beside `user`; preserve
+          // them in the canonical profile used by RoleSelectionScreen.
+          if (userMap['groups'] == null && data['groups'] is List) {
+            userMap['groups'] = data['groups'];
+          }
+          if (userMap['groups'] == null && data['roles'] is List) {
+            userMap['groups'] = data['roles'];
+          }
           final authMap = data['auth'] ?? {};
 
           final token =
@@ -74,6 +197,9 @@ class _LoginScreenState extends State<LoginScreen> {
               DateTime.now().add(const Duration(days: 30)).toIso8601String();
 
           await UserStorage.saveUser(user: userMap, token: token);
+          // Remove the obsolete debug file as a further safeguard for older
+          // builds that previously used it to decide roles.
+          await AuthDebugService.clearAuthFile();
           await PersistentAuthService.instance.saveLoginData(
             token: token,
             userId: userMap['id']?.toString() ?? '',
@@ -87,8 +213,12 @@ class _LoginScreenState extends State<LoginScreen> {
           // Planner (separate backend, see doc.md) — never blocks login,
           // never surfaces its own error; those screens just won't have
           // data if this silently fails.
-          _silentGeuLogin(email, password);
+          // Wait until Canvassing has replaced its persisted cookie/profile;
+          // navigating first could briefly show the prior user's data.
+          await _silentGeuLogin(email, password);
         }
+
+        if (!mounted) return;
 
         Navigator.pushNamedAndRemoveUntil(
           context,
@@ -150,7 +280,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           borderRadius: BorderRadius.circular(16),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.1),
+                              color: Colors.black.withValues(alpha: 0.1),
                               blurRadius: 10,
                               offset: const Offset(0, 5),
                             ),
@@ -311,6 +441,66 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
 
+                  const SizedBox(height: 16),
+
+                  // Divider "Atau"
+                  Row(
+                    children: [
+                      const Expanded(child: Divider(color: AppColors.lightGrey)),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: Text(
+                          'Atau masuk dengan',
+                          style: AppTextStyles.caption.copyWith(color: AppColors.grey),
+                        ),
+                      ),
+                      const Expanded(child: Divider(color: AppColors.lightGrey)),
+                    ],
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // Tombol Google Login
+                  SizedBox(
+                    width: double.infinity,
+                    height: 56,
+                    child: OutlinedButton(
+                      onPressed: (_isLoading || _isGoogleLoading) ? null : _startGoogleLogin,
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: AppColors.borderColor),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                      ),
+                      child: _isGoogleLoading
+                          ? const SizedBox(
+                              width: 24,
+                              height: 24,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: AppColors.primaryGreen,
+                              ),
+                            )
+                          : Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(
+                                  Icons.g_mobiledata,
+                                  size: 32,
+                                  color: AppColors.primaryGreen,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'Masuk dengan Google',
+                                  style: AppTextStyles.button.copyWith(
+                                    color: AppColors.textPrimary,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                    ),
+                  ),
                   const Spacer(),
 
                   // Footer text

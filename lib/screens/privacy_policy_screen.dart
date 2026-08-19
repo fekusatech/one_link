@@ -27,7 +27,7 @@ class PrivacyPolicyScreen extends StatelessWidget {
           children: [
             _buildSection('Penggunaan Data Lokasi', [
               'Aplikasi One Link menggunakan data lokasi GPS Anda untuk:',
-              '• Melacak rute pengantaran sampah secara real-time',
+              '• Membantu navigasi rute pengantaran saat tugas aktif',
               '• Menampilkan supplier terdekat dari posisi Anda',
               '• Verifikasi kehadiran di lokasi penjemputan',
               '• Optimasi rute untuk efisiensi operasional',
@@ -62,19 +62,19 @@ class PrivacyPolicyScreen extends StatelessWidget {
             ]),
             const SizedBox(height: 24),
 
-            _buildSection('Tracking Background', [
-              'Aplikasi dapat melacak lokasi di background hanya ketika:',
+            _buildSection('Akses Lokasi Saat Aplikasi Tidak Dibuka', [
+              'Aplikasi dapat menggunakan lokasi saat tidak dibuka hanya ketika:',
               '• Anda sedang dalam mode pengantaran aktif',
-              '• Fitur tracking diaktifkan secara manual',
-              '• Notifikasi tracking ditampilkan di status bar',
-              '• Anda dapat menghentikan tracking kapan saja',
+              '• Akses lokasi telah Anda setujui',
+              '• Notifikasi penggunaan lokasi ditampilkan di status bar',
+              '• Anda dapat mencabut izin lokasi kapan saja',
             ]),
             const SizedBox(height: 24),
 
             _buildSection('Transparansi', [
               'Kami berkomitmen untuk:',
               '• Memberikan informasi jelas tentang penggunaan data',
-              '• Meminta persetujuan eksplisit sebelum tracking',
+              '• Meminta persetujuan eksplisit sebelum menggunakan lokasi',
               '• Memberikan kontrol penuh kepada pengguna',
               '• Mematuhi regulasi perlindungan data',
             ]),

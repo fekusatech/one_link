@@ -1,4 +1,5 @@
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class PersistentAuthService {
   static const String _tokenKey = 'auth_token';
@@ -15,6 +16,7 @@ class PersistentAuthService {
   PersistentAuthService._();
 
   SharedPreferences? _prefs;
+  static const _secureStorage = FlutterSecureStorage();
 
   Future<void> _initPrefs() async {
     _prefs ??= await SharedPreferences.getInstance();
@@ -33,13 +35,13 @@ class PersistentAuthService {
       await _initPrefs();
 
       await Future.wait([
-        _prefs!.setString(_tokenKey, token),
         _prefs!.setString(_userIdKey, userId),
         _prefs!.setString(_userNameKey, userName),
         _prefs!.setString(_userPhoneKey, userPhone),
         _prefs!.setString(_userEmailKey, userEmail),
         _prefs!.setString(_tokenExpiryKey, tokenExpiry),
       ]);
+      await _secureStorage.write(key: _tokenKey, value: token);
 
       print('✅ Auth data saved successfully');
       return true;
@@ -52,7 +54,15 @@ class PersistentAuthService {
   /// Ambil token yang tersimpan
   Future<String?> getToken() async {
     await _initPrefs();
-    return _prefs!.getString(_tokenKey);
+    final secure = await _secureStorage.read(key: _tokenKey);
+    if (secure != null) return secure;
+    // One-time migration from legacy plaintext preferences.
+    final legacy = _prefs!.getString(_tokenKey);
+    if (legacy != null) {
+      await _secureStorage.write(key: _tokenKey, value: legacy);
+      await _prefs!.remove(_tokenKey);
+    }
+    return legacy;
   }
 
   /// Ambil user ID yang tersimpan
@@ -90,7 +100,7 @@ class PersistentAuthService {
     try {
       await _initPrefs();
 
-      final token = _prefs!.getString(_tokenKey);
+      final token = await getToken();
       final tokenExpiry = _prefs!.getString(_tokenExpiryKey);
 
       if (token == null || tokenExpiry == null) {
@@ -127,13 +137,13 @@ class PersistentAuthService {
       await _initPrefs();
 
       await Future.wait([
-        _prefs!.remove(_tokenKey),
         _prefs!.remove(_userIdKey),
         _prefs!.remove(_userNameKey),
         _prefs!.remove(_userPhoneKey),
         _prefs!.remove(_userEmailKey),
         _prefs!.remove(_tokenExpiryKey),
       ]);
+      await _secureStorage.delete(key: _tokenKey);
 
       print('✅ Auth data cleared successfully');
       return true;
@@ -148,7 +158,7 @@ class PersistentAuthService {
     await _initPrefs();
 
     return {
-      'token': _prefs!.getString(_tokenKey),
+      'token': await getToken(),
       'userId': _prefs!.getString(_userIdKey),
       'userName': _prefs!.getString(_userNameKey),
       'userPhone': _prefs!.getString(_userPhoneKey),
@@ -184,10 +194,8 @@ class PersistentAuthService {
     try {
       await _initPrefs();
 
-      await Future.wait([
-        _prefs!.setString(_tokenKey, newToken),
-        _prefs!.setString(_tokenExpiryKey, newExpiry),
-      ]);
+      await Future.wait([_prefs!.setString(_tokenExpiryKey, newExpiry)]);
+      await _secureStorage.write(key: _tokenKey, value: newToken);
 
       print('✅ Token updated successfully');
       return true;

@@ -1,0 +1,76 @@
+import 'package:flutter/material.dart';
+import '../../services/geu/pickup_service.dart';
+import 'pickup_detail_screen.dart';
+import 'pickup_request_screen.dart';
+
+class PickupListScreen extends StatefulWidget {
+  const PickupListScreen({super.key});
+  @override
+  State<PickupListScreen> createState() => _PickupListScreenState();
+}
+
+class _PickupListScreenState extends State<PickupListScreen> {
+  List<PickupSummary> items = [];
+  bool loading = true;
+  String status = '';
+  @override
+  void initState() {
+    super.initState();
+    load();
+  }
+
+  Future<void> load() async {
+    setState(() => loading = true);
+    try {
+      final v = await PickupService.list(status: status);
+      if (mounted) setState(() => items = v);
+    } finally {
+      if (mounted) setState(() => loading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext c) => Scaffold(
+    appBar: AppBar(
+      title: const Text('Pickup'),
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.add),
+          tooltip: 'Request pickup',
+          onPressed: () async {
+            await Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const PickupRequestScreen()),
+            );
+            await load();
+          },
+        ),
+      ],
+    ),
+    body: RefreshIndicator(
+      onRefresh: load,
+      child: loading
+          ? const Center(child: CircularProgressIndicator())
+          : ListView.builder(
+              itemCount: items.length,
+              itemBuilder: (_, i) {
+                final x = items[i];
+                return Card(
+                  child: ListTile(
+                    title: Text(x.code),
+                    subtitle: Text('${x.date} • ${x.warehouse}\n${x.zone}'),
+                    isThreeLine: true,
+                    trailing: Text(x.status),
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => PickupDetailScreen(id: x.id),
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+    ),
+  );
+}

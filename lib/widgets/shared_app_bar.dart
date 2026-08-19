@@ -2,20 +2,62 @@ import 'package:flutter/material.dart';
 import '../constants/app_colors.dart';
 import '../constants/app_text_styles.dart';
 import '../services/role_management_service.dart';
-import '../screens/qr_scanner_screen.dart';
-import '../services/persistent_auth_service.dart';
+import '../services/user_storage.dart';
+import '../services/impersonation_service.dart';
 
-class SharedAppBar extends StatelessWidget implements PreferredSizeWidget {
+class SharedAppBar extends StatefulWidget implements PreferredSizeWidget {
   final String dashboardType; // 'driver' or 'sales'
-  final VoidCallback? onQRResult;
   final VoidCallback? onNotificationTap;
 
   const SharedAppBar({
     super.key,
     required this.dashboardType,
-    this.onQRResult,
     this.onNotificationTap,
   });
+
+  @override
+  State<SharedAppBar> createState() => _SharedAppBarState();
+
+  @override
+  Size get preferredSize => const Size.fromHeight(kToolbarHeight);
+}
+
+class _SharedAppBarState extends State<SharedAppBar> {
+  bool _canSwitchRole = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkSwitchPermission();
+  }
+
+  Future<void> _checkSwitchPermission() async {
+    bool canSwitch = RoleManagementService.isAdmin();
+
+    if (!canSwitch) {
+      final user = await UserStorage.getUser();
+      if (user != null) {
+        final groups = user['groups'] as List<dynamic>? ?? [];
+        final roles = user['roles'] as List<dynamic>? ?? [];
+        final combined = [...groups, ...roles].map((e) => e.toString().toLowerCase()).join(' ');
+        if (combined.contains('admin') ||
+            combined.contains('developer') ||
+            combined.contains('super')) {
+          canSwitch = true;
+        }
+      }
+    }
+
+    if (!canSwitch) {
+      canSwitch = await ImpersonationService.canImpersonate();
+    }
+
+    if (mounted) {
+      setState(() {
+        _canSwitchRole = canSwitch;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -30,108 +72,30 @@ class SharedAppBar extends StatelessWidget implements PreferredSizeWidget {
         ),
       ),
       actions: [
-        // QR Scanner button (only for driver dashboard)
-        if (dashboardType == 'driver')
-          IconButton(
-            icon: const Icon(Icons.qr_code_scanner),
-            onPressed: () async {
-              final result = await Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const QRScannerScreen(),
-                ),
-              );
-
-              if (result != null && onQRResult != null) {
-                onQRResult!();
-              }
-            },
-            color: AppColors.primaryGreen,
-          ),
-
-        // Notification button (only for sales dashboard)
-        if (dashboardType == 'sales')
-          IconButton(
-            icon: const Icon(Icons.notifications_outlined),
-            color: AppColors.primaryGreen,
-            onPressed: onNotificationTap,
-          ),
+        IconButton(
+          icon: const Icon(Icons.notifications_outlined),
+          color: AppColors.primaryGreen,
+          onPressed: widget.onNotificationTap,
+          tooltip: 'Notifikasi',
+        ),
 
         // Admin switch button (for both dashboards)
-        if (RoleManagementService.isAdmin())
+        if (_canSwitchRole)
           IconButton(
-            icon: const Icon(Icons.swap_horiz),
+            icon: const Icon(Icons.swap_horiz_rounded, size: 28),
             onPressed: () {
-              if (dashboardType == 'driver') {
+              if (widget.dashboardType == 'driver') {
                 Navigator.pushReplacementNamed(context, '/sales-dashboard');
               } else {
                 Navigator.pushReplacementNamed(context, '/driver-dashboard');
               }
             },
             color: AppColors.primaryGreen,
-            tooltip: dashboardType == 'driver'
-                ? 'Switch to Sales Dashboard'
-                : 'Switch to Driver Dashboard',
-          ),
-
-        // Menu button (only for driver dashboard)
-        if (dashboardType == 'driver')
-          PopupMenuButton<String>(
-            icon: const Icon(Icons.more_vert),
-            iconColor: AppColors.primaryGreen,
-            onSelected: (value) async {
-              if (value == 'logout') {
-                _showLogoutDialog(context);
-              }
-            },
-            itemBuilder: (context) => [
-              const PopupMenuItem(
-                value: 'logout',
-                child: Row(
-                  children: [
-                    Icon(Icons.logout, color: AppColors.error),
-                    SizedBox(width: 8),
-                    Text('Logout'),
-                  ],
-                ),
-              ),
-            ],
+            tooltip: widget.dashboardType == 'driver'
+                ? 'Pindah ke Sales Dashboard'
+                : 'Pindah ke Driver Dashboard',
           ),
       ],
     );
   }
-
-  void _showLogoutDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Konfirmasi Logout'),
-          content: const Text('Apakah Anda yakin ingin keluar?'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Batal'),
-            ),
-            TextButton(
-              onPressed: () async {
-                Navigator.of(context).pop();
-                await PersistentAuthService.instance.clearAuthData();
-                if (context.mounted) {
-                  Navigator.pushReplacementNamed(context, '/login');
-                }
-              },
-              child: const Text(
-                'Logout',
-                style: TextStyle(color: AppColors.error),
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  @override
-  Size get preferredSize => const Size.fromHeight(kToolbarHeight);
 }

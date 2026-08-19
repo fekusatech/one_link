@@ -1,0 +1,7 @@
+int drawable rn_edit_text_material 0x0
+int integer react_native_dev_server_port 0x0
+int mipmap ic_launcher 0x0
+int mipmap ic_launcher_round 0x0
+int string app_name 0x0
+int string react_native_dev_server_ip 0x0
+int style AppTheme 0x0

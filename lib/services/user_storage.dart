@@ -1,10 +1,12 @@
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'dart:convert';
 
 class UserStorage {
   static const String _keyUser = 'user_data';
   static const String _keyToken = 'auth_token';
   static const String _keyPhone = 'user_phone';
+  static const _secureStorage = FlutterSecureStorage();
 
   // Save user data after login
   static Future<void> saveUser({
@@ -13,7 +15,7 @@ class UserStorage {
   }) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_keyUser, jsonEncode(user));
-    await prefs.setString(_keyToken, token);
+    await _secureStorage.write(key: _keyToken, value: token);
     await prefs.setString(_keyPhone, user['phone'] ?? '');
   }
 
@@ -30,7 +32,14 @@ class UserStorage {
   // Get token
   static Future<String?> getToken() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_keyToken);
+    final secure = await _secureStorage.read(key: _keyToken);
+    if (secure != null) return secure;
+    final legacy = prefs.getString(_keyToken);
+    if (legacy != null) {
+      await _secureStorage.write(key: _keyToken, value: legacy);
+      await prefs.remove(_keyToken);
+    }
+    return legacy;
   }
 
   // Get user name
@@ -140,11 +149,14 @@ class UserStorage {
   static Future<void> clearUser() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_keyUser);
-    await prefs.remove(_keyToken);
+    await _secureStorage.delete(key: _keyToken);
     await prefs.remove(_keyPhone);
-    // Note: Keep _keyLocationConsent, _keyLocationConsentDate, and _keyMandatoryGpsConsent 
-    // to preserve consent across sessions on the same device.
-    // Keep _keyAppFirstRun to maintain first-run experience
+
+    // Clear all user-scoped cached Surat Jalan data
+    final keys = prefs.getKeys().where((k) => k.startsWith('tms_cached_today_surat_jalan_json_')).toList();
+    for (var k in keys) {
+      await prefs.remove(k);
+    }
   }
 
   // Check if user is logged in

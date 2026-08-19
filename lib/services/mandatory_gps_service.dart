@@ -11,14 +11,22 @@ class MandatoryGpsService {
 
   /// Check if user needs to go through mandatory GPS consent flow
   Future<bool> needsMandatoryGpsConsent() async {
+    bool isLoggedIn = await UserStorage.isLoggedIn();
+    if (!isLoggedIn) return false;
+
     // Check if user has already given mandatory consent
     bool hasConsent = await UserStorage.hasMandatoryGpsConsent();
+    if (hasConsent) return false;
 
-    // Check if user is logged in (only require GPS after login)
-    bool isLoggedIn = await UserStorage.isLoggedIn();
+    // Check if system location permissions are ALREADY granted on device (whileInUse or always)
+    bool systemGranted = await hasSystemLocationPermissions();
+    if (systemGranted) {
+      await UserStorage.setLocationTrackingConsent(true);
+      await UserStorage.setMandatoryGpsConsentGiven(true);
+      return false; // Already granted in Android system, skip popup!
+    }
 
-    // Only require GPS consent for logged in users who haven't given consent
-    return isLoggedIn && !hasConsent;
+    return false; // Never block logged-in user on app launch after force stop!
   }
 
   /// Check if app can proceed to main screens
@@ -30,7 +38,16 @@ class MandatoryGpsService {
     }
 
     bool hasConsent = await UserStorage.hasMandatoryGpsConsent();
-    return hasConsent; // Must have GPS consent to proceed
+    if (hasConsent) return true;
+
+    bool systemGranted = await hasSystemLocationPermissions();
+    if (systemGranted) {
+      await UserStorage.setLocationTrackingConsent(true);
+      await UserStorage.setMandatoryGpsConsentGiven(true);
+      return true;
+    }
+
+    return false;
   }
 
   /// Grant mandatory GPS consent and start tracking

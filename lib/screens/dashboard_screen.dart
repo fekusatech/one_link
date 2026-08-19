@@ -1,23 +1,31 @@
 import 'package:flutter/material.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
+import 'package:geolocator/geolocator.dart';
+import 'dart:async';
 import 'dart:math' as math;
+import '../services/offline_sync_service.dart';
 import '../constants/app_colors.dart';
 import '../constants/app_text_styles.dart';
 import '../models/surat_jalan.dart';
 import '../services/surat_jalan_service.dart';
+import '../services/geu/surat_jalan_service.dart';
+import '../services/geu/visit_navigation_service.dart';
+import '../services/location_service.dart';
 import 'surat_jalan_detail_screen.dart';
 import '../services/persistent_auth_service.dart';
 import '../services/user_storage.dart';
 import 'navigation_screen.dart';
-import 'calendar_screen.dart';
 import 'notification_screen.dart';
+import 'tms/driver_settlement_list_screen.dart';
+import 'tms/driver_movement_screen.dart';
 import 'profile_screen.dart';
-import 'qr_scanner_screen.dart';
-import '../services/global_debug_utils.dart';
-import '../services/role_management_service.dart';
+import 'pickup_history_screen.dart';
 import '../widgets/shared_bottom_navbar.dart';
 import '../widgets/shared_app_bar.dart';
 import '../widgets/gps_compliance_widget.dart';
+import '../widgets/impersonation_banner.dart';
+import '../widgets/dynamic_pickup_map_widget.dart';
 import '../services/update_service.dart';
 import '../services/location_tracking_service.dart';
 import '../services/driver_tracking_service.dart';
@@ -62,164 +70,29 @@ class _DashboardScreenState extends State<DashboardScreen> {
     });
   }
 
-  void _handleScanResult(Map<String, String> locationData) {
-    // Show success message
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Lokasi "${locationData['name']}" berhasil ditambahkan!'),
-        backgroundColor: AppColors.primaryGreen,
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
-
-    // TODO: Add location to database/list
-    // For now, just show success feedback
-  }
-
-  void _showLogoutDialog() {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Row(
-            children: [
-              Icon(Icons.logout, color: Colors.red),
-              SizedBox(width: 8),
-              Text('Konfirmasi Logout'),
-            ],
-          ),
-          content: const Text('Apakah Anda yakin ingin keluar dari aplikasi?'),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop(); // Close dialog
-              },
-              child: const Text('Batal'),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                Navigator.of(context).pop(); // Close dialog
-
-                // Stop location tracking on logout
-                await LocationTrackingService.instance.stopTracking();
-                await UserStorage.setLocationTrackingConsent(false);
-                print('📍 Stopped location tracking on logout');
-
-                // Clear auth data
-                await PersistentAuthService.instance.clearAuthData();
-                await UserStorage.clearUser();
-
-                // Navigate to login screen
-                if (mounted) {
-                  Navigator.pushNamedAndRemoveUntil(
-                    context,
-                    '/login',
-                    (route) => false,
-                  );
-                }
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red,
-                foregroundColor: Colors.white,
-              ),
-              child: const Text('Logout'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     // List of screens
     final List<Widget> screens = [
       const _HomeScreen(),
-      const CalendarScreen(),
-      const NotificationScreen(),
+      const PickupHistoryScreen(),
       const ProfileScreen(),
     ];
 
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: _selectedIndex == 0
-          ? AppBar(
-              backgroundColor: AppColors.white,
-              elevation: 0,
-              title: Text(
-                'One Link',
-                style: AppTextStyles.h4.copyWith(
-                  color: AppColors.primaryGreen,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              actions: [
-                IconButton(
-                  icon: const Icon(Icons.qr_code_scanner),
-                  onPressed: () async {
-                    // Navigate to QR Scanner
-                    final result = await Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const QRScannerScreen(),
-                      ),
-                    );
-
-                    // Handle scan result
-                    if (result != null) {
-                      _handleScanResult(result);
-                    }
-                  },
-                  color: AppColors.primaryGreen,
-                ),
-                // Admin switch button
-                if (RoleManagementService.isAdmin())
-                  IconButton(
-                    icon: const Icon(Icons.swap_horiz),
-                    onPressed: () {
-                      Navigator.pushReplacementNamed(
-                        context,
-                        '/sales-dashboard',
-                      );
-                    },
-                    color: AppColors.primaryGreen,
-                    tooltip: 'Switch to Sales Dashboard',
-                  ),
-                PopupMenuButton<String>(
-                  icon: const Icon(Icons.more_vert),
-                  iconColor: AppColors.primaryGreen,
-                  onSelected: (value) async {
-                    if (value == 'logout') {
-                      _showLogoutDialog();
-                    }
-                  },
-                  itemBuilder: (context) => [
-                    const PopupMenuItem(
-                      value: 'logout',
-                      child: Row(
-                        children: [
-                          Icon(Icons.logout, color: Colors.red),
-                          SizedBox(width: 8),
-                          Text('Logout'),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                IconButton(
-                  icon: const Icon(Icons.notifications_outlined),
-                  onPressed: () {
-                    setState(() {
-                      _selectedIndex = 2;
-                    });
-                  },
-                  color: AppColors.primaryGreen,
-                ),
-              ],
+          ? SharedAppBar(
+              dashboardType: 'driver',
+              onNotificationTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const NotificationScreen()),
+                );
+              },
             )
           : null,
       body: screens[_selectedIndex],
-      floatingActionButton: GlobalDebugUtils.debugFloatingActionButton(context),
       bottomNavigationBar: SharedBottomNavbar(
         currentIndex: _selectedIndex,
         onTap: _onItemTapped,
@@ -251,12 +124,128 @@ class _HomeScreenState extends State<_HomeScreen> {
   String _totalMinyak = '0L';
   int _completedTasks = 0;
 
-  Set<Marker> _markers = {};
+  final MapController _mapController = MapController();
+  LatLng? _driverPosition;
+  List<_RouteStop> _allStops = [];
+  List<_RouteStop> _optimizedStops = [];
+  List<LatLng> _routePolyline = [];
+  bool _loadingRoute = false;
+  String _statusFilter = 'semua'; // semua | proses | selesai
+  final TextEditingController _sjSearchController = TextEditingController();
+  String _sjSearchQuery = '';
+  int _sjCurrentPage = 1;
+  static const int _sjPageSize = 5;
+
+  bool _isOnline = true;
+  int _pendingSyncCount = 0;
+  Timer? _connectivityTimer;
+
+  @override
+  void dispose() {
+    _connectivityTimer?.cancel();
+    _sjSearchController.dispose();
+    super.dispose();
+  }
 
   @override
   void initState() {
     super.initState();
     _initializeAndLoadData();
+    _loadDriverPosition();
+    _startConnectivityMonitoring();
+  }
+
+  void _startConnectivityMonitoring() {
+    _checkConnectivityStatus();
+    _connectivityTimer = Timer.periodic(const Duration(seconds: 4), (_) {
+      _checkConnectivityStatus();
+    });
+  }
+
+  Future<void> _checkConnectivityStatus() async {
+    final online = await OfflineSyncService.isOnline();
+    final count = await OfflineSyncService.getPendingCount();
+    if (mounted) {
+      setState(() {
+        _isOnline = online;
+        _pendingSyncCount = count;
+      });
+    }
+  }
+
+  Widget _buildConnectivityBanner() {
+    if (!_isOnline) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        color: AppColors.accentOrange,
+        child: Row(
+          children: [
+            const Icon(Icons.wifi_off_rounded, color: Colors.white, size: 20),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'MODE OFFLINE AKTIF (Sinyal Terputus)',
+                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
+                  ),
+                  Text(
+                    _pendingSyncCount > 0
+                        ? '$_pendingSyncCount data tersimpan di HP & akan otomatis di-sync saat sinyal kembali.'
+                        : 'Aplikasi menyimpan data & koordinat lokal secara otomatis saat offline.',
+                    style: const TextStyle(color: Colors.white, fontSize: 11),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (_pendingSyncCount > 0) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        color: AppColors.primaryGreen,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.sync_rounded, color: Colors.white, size: 18),
+                const SizedBox(width: 8),
+                Text(
+                  '$_pendingSyncCount data offline siap disinkronkan',
+                  style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600),
+                ),
+              ],
+            ),
+            InkWell(
+              onTap: () async {
+                await OfflineSyncService.syncNow();
+                _checkConnectivityStatus();
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Text(
+                  'Sync Sekarang',
+                  style: TextStyle(color: AppColors.primaryGreen, fontSize: 11, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return const SizedBox.shrink();
   }
 
   Future<void> _initializeAndLoadData() async {
@@ -295,16 +284,25 @@ class _HomeScreenState extends State<_HomeScreen> {
 
     try {
       setState(() {
+        _suratJalanList = [];
+        _allStops = [];
+        _optimizedStops = [];
+        _routePolyline = [];
+        _totalTasks = 0;
+        _completedTasks = 0;
+        _totalMinyak = '0L';
         _isLoading = true;
         _errorMessage = null;
       });
 
+      if (!mounted) return;
+
       print('🔍 Dashboard: Loading surat jalan data for user: $_userId');
-      final response = await SuratJalanService.getTodaySuratJalan(_userId!);
+      final suratJalanList = await GeuSuratJalanService.listTodayHydrated();
       print('✅ Dashboard: Data loaded successfully');
 
       setState(() {
-        _suratJalanList = response.data.suratJalan;
+        _suratJalanList = suratJalanList;
         _isLoading = false;
         _calculateStatistics();
         _setupMapData();
@@ -354,119 +352,157 @@ class _HomeScreenState extends State<_HomeScreen> {
     _totalMinyak = '${totalKg.toStringAsFixed(1)} kg';
   }
 
+  LatLng? _parseGps(String gpsStr) {
+    if (gpsStr.isEmpty || !gpsStr.contains(',')) return null;
+    final parts = gpsStr.split(',');
+    if (parts.length < 2) return null;
+    final lat = double.tryParse(parts[0].trim());
+    final lng = double.tryParse(parts[1].trim());
+    if (lat == null || lng == null) return null;
+    return LatLng(lat, lng);
+  }
+
+  Future<void> _loadDriverPosition() async {
+    final location = await LocationService.getCurrentLocation();
+    if (location == null || !mounted) return;
+    setState(
+      () => _driverPosition = LatLng(location.latitude, location.longitude),
+    );
+    _reorderStops();
+  }
+
   void _setupMapData() {
-    _markers.clear();
-    int countTotalDetails = 0;
-    int countWithGps = 0;
-
-    for (int i = 0; i < _suratJalanList.length; i++) {
-      final surat = _suratJalanList[i];
-      for (
-        int detailIndex = 0;
-        detailIndex < surat.suratJalanDetail.length;
-        detailIndex++
-      ) {
-        countTotalDetails++;
-        final detail = surat.suratJalanDetail[detailIndex];
-
-        // Validasi GPS String
-        final gpsStr = detail.supplierGps;
-        if (gpsStr.isEmpty || !gpsStr.contains(',')) {
+    final stops = <_RouteStop>[];
+    for (final surat in _suratJalanList) {
+      for (final detail in surat.suratJalanDetail) {
+        final position = _parseGps(detail.supplierGps);
+        if (position == null) {
           print(
-            '⚠️ Dashboard Map: Skipping supplier "${detail.supplierName}" due to invalid GPS: "$gpsStr"',
+            '⚠️ Dashboard Map: Skipping supplier "${detail.supplierName}" due to invalid GPS: "${detail.supplierGps}"',
           );
           continue;
         }
+        stops.add(_RouteStop(surat: surat, detail: detail, position: position));
+      }
+    }
+    _allStops = stops;
+    print(
+      '🗺️ Map Setup Summary: ${_allStops.length} valid stops from ${_suratJalanList.length} surat jalan',
+    );
+    _reorderStops();
+  }
 
-        final gpsParts = gpsStr.split(',');
-        if (gpsParts.length >= 2) {
-          try {
-            double lat = double.parse(gpsParts[0].trim());
-            double lng = double.parse(gpsParts[1].trim());
+  /// Greedy nearest-neighbor ordering from the driver's current position.
+  /// Stops that are 'done' or 'cancelled' are excluded from the
+  /// optimization/route-line entirely (per requirement) and just appended
+  /// at the end so they remain visible/filterable in the list.
+  void _reorderStops() {
+    final routable = _allStops.where((s) {
+      final status = s.detail.status.toLowerCase();
+      return status != 'done' && status != 'cancelled';
+    }).toList();
+    final locked = _allStops.where((s) {
+      final status = s.detail.status.toLowerCase();
+      return status == 'done' || status == 'cancelled';
+    }).toList();
 
-            final kgAmount = SuratJalanService.convertLiterToKg(detail.qtyReal);
-            final markerId =
-                'surat_${surat.suratJalanId}_detail_${detail.suratJalanDetailId}';
-
-            final marker = Marker(
-              markerId: MarkerId(markerId),
-              position: LatLng(lat, lng),
-              infoWindow: InfoWindow(
-                title: detail.supplierName,
-                snippet:
-                    '${kgAmount} kg - ${detail.status.toUpperCase()}\n${surat.kode}',
-              ),
-              icon: BitmapDescriptor.defaultMarkerWithHue(
-                detail.status == 'done'
-                    ? BitmapDescriptor.hueGreen
-                    : detail.status == 'pickup'
-                    ? BitmapDescriptor.hueOrange
-                    : BitmapDescriptor.hueRed,
-              ),
-              onTap: () async {
-                await Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => NavigationScreen(suratJalan: surat),
-                  ),
-                );
-                // Refresh data when returning
-                _loadSuratJalanData();
-              },
-            );
-
-            _markers.add(marker);
-            countWithGps++;
-          } catch (e) {
-            print(
-              '❌ Dashboard Map: Error parsing coordinates for "${detail.supplierName}": $e',
-            );
-          }
-        }
+    final driver = _driverPosition;
+    List<_RouteStop> ordered;
+    if (driver == null || routable.isEmpty) {
+      ordered = routable;
+    } else {
+      final remaining = List<_RouteStop>.from(routable);
+      ordered = [];
+      var current = driver;
+      while (remaining.isNotEmpty) {
+        remaining.sort((a, b) {
+          final distA = Geolocator.distanceBetween(
+            current.latitude,
+            current.longitude,
+            a.position.latitude,
+            a.position.longitude,
+          );
+          final distB = Geolocator.distanceBetween(
+            current.latitude,
+            current.longitude,
+            b.position.latitude,
+            b.position.longitude,
+          );
+          return distA.compareTo(distB);
+        });
+        final nearest = remaining.removeAt(0);
+        ordered.add(nearest);
+        current = nearest.position;
       }
     }
 
-    print('🗺️ Map Setup Summary:');
-    print('  - Total Surat Jalan: ${_suratJalanList.length}');
-    print('  - Total Destinations (Tasks): $countTotalDetails');
-    print('  - Valid Markers Created: $countWithGps');
-    print('  - Set size: ${_markers.length}');
+    setState(() => _optimizedStops = [...ordered, ...locked]);
+    _loadRoutePolyline(ordered);
   }
 
-  void _fitMarkersInView(GoogleMapController controller) async {
-    if (_markers.isEmpty) return;
+  static const _maxRoutePolylineStops = 15;
 
-    // Calculate bounds from all markers
+  /// Chains OSRM driving segments driver -> stop1 -> stop2 -> ... so the map
+  /// shows a real road-following route through the optimized order. Capped
+  /// so a very long stop list doesn't fire dozens of sequential requests.
+  Future<void> _loadRoutePolyline(List<_RouteStop> ordered) async {
+    final driver = _driverPosition;
+    if (driver == null || ordered.isEmpty) {
+      if (mounted) setState(() => _routePolyline = []);
+      return;
+    }
+    final capped = ordered.take(_maxRoutePolylineStops).toList();
+    if (mounted) setState(() => _loadingRoute = true);
+    final points = <LatLng>[];
+    var origin = driver;
+    for (final stop in capped) {
+      final segment = await VisitNavigationService.drivingRoute(
+        origin: origin,
+        destination: stop.position,
+      );
+      if (points.isEmpty) {
+        points.addAll(segment);
+      } else {
+        points.addAll(segment.skip(1));
+      }
+      origin = stop.position;
+    }
+    if (mounted) {
+      setState(() {
+        _routePolyline = points;
+        _loadingRoute = false;
+      });
+    }
+  }
+
+  void _fitMarkersInView() {
+    if (_optimizedStops.isEmpty) return;
     double minLat = double.infinity;
     double maxLat = -double.infinity;
     double minLng = double.infinity;
     double maxLng = -double.infinity;
-
-    for (final marker in _markers) {
-      final lat = marker.position.latitude;
-      final lng = marker.position.longitude;
-
+    for (final stop in _optimizedStops) {
+      final lat = stop.position.latitude;
+      final lng = stop.position.longitude;
       if (lat < minLat) minLat = lat;
       if (lat > maxLat) maxLat = lat;
       if (lng < minLng) minLng = lng;
       if (lng > maxLng) maxLng = lng;
     }
-
-    // Add some padding
-    final padding = 0.01;
-    minLat -= padding;
-    maxLat += padding;
-    minLng -= padding;
-    maxLng += padding;
-
-    // Animate to fit bounds
-    await controller.animateCamera(
-      CameraUpdate.newLatLngBounds(
-        LatLngBounds(
-          southwest: LatLng(minLat, minLng),
-          northeast: LatLng(maxLat, maxLng),
+    if (_driverPosition != null) {
+      minLat = math.min(minLat, _driverPosition!.latitude);
+      maxLat = math.max(maxLat, _driverPosition!.latitude);
+      minLng = math.min(minLng, _driverPosition!.longitude);
+      maxLng = math.max(maxLng, _driverPosition!.longitude);
+    }
+    const padding = 0.01;
+    _mapController.fitCamera(
+      CameraFit.bounds(
+        bounds: LatLngBounds(
+          LatLng(minLat - padding, minLng - padding),
+          LatLng(maxLat + padding, maxLng + padding),
         ),
-        100.0, // padding
+        padding: const EdgeInsets.all(32),
       ),
     );
   }
@@ -475,18 +511,27 @@ class _HomeScreenState extends State<_HomeScreen> {
   Widget build(BuildContext context) {
     final progress = _totalTasks == 0 ? 0.0 : _completedTasks / _totalTasks;
 
-    return RefreshIndicator(
-      color: AppColors.primaryGreen,
-      onRefresh: _loadSuratJalanData,
-      child: SingleChildScrollView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
+    return Column(
+      children: [
+        _buildConnectivityBanner(),
+        Expanded(
+          child: RefreshIndicator(
+            color: AppColors.primaryGreen,
+            onRefresh: _loadSuratJalanData,
+            child: SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
               // Hero card: greeting + daily progress + stats
               _buildHeroCard(progress),
+
+              const SizedBox(height: 16),
+
+              // TMS Quick Action Menu for Driver
+              _buildTmsQuickActions(),
 
               const SizedBox(height: 24),
 
@@ -521,14 +566,16 @@ class _HomeScreenState extends State<_HomeScreen> {
                     _buildLegendItem('Selesai', AppColors.success),
                     _buildLegendItem('Pickup', const Color(0xFFFF9500)),
                     _buildLegendItem('Pending', AppColors.error),
+                    _buildLegendItem('Rute', const Color(0xFF1877F2)),
                   ],
                 ),
 
                 const SizedBox(height: 12),
 
-                // Map view (enhanced interactive)
+                // Map view — flutter_map/OpenStreetMap, with a driving-route
+                // polyline chained driver -> nearest -> next-nearest -> ...
                 Container(
-                  height: 250,
+                  height: 280,
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(20),
                     color: AppColors.white,
@@ -540,27 +587,23 @@ class _HomeScreenState extends State<_HomeScreen> {
                       ),
                     ],
                   ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(20),
-                    child: GoogleMap(
-                      initialCameraPosition: const CameraPosition(
-                        target: LatLng(-7.9797, 112.6304), // Malang coordinates
-                        zoom: 13.0,
-                      ),
-                      markers: _markers,
-                      onMapCreated: (GoogleMapController controller) {
-                        // Map controller ready - fit bounds if there are markers
-                        if (_markers.isNotEmpty) {
-                          _fitMarkersInView(controller);
-                        }
-                      },
-                      zoomControlsEnabled: true,
-                      compassEnabled: true,
-                      mapToolbarEnabled: false,
-                      myLocationButtonEnabled: false,
-                      mapType: MapType.normal,
-                      onTap: (LatLng position) {},
-                    ),
+                  child: DynamicPickupMapWidget(
+                    mapController: _mapController,
+                    driverPosition: _driverPosition,
+                    stops: _optimizedStops,
+                    routePolyline: _routePolyline,
+                    onMapReady: _fitMarkersInView,
+                    onStopTap: (stop, order) async {
+                      await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => NavigationScreen(
+                            suratJalan: stop.surat,
+                          ),
+                        ),
+                      );
+                      _loadSuratJalanData();
+                    },
                   ),
                 ),
 
@@ -580,7 +623,7 @@ class _HomeScreenState extends State<_HomeScreen> {
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(
-                      '${_suratJalanList.length} surat',
+                      '${_optimizedStops.length} titik',
                       style: AppTextStyles.caption.copyWith(
                         color: AppColors.primaryGreen,
                         fontWeight: FontWeight.w600,
@@ -590,14 +633,164 @@ class _HomeScreenState extends State<_HomeScreen> {
                 ),
                 const SizedBox(height: 12),
 
-                // Surat jalan list
-                ListView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: _suratJalanList.length,
-                  itemBuilder: (context, index) {
-                    final surat = _suratJalanList[index];
-                    return _buildSuratJalanCard(surat);
+                // Search Bar Input
+                TextField(
+                  controller: _sjSearchController,
+                  decoration: InputDecoration(
+                    hintText: 'Cari nama supplier / alamat...',
+                    hintStyle: AppTextStyles.caption.copyWith(color: AppColors.grey),
+                    prefixIcon: const Icon(Icons.search, size: 20, color: AppColors.primaryGreen),
+                    suffixIcon: _sjSearchQuery.isNotEmpty
+                        ? IconButton(
+                            icon: const Icon(Icons.clear, size: 18, color: AppColors.grey),
+                            onPressed: () {
+                              setState(() {
+                                _sjSearchController.clear();
+                                _sjSearchQuery = '';
+                                _sjCurrentPage = 1;
+                              });
+                            },
+                          )
+                        : null,
+                    isDense: true,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: AppColors.borderColor),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: AppColors.borderColor),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: AppColors.primaryGreen, width: 2),
+                    ),
+                  ),
+                  onChanged: (val) {
+                    setState(() {
+                      _sjSearchQuery = val.trim().toLowerCase();
+                      _sjCurrentPage = 1;
+                    });
+                  },
+                ),
+                const SizedBox(height: 12),
+
+                // Status filter
+                Wrap(
+                  spacing: 8,
+                  children: [
+                    _buildFilterChip('semua', 'Semua'),
+                    _buildFilterChip('proses', 'Proses'),
+                    _buildFilterChip('selesai', 'Selesai'),
+                  ],
+                ),
+                const SizedBox(height: 12),
+
+                // Surat jalan list — flattened per supplier stop with search & pagination
+                Builder(
+                  builder: (context) {
+                    final filtered = _optimizedStops.where((stop) {
+                      final status = stop.detail.status.toLowerCase();
+                      bool matchStatus = true;
+                      if (_statusFilter == 'proses') {
+                        matchStatus = status != 'done' && status != 'cancelled';
+                      } else if (_statusFilter == 'selesai') {
+                        matchStatus = status == 'done';
+                      }
+
+                      if (!matchStatus) return false;
+
+                      if (_sjSearchQuery.isNotEmpty) {
+                        final name = stop.detail.supplierName.toLowerCase();
+                        final address = stop.detail.supplierAlamat.toLowerCase();
+                        final kode = stop.surat.kode.toLowerCase();
+                        return name.contains(_sjSearchQuery) ||
+                            address.contains(_sjSearchQuery) ||
+                            kode.contains(_sjSearchQuery);
+                      }
+                      return true;
+                    }).toList();
+
+                    if (filtered.isEmpty) {
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 24),
+                        child: Center(
+                          child: Text(
+                            _sjSearchQuery.isNotEmpty
+                                ? 'Tidak ada titik yang cocok dengan pencarian "$_sjSearchQuery".'
+                                : 'Tidak ada titik pada filter ini.',
+                            style: AppTextStyles.bodyMedium.copyWith(
+                              color: AppColors.grey,
+                            ),
+                          ),
+                        ),
+                      );
+                    }
+
+                    // Pagination Math
+                    final totalItems = filtered.length;
+                    final totalPages = (totalItems / _sjPageSize).ceil();
+                    final safePage = _sjCurrentPage.clamp(1, totalPages);
+                    final startIndex = (safePage - 1) * _sjPageSize;
+                    final endIndex = (startIndex + _sjPageSize > totalItems)
+                        ? totalItems
+                        : startIndex + _sjPageSize;
+                    final paginatedList = filtered.sublist(startIndex, endIndex);
+
+                    return Column(
+                      children: [
+                        ListView.builder(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          itemCount: paginatedList.length,
+                          itemBuilder: (context, index) {
+                            final stop = paginatedList[index];
+                            return _buildStopCard(stop, _routeOrderNumber(stop));
+                          },
+                        ),
+                        if (totalPages > 1) ...[
+                          const SizedBox(height: 12),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: AppColors.white,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: AppColors.borderColor),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  'Item ${startIndex + 1}-$endIndex dari $totalItems',
+                                  style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary),
+                                ),
+                                Row(
+                                  children: [
+                                    IconButton(
+                                      icon: const Icon(Icons.chevron_left, size: 20),
+                                      onPressed: safePage > 1
+                                          ? () => setState(() => _sjCurrentPage = safePage - 1)
+                                          : null,
+                                    ),
+                                    Text(
+                                      'Halaman $safePage / $totalPages',
+                                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                                    ),
+                                    IconButton(
+                                      icon: const Icon(Icons.chevron_right, size: 20),
+                                      onPressed: safePage < totalPages
+                                          ? () => setState(() => _sjCurrentPage = safePage + 1)
+                                          : null,
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ],
+                    );
                   },
                 ),
               ] else ...[
@@ -608,7 +801,11 @@ class _HomeScreenState extends State<_HomeScreen> {
           ),
         ),
       ),
-    );
+    ),
+    ),
+    const ImpersonationFloatingBanner(),
+  ],
+);
   }
 
   Widget _buildHeroCard(double progress) {
@@ -793,9 +990,109 @@ class _HomeScreenState extends State<_HomeScreen> {
               color: AppColors.white.withOpacity(0.75),
               fontSize: 11,
             ),
-            textAlign: TextAlign.center,
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildTmsQuickActions() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Layanan Operasional Driver (TMS)',
+            style: AppTextStyles.bodyMedium.copyWith(
+              fontWeight: FontWeight.bold,
+              color: AppColors.primaryGreen,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: _buildQuickActionButton(
+                  icon: Icons.receipt_long,
+                  color: AppColors.primaryGreen,
+                  label: 'Uang Jalan &\nSettlement',
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const DriverSettlementListScreen(),
+                      ),
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildQuickActionButton(
+                  icon: Icons.local_shipping,
+                  color: AppColors.accentOrange,
+                  label: 'Milestone\nPergerakan Truk',
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const DriverMovementScreen(),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQuickActionButton({
+    required IconData icon,
+    required Color color,
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.08),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: color.withOpacity(0.2)),
+        ),
+        child: Column(
+          children: [
+            Icon(icon, color: color, size: 28),
+            const SizedBox(height: 8),
+            Text(
+              label,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                height: 1.2,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -923,20 +1220,99 @@ class _HomeScreenState extends State<_HomeScreen> {
     );
   }
 
-  Widget _buildSuratJalanCard(SuratJalan surat) {
-    final statusColor = surat.status == 'done'
+  /// 1-based position of [stop] within the nearest-neighbor route order, or
+  /// null if it's a done/cancelled stop (excluded from optimization).
+  int? _routeOrderNumber(_RouteStop stop) {
+    final status = stop.detail.status.toLowerCase();
+    if (status == 'done' || status == 'cancelled') return null;
+    final routable = _optimizedStops.where((s) {
+      final st = s.detail.status.toLowerCase();
+      return st != 'done' && st != 'cancelled';
+    }).toList();
+    final index = routable.indexOf(stop);
+    return index == -1 ? null : index + 1;
+  }
+
+  Widget _stopPin(_RouteStop stop) {
+    final status = stop.detail.status.toLowerCase();
+    final color = status == 'done'
         ? AppColors.success
-        : (surat.status == 'progress' || surat.status == 'pickup')
+        : status == 'cancelled'
+        ? AppColors.grey
+        : status == 'pickup'
         ? const Color(0xFFFF9500)
         : AppColors.error;
+    final orderNumber = _routeOrderNumber(stop);
+    return Tooltip(
+      message: '${stop.detail.supplierName}\n${stop.detail.status}',
+      child: Container(
+        decoration: BoxDecoration(
+          color: color,
+          shape: BoxShape.circle,
+          border: Border.all(color: Colors.white, width: 3),
+          boxShadow: const [BoxShadow(color: Color(0x55000000), blurRadius: 6)],
+        ),
+        alignment: Alignment.center,
+        child: orderNumber != null
+            ? Text(
+                '$orderNumber',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13,
+                ),
+              )
+            : Icon(
+                status == 'done' ? Icons.check : Icons.close,
+                color: Colors.white,
+                size: 16,
+              ),
+      ),
+    );
+  }
 
-    final statusText = surat.status == 'done'
+  Widget _buildFilterChip(String value, String label) {
+    final selected = _statusFilter == value;
+    return ChoiceChip(
+      label: Text(label),
+      selected: selected,
+      onSelected: (_) => setState(() {
+        _statusFilter = value;
+        _sjCurrentPage = 1;
+      }),
+      selectedColor: AppColors.primaryGreen.withOpacity(0.15),
+      labelStyle: AppTextStyles.bodySmall.copyWith(
+        color: selected ? AppColors.primaryGreen : AppColors.grey,
+        fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+      ),
+      side: BorderSide(
+        color: selected ? AppColors.primaryGreen : AppColors.borderColor,
+      ),
+      backgroundColor: AppColors.white,
+    );
+  }
+
+  Widget _buildStopCard(_RouteStop stop, int? orderNumber) {
+    final surat = stop.surat;
+    final detail = stop.detail;
+    final status = detail.status.toLowerCase();
+    final statusColor = status == 'done'
+        ? AppColors.success
+        : status == 'cancelled'
+        ? AppColors.grey
+        : status == 'pickup'
+        ? const Color(0xFFFF9500)
+        : AppColors.error;
+    final statusText = status == 'done'
         ? 'Selesai'
-        : (surat.status == 'progress' || surat.status == 'pickup')
-        ? 'Proses'
-        : surat.status == 'cancelled'
+        : status == 'cancelled'
         ? 'Batal'
+        : status == 'pickup'
+        ? 'Proses'
         : 'Pending';
+    final distanceLabel = _driverPosition == null
+        ? null
+        : '${(Geolocator.distanceBetween(_driverPosition!.latitude, _driverPosition!.longitude, stop.position.latitude, stop.position.longitude) / 1000).toStringAsFixed(1)} km';
 
     return InkWell(
       onTap: () async {
@@ -946,12 +1322,12 @@ class _HomeScreenState extends State<_HomeScreen> {
             builder: (context) => SuratJalanDetailScreen(suratJalan: surat),
           ),
         );
-        // Refresh data when returning
         _loadSuratJalanData();
       },
       borderRadius: BorderRadius.circular(16),
       child: Container(
-        margin: const EdgeInsets.only(bottom: 14),
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
           color: AppColors.white,
           borderRadius: BorderRadius.circular(16),
@@ -964,288 +1340,113 @@ class _HomeScreenState extends State<_HomeScreen> {
             ),
           ],
         ),
-        child: Column(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header dengan kode surat jalan
             Container(
-              padding: const EdgeInsets.all(14),
+              width: 30,
+              height: 30,
+              margin: const EdgeInsets.only(top: 2),
               decoration: BoxDecoration(
-                color: AppColors.primaryGreen.withOpacity(0.05),
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(16),
-                  topRight: Radius.circular(16),
-                ),
+                color: statusColor,
+                shape: BoxShape.circle,
               ),
-              child: Row(
+              alignment: Alignment.center,
+              child: orderNumber != null
+                  ? Text(
+                      '$orderNumber',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                      ),
+                    )
+                  : Icon(
+                      status == 'done' ? Icons.check : Icons.close,
+                      color: Colors.white,
+                      size: 16,
+                    ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: AppColors.primaryGreen.withOpacity(0.12),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const Icon(
-                      Icons.receipt_long,
-                      size: 18,
-                      color: AppColors.primaryGreen,
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          surat.kode,
-                          style: AppTextStyles.bodyLarge.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.primaryGreen,
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          detail.supplierName,
+                          style: AppTextStyles.bodyMedium.copyWith(
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.black,
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
-                        Text(
-                          surat.tanggalFormatted,
-                          style: AppTextStyles.caption.copyWith(
-                            color: AppColors.grey,
-                          ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 3,
                         ),
-                      ],
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: statusColor.withOpacity(0.12),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          width: 6,
-                          height: 6,
-                          decoration: BoxDecoration(
-                            color: statusColor,
-                            shape: BoxShape.circle,
-                          ),
+                        decoration: BoxDecoration(
+                          color: statusColor.withOpacity(0.12),
+                          borderRadius: BorderRadius.circular(20),
                         ),
-                        const SizedBox(width: 6),
-                        Text(
+                        child: Text(
                           statusText,
                           style: AppTextStyles.caption.copyWith(
                             color: statusColor,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            // Content
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Supplier info
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.business,
-                        size: 16,
-                        color: AppColors.primaryGreen,
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          surat.supplierNames,
-                          style: AppTextStyles.bodyMedium.copyWith(
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.black,
-                          ),
-                        ),
                       ),
                     ],
                   ),
-
-                  const SizedBox(height: 12),
-
-                  // Driver dan plat
-                  Row(
+                  const SizedBox(height: 4),
+                  Text(
+                    surat.kode,
+                    style: AppTextStyles.caption.copyWith(
+                      color: AppColors.grey,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Wrap(
+                    spacing: 12,
+                    runSpacing: 4,
                     children: [
-                      Expanded(
-                        child: Row(
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.scale, size: 14, color: AppColors.grey),
+                          const SizedBox(width: 4),
+                          Text(
+                            '${SuratJalanService.convertLiterToKg(detail.qtyReal)} kg',
+                            style: AppTextStyles.caption.copyWith(
+                              color: AppColors.grey,
+                            ),
+                          ),
+                        ],
+                      ),
+                      if (distanceLabel != null)
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(Icons.person, size: 16, color: AppColors.grey),
+                            Icon(
+                              Icons.near_me_outlined,
+                              size: 14,
+                              color: AppColors.grey,
+                            ),
                             const SizedBox(width: 4),
-                            Flexible(
-                              child: Text(
-                                surat.driverName,
-                                style: AppTextStyles.bodySmall.copyWith(
-                                  color: AppColors.grey,
-                                ),
-                                overflow: TextOverflow.ellipsis,
+                            Text(
+                              distanceLabel,
+                              style: AppTextStyles.caption.copyWith(
+                                color: AppColors.grey,
                               ),
                             ),
                           ],
                         ),
-                      ),
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.local_shipping,
-                            size: 16,
-                            color: AppColors.grey,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            surat.plat,
-                            style: AppTextStyles.bodySmall.copyWith(
-                              color: AppColors.grey,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 12),
-
-                  // Quantity dan harga
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            vertical: 8,
-                            horizontal: 12,
-                          ),
-                          decoration: BoxDecoration(
-                            color: AppColors.primaryGreen.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                Icons.scale,
-                                size: 16,
-                                color: AppColors.primaryGreen,
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                '${SuratJalanService.convertLiterToKg(surat.totalLiter)} kg',
-                                style: AppTextStyles.bodyMedium.copyWith(
-                                  color: AppColors.primaryGreen,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            vertical: 8,
-                            horizontal: 12,
-                          ),
-                          decoration: BoxDecoration(
-                            color: AppColors.primaryGreen.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                Icons.attach_money,
-                                size: 16,
-                                color: AppColors.primaryGreen,
-                              ),
-                              const SizedBox(width: 4),
-                              Flexible(
-                                child: Text(
-                                  SuratJalanService.formatCurrency(
-                                    surat.totalHarga,
-                                  ),
-                                  style: AppTextStyles.bodyMedium.copyWith(
-                                    color: AppColors.primaryGreen,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 12),
-
-                  // Progress bar
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            'Progress',
-                            style: AppTextStyles.caption.copyWith(
-                              color: AppColors.grey,
-                            ),
-                          ),
-                          Text(
-                            '${surat.progress.percentage}%',
-                            style: AppTextStyles.caption.copyWith(
-                              color: AppColors.primaryGreen,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      LinearProgressIndicator(
-                        value: surat.progress.percentage / 100,
-                        backgroundColor: AppColors.background,
-                        valueColor: AlwaysStoppedAnimation<Color>(
-                          surat.progress.percentage == 100
-                              ? AppColors.primaryGreen
-                              : const Color(0xFFFF9500),
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 14),
-
-                  // Footer: tap affordance
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      Text(
-                        'Lihat detail',
-                        style: AppTextStyles.caption.copyWith(
-                          color: AppColors.primaryGreen,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(width: 2),
-                      const Icon(
-                        Icons.arrow_forward_ios,
-                        size: 12,
-                        color: AppColors.primaryGreen,
-                      ),
                     ],
                   ),
                 ],
@@ -1412,4 +1613,21 @@ class _HomeScreenState extends State<_HomeScreen> {
       ),
     );
   }
+}
+
+/// A single supplier pickup point — one SuratJalanDetail plus the parent
+/// SuratJalan it belongs to, with its parsed GPS position. This is the unit
+/// the nearest-neighbor route optimization and the flattened "Surat Jalan
+/// Hari Ini" list both operate on, since GPS/status live per-stop rather
+/// than per-delivery-note.
+class _RouteStop {
+  final SuratJalan surat;
+  final SuratJalanDetail detail;
+  final LatLng position;
+
+  const _RouteStop({
+    required this.surat,
+    required this.detail,
+    required this.position,
+  });
 }

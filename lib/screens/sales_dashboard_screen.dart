@@ -5,12 +5,9 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:provider/provider.dart';
 import '../constants/app_colors.dart';
 import '../constants/app_text_styles.dart';
-import '../providers/supplier_form_provider.dart';
 import '../providers/supplier_list_provider.dart';
-import 'add_supplier_screen_simple.dart';
 import 'supplier_list_screen.dart';
 import '../services/role_management_service.dart';
-import 'calendar_screen.dart';
 import 'notification_screen.dart';
 import 'profile_screen.dart';
 import '../widgets/shared_bottom_navbar.dart';
@@ -24,12 +21,26 @@ import '../models/api_response.dart';
 import '../services/supplier_list_service.dart';
 import '../models/supplier_list_model.dart';
 import '../services/location_service.dart';
-import '../services/update_service.dart'; // Import UpdateService
+import '../services/update_service.dart';
 import '../services/persistent_auth_service.dart';
+import '../services/user_storage.dart';
 import '../models/surat_jalan.dart';
 import '../services/surat_jalan_service.dart';
 import 'pickup_history_screen.dart';
 import 'canvassing/canvassing_home_screen.dart';
+import 'canvassing/visit_plan_screen.dart';
+import 'canvassing/visit_history_screen.dart';
+import 'canvassing/scan_prospect_screen.dart';
+import 'canvassing/nearby_supplier_screen.dart';
+import 'canvassing/tasks_hub_screen.dart';
+import 'canvassing/pickup_list_screen.dart';
+import 'canvassing/my_statistic_screen.dart';
+import 'canvassing/work_order_list_screen.dart';
+import '../services/geu/mission_navigation_state.dart';
+import '../models/geu/visit_planner_models.dart';
+import '../services/geu/visit_planner_service.dart';
+import '../services/geu/my_statistic_service.dart';
+import '../services/geu/geu_auth_service.dart';
 
 class SalesDashboardScreen extends StatefulWidget {
   const SalesDashboardScreen({super.key});
@@ -49,8 +60,12 @@ class _SalesDashboardScreenState extends State<SalesDashboardScreen> {
 
   // Sales statistics
   DashboardStats? _dashboardStats;
+  String _userName = 'CRO';
   bool _isLoading = true;
   String? _errorMessage;
+  TodaysMission? _todaysMission;
+  AssignmentStats? _myStats;
+  GeuUser? _geuUser;
 
   // Map data
   List<SupplierListItem> _supplierList = [];
@@ -71,12 +86,35 @@ class _SalesDashboardScreenState extends State<SalesDashboardScreen> {
   void initState() {
     super.initState();
     _loadSalesData();
+    _loadUserName();
     _loadUserLocation();
     _loadSupplierData();
     _loadRecentActivity();
+    _loadMissionSummary();
+    _loadMyStatistics();
+    _loadPermissions();
 
-    // Update check tidak dilakukan di sales dashboard
-    // Hanya di dashboard utama setelah login berhasil
+    // CRO/RO can land here directly on app open (not just via Driver
+    // dashboard), so the update/maintenance check needs to fire from here
+    // too — UpdateService's own _hasCheckedOnThisLoad flag prevents a
+    // duplicate check if the admin dashboard-switch button is used.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      UpdateService.instance.startMonitoring(context);
+    });
+  }
+
+  Future<void> _loadPermissions() async {
+    final user = await GeuAuthService.getCachedUser();
+    if (mounted) setState(() => _geuUser = user);
+  }
+
+  bool _has(String slug) => _geuUser?.hasPermission(slug) ?? false;
+
+  Future<void> _loadUserName() async {
+    final name = await UserStorage.getUserName();
+    if (mounted && name.trim().isNotEmpty) {
+      setState(() => _userName = name.trim());
+    }
   }
 
   Future<void> _loadRecentActivity() async {
@@ -99,6 +137,30 @@ class _SalesDashboardScreenState extends State<SalesDashboardScreen> {
       });
     } catch (e) {
       setState(() => _isLoadingActivity = false);
+    }
+  }
+
+  Future<void> _loadMissionSummary() async {
+    try {
+      final mission = await VisitPlannerService.getTodaysMission();
+      if (mounted) setState(() => _todaysMission = mission);
+    } catch (_) {
+      // The dashboard card gracefully keeps its empty state until the user
+      // opens Visit Plan, which has its own cached/offline handling.
+    }
+  }
+
+  Future<void> _loadMyStatistics() async {
+    try {
+      final now = DateTime.now();
+      final stats = await MyStatisticService.assignment(
+        now.subtract(const Duration(days: 6)),
+        now,
+      );
+      if (mounted) setState(() => _myStats = stats);
+    } catch (_) {
+      // The dashboard omits its optional chart when the reporting API has no
+      // usable data, rather than displaying a misleading empty visualization.
     }
   }
 
@@ -247,47 +309,38 @@ class _SalesDashboardScreenState extends State<SalesDashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // List of screens
+    // CRO/RO share this dashboard, but Visit Planner (mission map,
+    // check-in/out, and kunjungan history) is only meaningful for users who
+    // hold crm-read-visit-planner — mirrors the web sidebar's gating of the
+    // "Visit Plan" menu item, and keeps the tab/screens list positionally in
+    // sync with SharedBottomNavbar's own showVisitPlan-driven item list.
+    final hasVisitPlanner = _has('crm-read-visit-planner');
+    final showTasksTab = _has('crm-read-task') || _has('crm-read-self-assign');
     final List<Widget> screens = [
       _buildMainDashboard(),
-      const CalendarScreen(),
-      const NotificationScreen(),
-      const ProfileScreen(),
+      if (hasVisitPlanner) const VisitPlanScreen(),
+      if (showTasksTab) const TasksHubScreen(),
+      if (hasVisitPlanner) const VisitHistoryScreen(),
+      const ProfileScreen(role: ProfileRole.cro),
     ];
 
     return Scaffold(
       backgroundColor: AppColors.background,
+      drawer: _buildDrawer(),
       appBar: _selectedIndex == 0
           ? SharedAppBar(
               dashboardType: 'sales',
               onNotificationTap: () {
-                setState(() {
-                  _selectedIndex = 2; // notifications tab
-                });
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const NotificationScreen()),
+                );
               },
             )
           : null,
       body: _selectedIndex == 0
           ? _buildMainDashboard()
           : screens[_selectedIndex],
-      floatingActionButton: _selectedIndex == 0
-          ? FloatingActionButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => ChangeNotifierProvider(
-                      create: (_) => SupplierFormProvider(),
-                      child: const AddSupplierScreenSimple(),
-                    ),
-                  ),
-                );
-              },
-              backgroundColor: AppColors.primaryGreen,
-              foregroundColor: AppColors.white,
-              child: const Icon(Icons.add_business),
-            )
-          : null,
       bottomNavigationBar: Container(
         decoration: const BoxDecoration(
           color: AppColors.white,
@@ -302,34 +355,361 @@ class _SalesDashboardScreenState extends State<SalesDashboardScreen> {
         child: SharedBottomNavbar(
           currentIndex: _selectedIndex,
           onTap: _onItemTapped,
+          showVisitPlan: hasVisitPlanner,
+          showTasks: showTasksTab,
+          showHistory: hasVisitPlanner,
+        ),
+      ),
+    );
+  }
+
+  /// Reachable from Beranda's app bar hamburger (auto-added by Scaffold once
+  /// `drawer` is set). Holds everything from the Menu section on Beranda
+  /// plus items that don't have room on Beranda's scroll or the bottom
+  /// nav — currently just Daftar Work Order — so it's the overflow surface
+  /// for secondary CRO/RO navigation without crowding the 5-slot bottom nav.
+  Widget _buildDrawer() {
+    final items = [
+      ..._menuItems(),
+      _CroMenuItem(
+        title: 'Daftar Work Order',
+        subtitle: 'Riwayat & status semua WO',
+        icon: Icons.assignment_outlined,
+        color: AppColors.primaryGreen,
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const WorkOrderListScreen()),
+        ),
+      ),
+    ];
+    final visible = items
+        .where((item) => item.permission == null || _has(item.permission!))
+        .toList();
+
+    return Drawer(
+      child: SafeArea(
+        child: ListView(
+          padding: EdgeInsets.zero,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(20),
+              color: AppColors.primaryGreen,
+              child: Text(
+                'Menu',
+                style: AppTextStyles.h4.copyWith(
+                  color: AppColors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            for (final item in visible)
+              ListTile(
+                leading: Icon(item.icon, color: item.color),
+                title: Text(item.title),
+                subtitle: Text(
+                  item.subtitle,
+                  style: AppTextStyles.caption.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  item.onTap();
+                },
+              ),
+          ],
         ),
       ),
     );
   }
 
   Widget _buildMainDashboard() {
+    final hasVisitPlanner = _has('crm-read-visit-planner');
     return ListView(
-      padding: const EdgeInsets.all(16.0),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 104),
       children: [
-        // Statistics Cards
+        _buildCroGreeting(),
+        const SizedBox(height: 16),
+        if (hasVisitPlanner) ...[
+          _buildMissionSummary(),
+          const SizedBox(height: 20),
+        ],
+        Text(
+          'Ringkasan aktivitas',
+          style: AppTextStyles.h5.copyWith(fontWeight: FontWeight.w700),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Pantau supplier dan lanjutkan aktivitas lapangan.',
+          style: AppTextStyles.bodyMedium.copyWith(
+            color: AppColors.textSecondary,
+          ),
+        ),
+        const SizedBox(height: 20),
         _buildStatisticsSection(),
-        const SizedBox(height: 24),
-
-        // Supplier Detail
-        const SupplierDetailWidget(),
-        const SizedBox(height: 24),
-
-        // Supplier Map
-        _buildSupplierMap(),
-        const SizedBox(height: 24),
-        // Quick Actions
+        const SizedBox(height: 20),
+        _buildMyStatistics(),
+        const SizedBox(height: 20),
         _buildQuickActions(),
-        const SizedBox(height: 24),
-        // Recent Activity
-        _buildRecentActivity(),
-        const SizedBox(height: 24),
       ],
     );
+  }
+
+  Widget _buildCroGreeting() {
+    final stats = _dashboardStats;
+    final now = DateTime.now();
+    final dateLabel =
+        '${now.day.toString().padLeft(2, '0')}/${now.month.toString().padLeft(2, '0')}/${now.year}';
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF1B4D3E), Color(0xFF2E7D5B)],
+        ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primaryGreen.withValues(alpha: .25),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _greeting(),
+                      style: AppTextStyles.bodySmall.copyWith(
+                        color: AppColors.white.withValues(alpha: .75),
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      _userName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTextStyles.h4.copyWith(
+                        color: AppColors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: AppColors.white.withValues(alpha: .15),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  dateLabel,
+                  style: AppTextStyles.caption.copyWith(
+                    color: AppColors.white,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          Row(
+            children: [
+              _buildCroStat(
+                Icons.storefront_outlined,
+                stats?.totalSuppliers ?? 0,
+                'Supplier',
+              ),
+              _croDivider(),
+              _buildCroStat(
+                Icons.verified_outlined,
+                stats?.activeSuppliers ?? 0,
+                'Aktif',
+              ),
+              _croDivider(),
+              _buildCroStat(
+                Icons.add_business_outlined,
+                stats?.newThisMonth ?? 0,
+                'Baru bulan ini',
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMissionSummary() {
+    return ValueListenableBuilder<MissionNavigationState>(
+      valueListenable: MissionNavigationStateService.current,
+      builder: (context, mission, _) {
+        final active = mission.isActive;
+        final destination = mission.destination?.trim();
+        final plannedItems = _todaysMission?.items ?? const <MissionItem>[];
+        final plannedCompleted = plannedItems
+            .where((item) => item.status.toUpperCase() == 'VISITED')
+            .length;
+        final totalVisits = active ? mission.totalVisits : plannedItems.length;
+        final completedVisits = active
+            ? mission.completedVisits
+            : plannedCompleted;
+        return InkWell(
+          onTap: () => setState(() => _selectedIndex = 1),
+          borderRadius: BorderRadius.circular(16),
+          child: Ink(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: active ? const Color(0xFFEAF6F0) : AppColors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: active
+                    ? AppColors.primaryGreen.withValues(alpha: .28)
+                    : AppColors.borderColor,
+              ),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: active
+                        ? AppColors.primaryGreen
+                        : AppColors.backgroundGrey,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    active ? Icons.navigation_rounded : Icons.map_outlined,
+                    color: active ? AppColors.white : AppColors.primaryGreen,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Text(
+                            active
+                                ? 'Mission sedang berjalan'
+                                : 'Mission hari ini',
+                            style: AppTextStyles.bodyMedium.copyWith(
+                              color: AppColors.textPrimary,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          const Spacer(),
+                          Icon(
+                            Icons.chevron_right_rounded,
+                            color: AppColors.textSecondary,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '$completedVisits/$totalVisits kunjungan selesai',
+                        style: AppTextStyles.caption.copyWith(
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                      if (active &&
+                          destination != null &&
+                          destination.isNotEmpty) ...[
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            const Icon(
+                              Icons.near_me_outlined,
+                              size: 15,
+                              color: AppColors.primaryGreen,
+                            ),
+                            const SizedBox(width: 5),
+                            Expanded(
+                              child: Text(
+                                'Menuju $destination',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: AppTextStyles.bodySmall.copyWith(
+                                  color: AppColors.primaryGreen,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ] else ...[
+                        const SizedBox(height: 8),
+                        Text(
+                          'Buka Visit Plan untuk mulai kunjungan.',
+                          style: AppTextStyles.bodySmall.copyWith(
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildCroStat(IconData icon, int value, String label) => Expanded(
+    child: Column(
+      children: [
+        Icon(icon, size: 20, color: AppColors.white),
+        const SizedBox(height: 8),
+        Text(
+          '$value',
+          style: AppTextStyles.h6.copyWith(
+            color: AppColors.white,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: AppTextStyles.caption.copyWith(
+            color: AppColors.white.withValues(alpha: .75),
+            fontSize: 11,
+          ),
+        ),
+      ],
+    ),
+  );
+
+  Widget _croDivider() => Container(
+    height: 44,
+    width: 1,
+    color: AppColors.white.withValues(alpha: .2),
+  );
+
+  String _greeting() {
+    final hour = DateTime.now().hour;
+    if (hour < 11) return 'Selamat pagi 👋';
+    if (hour < 15) return 'Selamat siang 👋';
+    if (hour < 19) return 'Selamat sore 👋';
+    return 'Selamat malam 👋';
   }
 
   Widget _buildStatisticsSection() {
@@ -395,7 +775,7 @@ class _SalesDashboardScreenState extends State<SalesDashboardScreen> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              'Statistik Hari Ini',
+              'Supplier',
               style: AppTextStyles.h6.copyWith(
                 fontWeight: FontWeight.bold,
                 color: AppColors.textPrimary,
@@ -416,7 +796,7 @@ class _SalesDashboardScreenState extends State<SalesDashboardScreen> {
           children: [
             Expanded(
               child: _buildStatCard(
-                title: 'Total Supplier',
+                title: 'Total supplier',
                 value: _dashboardStats?.totalSuppliers.toString() ?? '0',
                 subtitle: 'Terdaftar',
                 icon: Icons.store,
@@ -432,7 +812,7 @@ class _SalesDashboardScreenState extends State<SalesDashboardScreen> {
             const SizedBox(width: 12),
             Expanded(
               child: _buildStatCard(
-                title: 'Supplier Aktif',
+                title: 'Supplier aktif',
                 value: _dashboardStats?.activeSuppliers.toString() ?? '0',
                 subtitle: 'Beroperasi',
                 icon: Icons.check_circle,
@@ -452,27 +832,15 @@ class _SalesDashboardScreenState extends State<SalesDashboardScreen> {
         // // Location Tracking Widget
         // const LocationTrackingWidget(),
         // const SizedBox(height: 12),
-
-        // Bottom Row - New Suppliers only
-        Row(
-          children: [
-            Expanded(
-              child: _buildStatCard(
-                title: 'Baru Bulan Ini',
-                value: _dashboardStats?.newThisMonth.toString() ?? '0',
-                subtitle: 'Supplier',
-                icon: Icons.trending_up,
-                color: Colors.blue,
-                percentage:
-                    _dashboardStats != null &&
-                        _dashboardStats!.totalSuppliers > 0
-                    ? '+${((_dashboardStats!.newThisMonth / _dashboardStats!.totalSuppliers) * 100).toStringAsFixed(1)}%'
-                    : '0%',
-                isPositive: true,
-              ),
-            ),
-            const SizedBox(width: 12),
-          ],
+        const SizedBox(height: 12),
+        _buildStatCard(
+          title: 'Supplier baru bulan ini',
+          value: _dashboardStats?.newThisMonth.toString() ?? '0',
+          subtitle: 'Akuisisi baru',
+          icon: Icons.person_add_alt_1_outlined,
+          color: Colors.blue,
+          percentage: 'Bulan berjalan',
+          isPositive: true,
         ),
       ],
     );
@@ -558,75 +926,228 @@ class _SalesDashboardScreenState extends State<SalesDashboardScreen> {
     );
   }
 
+  Widget _buildMyStatistics() {
+    final stats = _myStats;
+    if (stats == null) return const SizedBox.shrink();
+    final trend = stats.trend
+        .map((item) => _number(item['completed']) + _number(item['pending']))
+        .toList();
+    final hasChart = trend.isNotEmpty && trend.any((value) => value > 0);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Statistik saya',
+          style: AppTextStyles.h6.copyWith(
+            color: AppColors.textPrimary,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 12),
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: AppColors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppColors.borderColor),
+          ),
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  _miniStat('Total', stats.total, AppColors.primaryGreen),
+                  _miniStat('Selesai', stats.completed, AppColors.success),
+                  _miniStat('Proses', stats.inProgress, AppColors.info),
+                  _miniStat('Pending', stats.pending, AppColors.accentOrange),
+                ],
+              ),
+              if (hasChart) ...[
+                const SizedBox(height: 18),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'Aktivitas 7 hari terakhir',
+                    style: AppTextStyles.caption.copyWith(
+                      color: AppColors.textSecondary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                SizedBox(height: 82, child: _activityChart(trend)),
+              ],
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _miniStat(String label, int value, Color color) => Expanded(
+    child: Column(
+      children: [
+        Text(
+          '$value',
+          style: AppTextStyles.h6.copyWith(
+            color: color,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 3),
+        Text(
+          label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary),
+        ),
+      ],
+    ),
+  );
+
+  Widget _activityChart(List<int> values) {
+    final maxValue = values.reduce((a, b) => a > b ? a : b);
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: values.take(7).map((value) {
+        final fraction = value / maxValue;
+        return Expanded(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 3),
+            child: Align(
+              alignment: Alignment.bottomCenter,
+              child: Container(
+                height: 10 + (62 * fraction),
+                decoration: BoxDecoration(
+                  color: AppColors.primaryGreen.withValues(alpha: .78),
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(4),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  int _number(dynamic value) =>
+      value is num ? value.toInt() : int.tryParse(value?.toString() ?? '') ?? 0;
+
+  /// Full CRO/RO menu, mirroring the web sidebar's permission-slug gating
+  /// (crm-react's filterNav()): an item with no `permission` is always
+  /// shown once logged in; otherwise it only shows if `_geuUser.permissions`
+  /// includes that slug. This is what makes RO (which holds
+  /// crm-read-visit-planner) see Mission/Visit Plan while CRO (which
+  /// doesn't) does not.
+  // Tugas Saya & Self Assign live in the "Tugas" bottom-nav tab
+  // (TasksHubScreen) instead of here, so they aren't duplicated as both a
+  // tab and a menu card.
+  List<_CroMenuItem> _menuItems() => [
+    _CroMenuItem(
+      title: 'Mission hari ini',
+      subtitle: 'Rute & check-in kunjungan',
+      icon: Icons.map_outlined,
+      color: Colors.purple,
+      permission: 'crm-read-visit-planner',
+      onTap: () => setState(() => _selectedIndex = 1),
+    ),
+    _CroMenuItem(
+      title: 'Pickup',
+      subtitle: 'Daftar dan status pengambilan',
+      icon: Icons.local_shipping_outlined,
+      color: AppColors.accentOrange,
+      permission: 'crm-read-pickup',
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const PickupListScreen()),
+      ),
+    ),
+    _CroMenuItem(
+      title: 'Daftar Supplier',
+      subtitle: 'Cari & perbarui data supplier',
+      icon: Icons.edit_location,
+      color: AppColors.accentOrange,
+      // SupplierListScreen calls the legacy PHP API (AppConfig.serverDomain),
+      // not the Go backend's crm-* permission system, so it isn't gated by a
+      // permission slug — unchanged from its previous unconditional
+      // visibility, just repositioned into the full menu list.
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => ChangeNotifierProvider(
+            create: (_) => SupplierListProvider(),
+            child: const SupplierListScreen(),
+          ),
+        ),
+      ),
+    ),
+    _CroMenuItem(
+      title: 'Supplier Nearby',
+      subtitle: 'Cari supplier berdasarkan lokasi/kota',
+      icon: Icons.near_me_outlined,
+      color: AppColors.info,
+      // Backed by VisitPlannerService (GET /suppliers/nearby), under the
+      // Visit Planner router's vpReadGuard = crm-read-visit-planner — not a
+      // supplier master-data permission, per doc.md.
+      permission: 'crm-read-visit-planner',
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const NearbySupplierScreen()),
+      ),
+    ),
+    _CroMenuItem(
+      title: 'Scan Prospek',
+      subtitle: 'Riset calon supplier di sekitar Anda',
+      icon: Icons.radar_outlined,
+      color: AppColors.info,
+      // Backed by VisitPlannerService (scan jobs, /prospect/register), same
+      // Visit Planner permission domain as Supplier Nearby above.
+      permission: 'crm-read-visit-planner',
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const ScanProspectScreen()),
+      ),
+    ),
+    _CroMenuItem(
+      title: 'Statistik Saya',
+      subtitle: 'KPI assignment dan tren harian',
+      icon: Icons.bar_chart_outlined,
+      color: Colors.teal,
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const MyStatisticScreen()),
+      ),
+    ),
+  ];
+
   Widget _buildQuickActions() {
+    final visible = _menuItems()
+        .where((item) => item.permission == null || _has(item.permission!))
+        .toList();
+    if (visible.isEmpty) return const SizedBox.shrink();
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text(
-          'Aksi Cepat',
+          'Menu',
           style: AppTextStyles.h6.copyWith(
             fontWeight: FontWeight.bold,
             color: AppColors.textPrimary,
           ),
         ),
         const SizedBox(height: 16),
-        Row(
-          children: [
-            Expanded(
-              child: _buildActionCard(
-                title: 'Tambah Supplier',
-                subtitle: 'Daftarkan mitra baru',
-                icon: Icons.add_business,
-                color: AppColors.primaryGreen,
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => ChangeNotifierProvider(
-                        create: (_) => SupplierFormProvider(),
-                        child: const AddSupplierScreenSimple(),
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-            const SizedBox(width: 12), // jarak antar kolom
-            Expanded(
-              child: _buildActionCard(
-                title: 'Kelola Supplier',
-                subtitle: 'Edit data existing',
-                icon: Icons.edit_location,
-                color: AppColors.accentOrange,
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => ChangeNotifierProvider(
-                        create: (_) => SupplierListProvider(),
-                        child: const SupplierListScreen(),
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: _buildActionCard(
-                title: 'Canvassing',
-                subtitle: 'Cari & Catat Prospek',
-                icon: Icons.map_outlined,
-                color: Colors.purple,
-                onTap: _openCanvassing,
-              ),
-            ),
-          ],
-        ),
+        for (var i = 0; i < visible.length; i++) ...[
+          _buildActionCard(
+            title: visible[i].title,
+            subtitle: visible[i].subtitle,
+            icon: visible[i].icon,
+            color: visible[i].color,
+            onTap: visible[i].onTap,
+          ),
+          if (i != visible.length - 1) const SizedBox(height: 12),
+        ],
       ],
     );
   }
@@ -638,50 +1159,64 @@ class _SalesDashboardScreenState extends State<SalesDashboardScreen> {
     required Color color,
     required VoidCallback onTap,
   }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: AppColors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: color.withOpacity(0.2)),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 10,
-              offset: const Offset(0, 5),
-            ),
-          ],
-        ),
-        child: Column(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
+    return Material(
+      color: AppColors.white,
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: color.withOpacity(0.2)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 10,
+                offset: const Offset(0, 5),
               ),
-              child: Icon(icon, color: color, size: 24),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              title,
-              textAlign: TextAlign.center,
-              style: AppTextStyles.bodyLarge.copyWith(
-                fontWeight: FontWeight.w600,
-                color: AppColors.textPrimary,
+            ],
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(icon, color: color, size: 24),
               ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              subtitle,
-              textAlign: TextAlign.center,
-              style: AppTextStyles.caption.copyWith(
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: AppTextStyles.bodyLarge.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: AppTextStyles.bodyMedium.copyWith(
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(
+                Icons.arrow_forward_ios,
+                size: 14,
                 color: AppColors.textSecondary,
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -1049,4 +1584,22 @@ class _SalesDashboardScreenState extends State<SalesDashboardScreen> {
       ],
     );
   }
+}
+
+class _CroMenuItem {
+  final String title;
+  final String subtitle;
+  final IconData icon;
+  final Color color;
+  final String? permission;
+  final VoidCallback onTap;
+
+  const _CroMenuItem({
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    required this.color,
+    this.permission,
+    required this.onTap,
+  });
 }

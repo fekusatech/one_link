@@ -79,7 +79,7 @@ class RoleSelectionScreen extends StatelessWidget {
                   title: 'Driver',
                   subtitle: 'Kelola penjemputan minyak jelantah',
                   description:
-                      '• Navigasi GPS untuk penjemputan\n• Proses pickup dan dokumentasi\n• Tracking volume dan performa',
+                      '• Navigasi GPS untuk penjemputan\n• Proses pickup dan dokumentasi\n• Ringkasan volume dan performa',
                   icon: Icons.local_shipping,
                   route: '/dashboard',
                   color: AppColors.white,

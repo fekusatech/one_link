@@ -54,7 +54,7 @@ class _LocationTrackingSettingsScreenState
         setState(() => _trackingEnabled = true);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Tracking GPS diaktifkan'),
+            content: Text('Pembaruan lokasi diaktifkan'),
             backgroundColor: AppColors.primaryGreen,
           ),
         );
@@ -67,7 +67,7 @@ class _LocationTrackingSettingsScreenState
       setState(() => _trackingEnabled = false);
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Tracking GPS dinonaktifkan')),
+        const SnackBar(content: Text('Pembaruan lokasi dinonaktifkan')),
       );
     }
   }
@@ -78,8 +78,8 @@ class _LocationTrackingSettingsScreenState
       builder: (context) => AlertDialog(
         title: const Text('Cabut Persetujuan'),
         content: const Text(
-          'Apakah Anda yakin ingin mencabut persetujuan tracking lokasi? '
-          'Fitur tracking akan dinonaktifkan dan data lokasi akan dihapus.',
+          'Apakah Anda yakin ingin mencabut persetujuan penggunaan lokasi? '
+          'Pembaruan lokasi akan dinonaktifkan dan data lokasi akan dihapus.',
         ),
         actions: [
           TextButton(
@@ -106,7 +106,9 @@ class _LocationTrackingSettingsScreenState
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Persetujuan tracking telah dicabut')),
+        const SnackBar(
+          content: Text('Persetujuan penggunaan lokasi telah dicabut'),
+        ),
       );
     }
   }
@@ -116,7 +118,7 @@ class _LocationTrackingSettingsScreenState
     if (_isLoading) {
       return Scaffold(
         appBar: AppBar(
-          title: const Text('Pengaturan GPS Tracking'),
+          title: const Text('Pengaturan Lokasi'),
           backgroundColor: AppColors.primaryGreen,
           foregroundColor: AppColors.white,
         ),
@@ -130,7 +132,7 @@ class _LocationTrackingSettingsScreenState
         backgroundColor: AppColors.primaryGreen,
         foregroundColor: AppColors.white,
         title: Text(
-          'Pengaturan GPS Tracking',
+          'Pengaturan Lokasi',
           style: AppTextStyles.h5.copyWith(
             color: AppColors.white,
             fontWeight: FontWeight.bold,
@@ -170,7 +172,7 @@ class _LocationTrackingSettingsScreenState
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    'GPS Tracking',
+                    'Pembaruan Lokasi',
                     style: AppTextStyles.h6.copyWith(
                       fontWeight: FontWeight.bold,
                     ),
@@ -186,8 +188,8 @@ class _LocationTrackingSettingsScreenState
             const SizedBox(height: 8),
             Text(
               _trackingEnabled
-                  ? 'Tracking aktif - Lokasi Anda sedang dipantau'
-                  : 'Tracking nonaktif - Fitur navigation terbatas',
+                  ? 'Aktif - Lokasi digunakan saat tugas berjalan'
+                  : 'Nonaktif - Fitur navigasi terbatas',
               style: AppTextStyles.bodyMedium.copyWith(
                 color: AppColors.textSecondary,
               ),
@@ -206,7 +208,7 @@ class _LocationTrackingSettingsScreenState
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        'Persetujuan diperlukan untuk mengaktifkan tracking',
+                        'Persetujuan diperlukan untuk mengaktifkan akses lokasi',
                         style: AppTextStyles.caption.copyWith(
                           color: Colors.orange.shade700,
                         ),
@@ -245,7 +247,7 @@ class _LocationTrackingSettingsScreenState
             const SizedBox(height: 8),
             Text(
               _hasConsent
-                  ? 'Anda telah memberikan persetujuan tracking'
+                  ? 'Anda telah memberikan persetujuan penggunaan lokasi'
                   : 'Persetujuan belum diberikan',
               style: AppTextStyles.bodyMedium.copyWith(
                 color: AppColors.textSecondary,

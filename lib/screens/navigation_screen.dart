@@ -1,5 +1,7 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../constants/app_colors.dart';
@@ -7,6 +9,8 @@ import '../constants/app_text_styles.dart';
 import '../models/surat_jalan.dart';
 import 'pickup_process_screen.dart';
 import '../services/direction_service.dart';
+
+enum NavMapEngine { leafletOsm, googleMaps }
 
 class NavigationScreen extends StatefulWidget {
   final SuratJalan? suratJalan;
@@ -17,29 +21,68 @@ class NavigationScreen extends StatefulWidget {
 }
 
 class _NavigationScreenState extends State<NavigationScreen> {
-  GoogleMapController? _mapController;
-  final Set<Marker> _markers = {};
-  final Set<Polyline> _polylines = {};
+  final MapController _mapController = MapController();
+  StreamSubscription<Position>? _positionSubscription;
+
+  NavMapEngine _mapEngine = NavMapEngine.leafletOsm;
   List<LatLng> _destinations = [];
+  List<LatLng> _routePoints = [];
   int _selectedSupplierIndex = 0;
   String _primarySupplierName = 'Lokasi Penjemputan';
 
   LatLng? _currentPosition;
   bool _isLoadingLocation = true;
   bool _isLoadingRoute = false;
-  String _locationStatus = 'Mencari lokasi GPS...';
+  String _locationStatus = 'Mencari lokasi GPS real-time...';
+  bool _followDriver = true; // Auto-follow driver on map
 
   static const LatLng _defaultCenter = LatLng(-7.9797, 112.6304);
 
   @override
   void initState() {
     super.initState();
-    _setupMarkers();
-    _fetchLocation();
+    _setupDestinations();
+    _startRealtimeLocationTracking();
   }
 
-  // ── Get current location (low accuracy → fast, safe) ──
-  Future<void> _fetchLocation() async {
+  @override
+  void dispose() {
+    _positionSubscription?.cancel();
+    _mapController.dispose();
+    super.dispose();
+  }
+
+  // ── Setup destination coordinates from SuratJalan ──
+  void _setupDestinations() {
+    _destinations.clear();
+    final details = widget.suratJalan?.suratJalanDetail ?? [];
+
+    if (details.isEmpty) {
+      _destinations.add(_defaultCenter);
+      return;
+    }
+
+    _primarySupplierName = details.first.supplierName;
+
+    for (int i = 0; i < details.length; i++) {
+      final detail = details[i];
+      final gpsParts = detail.supplierGps.split(',');
+      if (gpsParts.length < 2) continue;
+
+      try {
+        final lat = double.parse(gpsParts[0].trim());
+        final lng = double.parse(gpsParts[1].trim());
+        _destinations.add(LatLng(lat, lng));
+      } catch (_) {}
+    }
+
+    if (_destinations.isEmpty) {
+      _destinations.add(_defaultCenter);
+    }
+  }
+
+  // ── Start Real-time GPS Location Stream (Follows Movement) ──
+  Future<void> _startRealtimeLocationTracking() async {
     try {
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
@@ -47,7 +90,7 @@ class _NavigationScreenState extends State<NavigationScreen> {
           _locationStatus = 'GPS tidak aktif';
           _isLoadingLocation = false;
         });
-        _drawRoute();
+        _fetchRealRoute();
         return;
       }
 
@@ -62,111 +105,75 @@ class _NavigationScreenState extends State<NavigationScreen> {
           _locationStatus = 'Izin GPS ditolak';
           _isLoadingLocation = false;
         });
-        _drawRoute();
+        _fetchRealRoute();
         return;
       }
 
-      // Low accuracy → cepat & hemat memori
-      final pos = await Geolocator.getCurrentPosition(
+      // Initial fast location fetch
+      final initialPos = await Geolocator.getCurrentPosition(
         locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.medium,
-          timeLimit: Duration(seconds: 10),
+          accuracy: LocationAccuracy.high,
+          timeLimit: Duration(seconds: 8),
         ),
-      );
+      ).catchError((_) async => await Geolocator.getLastKnownPosition() ?? Position(
+        latitude: _defaultCenter.latitude,
+        longitude: _defaultCenter.longitude,
+        timestamp: DateTime.now(),
+        accuracy: 0,
+        altitude: 0,
+        heading: 0,
+        speed: 0,
+        speedAccuracy: 0,
+        altitudeAccuracy: 0,
+        headingAccuracy: 0,
+      ));
 
-      if (!mounted) return;
-
-      setState(() {
-        _currentPosition = LatLng(pos.latitude, pos.longitude);
-        _locationStatus = 'Lokasi ditemukan';
-        _isLoadingLocation = false;
-      });
-
-      // Tambah marker posisi saya
-      _markers.add(
-        Marker(
-          markerId: const MarkerId('my_location'),
-          position: _currentPosition!,
-          icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue),
-          infoWindow: const InfoWindow(
-            title: '📍 Lokasi Saya',
-            snippet: 'Posisi saat ini',
-          ),
-        ),
-      );
-
-      _drawRoute();
-      _fitBounds();
-    } catch (e) {
-      print('⚠️ NavigationScreen: GPS error: $e');
       if (mounted) {
         setState(() {
-          _locationStatus = 'Tidak dapat mengambil lokasi';
+          _currentPosition = LatLng(initialPos.latitude, initialPos.longitude);
+          _locationStatus = 'GPS Real-time Aktif';
           _isLoadingLocation = false;
         });
-        _drawRoute();
+
+        _fetchRealRoute();
+        _fitBounds();
+      }
+
+      // Listen to continuous real-time movement stream
+      const locationSettings = LocationSettings(
+        accuracy: LocationAccuracy.high,
+        distanceFilter: 3, // Trigger every 3 meters of movement
+      );
+
+      _positionSubscription = Geolocator.getPositionStream(
+        locationSettings: locationSettings,
+      ).listen((Position position) {
+        if (!mounted) return;
+
+        final newPos = LatLng(position.latitude, position.longitude);
+        setState(() {
+          _currentPosition = newPos;
+        });
+
+        // Auto-center map following real driver movement
+        if (_followDriver) {
+          _mapController.move(newPos, _mapController.camera.zoom);
+        }
+      });
+    } catch (e) {
+      print('⚠️ Real-time GPS stream error: $e');
+      if (mounted) {
+        setState(() {
+          _locationStatus = 'Koneksi GPS terbatas';
+          _isLoadingLocation = false;
+        });
+        _fetchRealRoute();
       }
     }
   }
 
-  // ── Build supplier markers ──────────────────────────────
-  void _setupMarkers() {
-    _markers.clear();
-    _destinations.clear();
-
-    final details = widget.suratJalan?.suratJalanDetail ?? [];
-    if (details.isEmpty) {
-      _destinations.add(_defaultCenter);
-      _markers.add(
-        Marker(
-          markerId: const MarkerId('default'),
-          position: _defaultCenter,
-          infoWindow: const InfoWindow(title: 'Lokasi Penjemputan'),
-        ),
-      );
-      return;
-    }
-
-    _primarySupplierName = details.first.supplierName;
-
-    for (int i = 0; i < details.length; i++) {
-      final detail = details[i];
-      final gpsParts = detail.supplierGps.split(',');
-      if (gpsParts.length < 2) continue;
-
-      try {
-        final lat = double.parse(gpsParts[0].trim());
-        final lng = double.parse(gpsParts[1].trim());
-        final pos = LatLng(lat, lng);
-        _destinations.add(pos);
-
-        final isSelected = i == _selectedSupplierIndex;
-        _markers.add(
-          Marker(
-            markerId: MarkerId('supplier_$i'),
-            position: pos,
-            icon: BitmapDescriptor.defaultMarkerWithHue(
-              detail.status == 'done'
-                  ? BitmapDescriptor.hueGreen
-                  : isSelected
-                      ? BitmapDescriptor.hueRed
-                      : BitmapDescriptor.hueOrange,
-            ),
-            infoWindow: InfoWindow(
-              title: '${i + 1}. ${detail.supplierName}',
-              snippet: detail.supplierAlamat,
-            ),
-            onTap: () => _selectSupplier(i),
-          ),
-        );
-      } catch (_) {}
-    }
-
-    print('🗺️ ${_markers.length} marker siap, ${_destinations.length} tujuan');
-  }
-
-  // ── Draw real road route (my pos → selected supplier) ──
-  Future<void> _drawRoute() async {
+  // ── Fetch real street route polyline from OSRM ──
+  Future<void> _fetchRealRoute() async {
     if (_destinations.isEmpty) return;
 
     setState(() => _isLoadingRoute = true);
@@ -177,34 +184,22 @@ class _NavigationScreenState extends State<NavigationScreen> {
 
     final origin = _currentPosition ?? _defaultCenter;
 
-    final routePoints = await DirectionService.getRoutePolyline(
+    final points = await DirectionService.getRoutePolyline(
       origin: origin,
       destination: destination,
     );
 
-    _polylines.clear();
-    _polylines.add(
-      Polyline(
-        polylineId: const PolylineId('route'),
-        points: routePoints,
-        color: AppColors.primaryGreen,
-        width: 6,
-        jointType: JointType.round,
-        startCap: Cap.roundCap,
-        endCap: Cap.roundCap,
-      ),
-    );
-
     if (mounted) {
-      setState(() => _isLoadingRoute = false);
+      setState(() {
+        _routePoints = points;
+        _isLoadingRoute = false;
+      });
     }
-
-    print('🗺️ Route drawn with ${routePoints.length} points');
   }
 
-  // ── Fit camera to show both current pos + destination ──
+  // ── Fit camera to show both driver & selected destination ──
   void _fitBounds() {
-    if (_destinations.isEmpty || _mapController == null) return;
+    if (_destinations.isEmpty) return;
 
     final dest = _destinations.length > _selectedSupplierIndex
         ? _destinations[_selectedSupplierIndex]
@@ -212,22 +207,16 @@ class _NavigationScreenState extends State<NavigationScreen> {
 
     final origin = _currentPosition ?? _defaultCenter;
 
-    final minLat = origin.latitude < dest.latitude ? origin.latitude : dest.latitude;
-    final maxLat = origin.latitude > dest.latitude ? origin.latitude : dest.latitude;
-    final minLng = origin.longitude < dest.longitude ? origin.longitude : dest.longitude;
-    final maxLng = origin.longitude > dest.longitude ? origin.longitude : dest.longitude;
-
-    // Padding supaya tidak terlalu mepet tepi
-    const pad = 0.003;
-    final bounds = LatLngBounds(
-      southwest: LatLng(minLat - pad, minLng - pad),
-      northeast: LatLng(maxLat + pad, maxLng + pad),
+    final bounds = LatLngBounds.fromPoints([origin, dest]);
+    _mapController.fitCamera(
+      CameraFit.bounds(
+        bounds: bounds,
+        padding: const EdgeInsets.all(70),
+      ),
     );
-
-    _mapController!.animateCamera(CameraUpdate.newLatLngBounds(bounds, 80));
   }
 
-  // ── Select a different supplier chip ───────────────────
+  // ── Select supplier stop ──
   void _selectSupplier(int index) {
     if (index >= _destinations.length) return;
 
@@ -235,51 +224,30 @@ class _NavigationScreenState extends State<NavigationScreen> {
       _selectedSupplierIndex = index;
       _primarySupplierName =
           widget.suratJalan!.suratJalanDetail[index].supplierName;
+      _followDriver = false; // Pause auto-follow when inspecting stops
     });
 
-    _setupMarkers();
-    // Re-add my location marker after refresh
-    if (_currentPosition != null) {
-      _markers.add(
-        Marker(
-          markerId: const MarkerId('my_location'),
-          position: _currentPosition!,
-          icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue),
-          infoWindow: const InfoWindow(title: '📍 Lokasi Saya'),
-        ),
-      );
-    }
+    _fetchRealRoute();
 
-    _drawRoute();
-
-    // Animate camera toward the new destination
-    _mapController?.animateCamera(
-      CameraUpdate.newLatLngZoom(_destinations[index], 14),
-    );
-
-    Future.delayed(const Duration(milliseconds: 600), _fitBounds);
+    _mapController.move(_destinations[index], 15.5);
   }
 
-  // ── Open Google Maps with Navigation Mode ─────────────
+  // ── Open external Google Maps navigation ──
   Future<void> _openGoogleMaps() async {
     LatLng target;
     if (_destinations.length > _selectedSupplierIndex) {
       target = _destinations[_selectedSupplierIndex];
-    } else if (_destinations.isNotEmpty) {
-      target = _destinations.first;
     } else {
-      return;
+      target = _destinations.first;
     }
 
     String url;
     if (_currentPosition != null) {
-      // Dengan titik asal (lokasi saya) → mode navigasi
       url = 'https://www.google.com/maps/dir/?api=1'
           '&origin=${_currentPosition!.latitude},${_currentPosition!.longitude}'
           '&destination=${target.latitude},${target.longitude}'
           '&travelmode=driving';
     } else {
-      // Tanpa titik asal → hanya tujuan
       url = 'https://www.google.com/maps/dir/?api=1'
           '&destination=${target.latitude},${target.longitude}'
           '&travelmode=driving';
@@ -287,19 +255,16 @@ class _NavigationScreenState extends State<NavigationScreen> {
 
     final uri = Uri.parse(url);
     try {
-      final canLaunch = await canLaunchUrl(uri);
-      if (canLaunch) {
+      if (await canLaunchUrl(uri)) {
         await launchUrl(uri, mode: LaunchMode.externalApplication);
       } else {
-        // Fallback: try launching directly without canLaunch check (common for Android 11+)
         await launchUrl(uri, mode: LaunchMode.externalApplication);
       }
     } catch (e) {
-      debugPrint('Error launching Google Maps: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Gagal membuka Google Maps. Pastikan aplikasi Google Maps terpasang.'),
+            content: Text('Gagal membuka aplikasi Google Maps.'),
             backgroundColor: AppColors.error,
           ),
         );
@@ -307,51 +272,126 @@ class _NavigationScreenState extends State<NavigationScreen> {
     }
   }
 
-  // ── Center camera to my location ──────────────────────
-  void _centerToMyLocation() {
-    if (_currentPosition != null) {
-      _mapController?.animateCamera(
-        CameraUpdate.newLatLngZoom(_currentPosition!, 16),
-      );
-    }
-  }
-
-  @override
-  void dispose() {
-    _mapController?.dispose();
-    super.dispose();
+  // ── Toggle Map Engine (Leaflet OSM / Google Maps Tile) ──
+  void _toggleEngine() {
+    setState(() {
+      _mapEngine = _mapEngine == NavMapEngine.leafletOsm
+          ? NavMapEngine.googleMaps
+          : NavMapEngine.leafletOsm;
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    final initialTarget =
-        _destinations.isNotEmpty ? _destinations.first : _defaultCenter;
+    final initialCenter = _currentPosition ??
+        (_destinations.isNotEmpty ? _destinations.first : _defaultCenter);
+
+    final tileUrl = _mapEngine == NavMapEngine.googleMaps
+        ? 'https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}'
+        : 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
 
     return Scaffold(
       body: Stack(
         children: [
-          // ── Map ─────────────────────────────────────────
-          GoogleMap(
-            initialCameraPosition: CameraPosition(
-              target: initialTarget,
-              zoom: 14,
+          // ── Leaflet FlutterMap Canvas ─────────────────────
+          FlutterMap(
+            mapController: _mapController,
+            options: MapOptions(
+              initialCenter: initialCenter,
+              initialZoom: 14.5,
+              onPositionChanged: (pos, hasGesture) {
+                if (hasGesture && _followDriver) {
+                  setState(() => _followDriver = false);
+                }
+              },
             ),
-            markers: Set.from(_markers),
-            polylines: Set.from(_polylines),
-            onMapCreated: (controller) {
-              _mapController = controller;
-              // After map ready, fit the route
-              Future.delayed(const Duration(milliseconds: 500), _fitBounds);
-            },
-            myLocationButtonEnabled: false,
-            myLocationEnabled: false, // handled manually via Geolocator
-            zoomControlsEnabled: false,
-            compassEnabled: true,
-            mapToolbarEnabled: false,
-            mapType: MapType.normal,
+            children: [
+              TileLayer(
+                urlTemplate: tileUrl,
+                userAgentPackageName: 'com.example.one_link',
+              ),
+
+              // Real Road Routing Polyline Layer
+              if (_routePoints.length >= 2)
+                PolylineLayer(
+                  polylines: [
+                    Polyline(
+                      points: _routePoints,
+                      color: const Color(0xFF1877F2),
+                      strokeWidth: 6,
+                      borderColor: Colors.white,
+                      borderStrokeWidth: 2,
+                    ),
+                  ],
+                ),
+
+              // Markers (Real Driver Position + Destination Pins)
+              MarkerLayer(
+                markers: [
+                  // Real-time Driver Position Marker
+                  if (_currentPosition != null)
+                    Marker(
+                      point: _currentPosition!,
+                      width: 42,
+                      height: 42,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF1877F2),
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 3),
+                          boxShadow: const [
+                            BoxShadow(color: Color(0x66000000), blurRadius: 8),
+                          ],
+                        ),
+                        child: const Icon(
+                          Icons.navigation_rounded,
+                          color: Colors.white,
+                          size: 24,
+                        ),
+                      ),
+                    ),
+
+                  // Destination Markers
+                  ..._destinations.asMap().entries.map((entry) {
+                    final index = entry.key;
+                    final pos = entry.value;
+                    final isSelected = index == _selectedSupplierIndex;
+
+                    return Marker(
+                      point: pos,
+                      width: isSelected ? 40 : 32,
+                      height: isSelected ? 40 : 32,
+                      child: GestureDetector(
+                        onTap: () => _selectSupplier(index),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          decoration: BoxDecoration(
+                            color: isSelected ? AppColors.error : AppColors.primaryGreen,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 2.5),
+                            boxShadow: const [
+                              BoxShadow(color: Color(0x55000000), blurRadius: 6),
+                            ],
+                          ),
+                          alignment: Alignment.center,
+                          child: Text(
+                            '${index + 1}',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+                  }),
+                ],
+              ),
+            ],
           ),
 
-          // ── Top Bar ────────────────────────────────────
+          // ── Top Header Controls ──────────────────────────
           Positioned(
             top: 0,
             left: 0,
@@ -359,267 +399,156 @@ class _NavigationScreenState extends State<NavigationScreen> {
             child: SafeArea(
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                child: Row(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    _mapBtn(icon: Icons.arrow_back, onTap: () => Navigator.pop(context)),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(24),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.1),
-                              blurRadius: 8,
-                            )
-                          ],
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.location_on, color: AppColors.primaryGreen, size: 16),
-                            const SizedBox(width: 6),
-                            Expanded(
-                              child: Text(
-                                _primarySupplierName,
-                                style: AppTextStyles.bodyMedium.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                  color: AppColors.textPrimary,
+                    Row(
+                      children: [
+                        _mapBtn(icon: Icons.arrow_back, onTap: () => Navigator.pop(context)),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(24),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.12),
+                                  blurRadius: 8,
+                                )
+                              ],
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.location_on, color: AppColors.error, size: 18),
+                                const SizedBox(width: 6),
+                                Expanded(
+                                  child: Text(
+                                    _primarySupplierName,
+                                    style: AppTextStyles.bodyMedium.copyWith(
+                                      fontWeight: FontWeight.bold,
+                                      color: AppColors.textPrimary,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
                                 ),
-                                overflow: TextOverflow.ellipsis,
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        // Map Engine Switcher Button
+                        GestureDetector(
+                          onTap: _toggleEngine,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(20),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.12),
+                                  blurRadius: 8,
+                                )
+                              ],
+                            ),
+                            child: Text(
+                              _mapEngine == NavMapEngine.leafletOsm ? '🍃 OSM' : '🗺️ Google',
+                              style: const TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.primaryGreen,
                               ),
                             ),
-                          ],
+                          ),
                         ),
-                      ),
+                      ],
                     ),
-                    const SizedBox(width: 10),
-                    // Fit route button
-                    _mapBtn(
-                      icon: Icons.fit_screen,
-                      onTap: _fitBounds,
-                      tooltip: 'Tampilkan Rute',
-                    ),
-                    const SizedBox(width: 8),
-                    // My location button
-                    _mapBtn(
-                      icon: Icons.my_location,
-                      onTap: _centerToMyLocation,
-                      color: _currentPosition != null
-                          ? AppColors.primaryGreen
-                          : AppColors.grey,
-                      tooltip: 'Lokasi Saya',
-                    ),
+                    _buildFuelEstimatorBadge(),
                   ],
                 ),
               ),
             ),
           ),
 
-          // ── GPS Loading Banner ─────────────────────────
-          if (_isLoadingLocation)
+          // ── GPS Status Banner ───────────────────────────
+          if (_isLoadingLocation || _isLoadingRoute)
             Positioned(
               top: kToolbarHeight + 56,
               left: 16,
               right: 16,
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                 decoration: BoxDecoration(
                   color: AppColors.primaryGreen,
                   borderRadius: BorderRadius.circular(12),
                   boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.2),
-                      blurRadius: 6,
-                    )
+                    BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 6)
                   ],
                 ),
                 child: Row(
                   children: [
                     const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(
-                        color: Colors.white,
-                        strokeWidth: 2,
-                      ),
+                      width: 14,
+                      height: 14,
+                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 10),
                     Text(
-                      _locationStatus,
-                      style: AppTextStyles.bodySmall.copyWith(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w600,
-                      ),
+                      _isLoadingRoute ? 'Menghitung rute tercepat...' : _locationStatus,
+                      style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600),
                     ),
                   ],
                 ),
               ),
             ),
 
-          // ── Route Loading Banner ───────────────────────
-          if (_isLoadingRoute)
-            Positioned(
-              top: kToolbarHeight + (_isLoadingLocation ? 112 : 56),
-              left: 16,
-              right: 16,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                decoration: BoxDecoration(
-                  color: Colors.blue.withOpacity(0.9),
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.2),
-                      blurRadius: 6,
-                    )
-                  ],
-                ),
-                child: Row(
-                  children: [
-                    const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(
-                        color: Colors.white,
-                        strokeWidth: 2,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Text(
-                      'Menghitung rute tercepat...',
-                      style: AppTextStyles.bodySmall.copyWith(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
+          // ── Real Movement Follow Driver Button ──────────
+          Positioned(
+            right: 16,
+            bottom: 140,
+            child: FloatingActionButton.small(
+              heroTag: 'follow_driver_btn',
+              backgroundColor: _followDriver ? const Color(0xFF1877F2) : Colors.white,
+              onPressed: () {
+                setState(() => _followDriver = true);
+                if (_currentPosition != null) {
+                  _mapController.move(_currentPosition!, 16);
+                }
+              },
+              child: Icon(
+                Icons.my_location_rounded,
+                color: _followDriver ? Colors.white : const Color(0xFF1877F2),
               ),
             ),
+          ),
 
-          // ── Route Info Banner (after location found) ───
-          if (!_isLoadingLocation && _currentPosition != null)
-            Positioned(
-              top: kToolbarHeight + 56,
-              left: 16,
-              right: 16,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppColors.primaryGreen.withOpacity(0.3)),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.08),
-                      blurRadius: 8,
-                    )
-                  ],
-                ),
-                child: Row(
-                  children: [
-                    // Origin dot
-                    const Icon(Icons.circle, color: Colors.blue, size: 12),
-                    const SizedBox(width: 8),
-                    const Text('Lokasi Saya', style: TextStyle(fontSize: 12)),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Container(
-                        height: 2,
-                        color: AppColors.primaryGreen.withOpacity(0.4),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Icon(Icons.location_on, color: AppColors.error, size: 14),
-                    const SizedBox(width: 4),
-                    Flexible(
-                      child: Text(
-                        _primarySupplierName,
-                        style: const TextStyle(
-                            fontSize: 12, fontWeight: FontWeight.w600),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
-          // ── Supplier Chips (multiple) ──────────────────
-          if (_destinations.length > 1)
-            Positioned(
-              top: kToolbarHeight + (_isLoadingLocation || _currentPosition != null ? 112 : 60),
-              left: 0,
-              right: 0,
-              child: SizedBox(
-                height: 44,
-                child: ListView.builder(
-                  scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  itemCount: widget.suratJalan!.suratJalanDetail.length,
-                  itemBuilder: (context, i) {
-                    final selected = i == _selectedSupplierIndex;
-                    final detail = widget.suratJalan!.suratJalanDetail[i];
-                    return GestureDetector(
-                      onTap: () => _selectSupplier(i),
-                      child: Container(
-                        margin: const EdgeInsets.only(right: 8),
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 14, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: selected ? AppColors.primaryGreen : Colors.white,
-                          borderRadius: BorderRadius.circular(20),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.1),
-                              blurRadius: 4,
-                            )
-                          ],
-                        ),
-                        child: Text(
-                          '${i + 1}. ${detail.supplierName}',
-                          style: AppTextStyles.caption.copyWith(
-                            color: selected
-                                ? Colors.white
-                                : AppColors.textPrimary,
-                            fontWeight: FontWeight.w600,
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ),
-
-          // ── Bottom Buttons ────────────────────────────
+          // ── Bottom Action Controls ──────────────────────
           Positioned(
             bottom: 0,
             left: 0,
             right: 0,
             child: Container(
-              padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.bottomCenter,
                   end: Alignment.topCenter,
-                  colors: [Colors.black.withOpacity(0.65), Colors.transparent],
+                  colors: [Colors.black.withOpacity(0.7), Colors.transparent],
                 ),
               ),
               child: SafeArea(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Navigasi via Google Maps
+                    // Start Google Maps External Nav
                     SizedBox(
                       width: double.infinity,
-                      height: 52,
+                      height: 50,
                       child: ElevatedButton.icon(
                         onPressed: _openGoogleMaps,
-                        icon: const Icon(Icons.navigation),
+                        icon: const Icon(Icons.navigation_rounded),
                         label: const Text('Mulai Navigasi Google Maps'),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.primaryGreen,
@@ -634,12 +563,12 @@ class _NavigationScreenState extends State<NavigationScreen> {
                     ),
                     const SizedBox(height: 10),
 
-                    // Proses pickup
+                    // Process Pickup Button
                     if (widget.suratJalan?.status != 'done' &&
                         widget.suratJalan?.status != 'cancelled')
                       SizedBox(
                         width: double.infinity,
-                        height: 52,
+                        height: 50,
                         child: OutlinedButton.icon(
                           onPressed: () {
                             Navigator.push(
@@ -652,7 +581,7 @@ class _NavigationScreenState extends State<NavigationScreen> {
                               ),
                             );
                           },
-                          icon: const Icon(Icons.local_shipping),
+                          icon: const Icon(Icons.local_shipping_rounded),
                           label: Text(
                             'Proses: $_primarySupplierName',
                             overflow: TextOverflow.ellipsis,
@@ -682,26 +611,64 @@ class _NavigationScreenState extends State<NavigationScreen> {
     required IconData icon,
     required VoidCallback onTap,
     Color color = AppColors.primaryGreen,
-    String? tooltip,
   }) {
-    return Tooltip(
-      message: tooltip ?? '',
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          shape: BoxShape.circle,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.12),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: IconButton(
-          icon: Icon(icon, color: color),
-          onPressed: onTap,
-        ),
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        shape: BoxShape.circle,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.12),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: IconButton(
+        icon: Icon(icon, color: color),
+        onPressed: onTap,
+      ),
+    );
+  }
+
+  Widget _buildFuelEstimatorBadge() {
+    double distanceKm = 0.0;
+    if (_currentPosition != null && _destinations.isNotEmpty) {
+      final dest = _destinations.length > _selectedSupplierIndex
+          ? _destinations[_selectedSupplierIndex]
+          : _destinations.first;
+      final distanceMeters = Geolocator.distanceBetween(
+        _currentPosition!.latitude,
+        _currentPosition!.longitude,
+        dest.latitude,
+        dest.longitude,
+      );
+      distanceKm = distanceMeters / 1000.0;
+    }
+
+    if (distanceKm <= 0) return const SizedBox.shrink();
+
+    final liters = distanceKm / 8.0;
+    final cost = liters * 13500;
+
+    return Container(
+      margin: const EdgeInsets.only(top: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.black.withOpacity(0.75),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.primaryGreen.withOpacity(0.5)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.local_gas_station, size: 14, color: AppColors.accentOrange),
+          const SizedBox(width: 6),
+          Text(
+            'Est. BBM: ${liters.toStringAsFixed(1)} L (~Rp ${cost.toStringAsFixed(0)})',
+            style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+          ),
+        ],
       ),
     );
   }

@@ -1,0 +1,26 @@
+{
+  "installationFolder": "/Users/macprom12020/Project/crm-mobile/node_modules/react-native-nitro-modules/android/build/intermediates/prefab_package/debug/prefab",
+  "gradlePath": ":react-native-nitro-modules",
+  "packageInfo": {
+    "packageName": "react-native-nitro-modules",
+    "packageSchemaVersion": 2,
+    "packageDependencies": [],
+    "modules": [
+      {
+        "moduleName": "NitroModules",
+        "moduleHeaders": "/Users/macprom12020/Project/crm-mobile/node_modules/react-native-nitro-modules/android/build/headers/nitromodules",
+        "moduleExportLibraries": [],
+        "abis": [
+          {
+            "abiName": "x86",
+            "abiApi": 24,
+            "abiNdkMajor": 27,
+            "abiStl": "c++_shared",
+            "abiLibrary": "/Users/macprom12020/Project/crm-mobile/node_modules/react-native-nitro-modules/android/build/intermediates/cxx/Debug/6w5u3i56/obj/x86/libNitroModules.so",
+            "abiAndroidGradleBuildJsonFile": "/Users/macprom12020/Project/crm-mobile/node_modules/react-native-nitro-modules/android/.cxx/Debug/6w5u3i56/x86/android_gradle_build.json"
+          }
+        ]
+      }
+    ]
+  }
+}

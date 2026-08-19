@@ -3,6 +3,8 @@ import '../services/persistent_auth_service.dart';
 import '../services/mandatory_gps_service.dart';
 import '../services/update_service.dart';
 import '../services/geu/geu_auth_service.dart';
+import '../services/geu/active_visit_service.dart';
+import '../services/geu/visit_sync_service.dart';
 
 import 'login_screen.dart';
 import 'role_selection_screen.dart';
@@ -63,7 +65,11 @@ class _SplashScreenState extends State<SplashScreen>
           // Best-effort, non-blocking: re-open the Canvassing/Visit Planner
           // session using securely cached credentials, since this auto-login
           // path never sees a password to forward.
-          GeuAuthService.ensureSession();
+          final geuSessionReady = await GeuAuthService.ensureSession();
+          await ActiveVisitService.restore();
+          if (geuSessionReady) {
+            await VisitSyncService.syncNow();
+          }
 
           // Check if user needs mandatory GPS consent
           bool needsGpsConsent = await MandatoryGpsService.instance
@@ -81,31 +87,16 @@ class _SplashScreenState extends State<SplashScreen>
               ),
             );
           } else {
-            // Check if can proceed to main app
-            bool canProceed = await MandatoryGpsService.instance
-                .canProceedToMain();
-
-            if (canProceed) {
-              // User has everything set up, go to main app
-              print(
-                '🚀 Auto-login successful with GPS consent, navigating to main app',
-              );
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const RoleSelectionScreen(),
-                ),
-              );
-            } else {
-              // Something is wrong, force GPS consent again
-              print('⚠️ GPS setup invalid, forcing consent screen');
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const MandatoryGpsConsentScreen(),
-                ),
-              );
-            }
+            // Auto-login successful, navigate straight to main app
+            print(
+              '🚀 Auto-login successful, navigating to main app',
+            );
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const RoleSelectionScreen(),
+              ),
+            );
           }
         } else {
           // Belum login atau token expired, ke login screen

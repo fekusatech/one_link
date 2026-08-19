@@ -1,0 +1,26 @@
+{
+  "installationFolder": "/Users/macprom12020/Project/crm-mobile/node_modules/react-native-vision-camera/android/build/intermediates/prefab_package/debug/prefab",
+  "gradlePath": ":react-native-vision-camera",
+  "packageInfo": {
+    "packageName": "react-native-vision-camera",
+    "packageSchemaVersion": 2,
+    "packageDependencies": [],
+    "modules": [
+      {
+        "moduleName": "VisionCamera",
+        "moduleHeaders": "/Users/macprom12020/Project/crm-mobile/node_modules/react-native-vision-camera/android/build/headers/visioncamera",
+        "moduleExportLibraries": [],
+        "abis": [
+          {
+            "abiName": "arm64-v8a",
+            "abiApi": 24,
+            "abiNdkMajor": 27,
+            "abiStl": "c++_shared",
+            "abiLibrary": "/Users/macprom12020/Project/crm-mobile/node_modules/react-native-vision-camera/android/build/intermediates/cxx/Debug/1f4p3n1f/obj/arm64-v8a/libVisionCamera.so",
+            "abiAndroidGradleBuildJsonFile": "/Users/macprom12020/Project/crm-mobile/node_modules/react-native-vision-camera/android/.cxx/Debug/1f4p3n1f/arm64-v8a/android_gradle_build.json"
+          }
+        ]
+      }
+    ]
+  }
+}

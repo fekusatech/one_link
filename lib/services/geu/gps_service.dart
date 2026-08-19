@@ -36,6 +36,38 @@ class GpsService {
   static Future<GpsFix> getCurrentFix({
     Duration timeout = const Duration(seconds: 15),
   }) async {
+    await _ensureLocationAccess();
+
+    late final Position position;
+    try {
+      position = await Geolocator.getCurrentPosition(
+        locationSettings: LocationSettings(
+          accuracy: LocationAccuracy.high,
+          timeLimit: timeout,
+        ),
+      );
+    } on TimeoutException catch (_) {
+      throw GpsException('Gagal mendapat lokasi dalam ${timeout.inSeconds} detik. Coba lagi.');
+    } catch (e) {
+      throw GpsException('Gagal mengambil lokasi: $e');
+    }
+
+    return _fromPosition(position);
+  }
+
+  /// Continuous high-accuracy positions for the in-app Visit Plan navigator.
+  /// The caller owns and cancels the subscription as soon as mission ends.
+  static Future<Stream<GpsFix>> watchPosition() async {
+    await _ensureLocationAccess();
+    return Geolocator.getPositionStream(
+      locationSettings: const LocationSettings(
+        accuracy: LocationAccuracy.high,
+        distanceFilter: 8,
+      ),
+    ).map(_fromPosition);
+  }
+
+  static Future<void> _ensureLocationAccess() async {
     if (!await Geolocator.isLocationServiceEnabled()) {
       throw GpsException('GPS tidak aktif. Aktifkan lokasi di pengaturan perangkat.');
     }
@@ -53,20 +85,9 @@ class GpsService {
       );
     }
 
-    late final Position position;
-    try {
-      position = await Geolocator.getCurrentPosition(
-        locationSettings: LocationSettings(
-          accuracy: LocationAccuracy.high,
-          timeLimit: timeout,
-        ),
-      );
-    } on TimeoutException catch (_) {
-      throw GpsException('Gagal mendapat lokasi dalam ${timeout.inSeconds} detik. Coba lagi.');
-    } catch (e) {
-      throw GpsException('Gagal mengambil lokasi: $e');
-    }
+  }
 
+  static GpsFix _fromPosition(Position position) {
     return GpsFix(
       latitude: position.latitude,
       longitude: position.longitude,

@@ -1,5 +1,5 @@
-import '../services/auth_debug_service.dart';
-import '../services/persistent_auth_service.dart';
+import '../services/user_storage.dart';
+import '../services/dashboard_access_service.dart';
 
 /// Enum untuk tipe role yang tersedia
 enum RoleType {
@@ -18,27 +18,11 @@ class RoleManagementService {
   /// Analisa role dari auth data dan tentukan routing
   static Future<Map<String, dynamic>> analyzeUserRole() async {
     try {
-      // Ambil data dari auth.json atau persistent storage
-      Map<String, dynamic>? authData = await AuthDebugService.getAuthResponse();
-
-      // Fallback ke persistent storage jika auth.json tidak ada
-      if (authData == null) {
-        final userData = await PersistentAuthService.instance.getUserData();
-        if (userData['userId'] != null) {
-          // Simulate basic user data
-          authData = {
-            'data': {
-              'user': {
-                'id': userData['userId'],
-                'name': userData['userName'],
-                'groups': [], // Empty groups, akan di-deny
-              },
-            },
-          };
-        }
-      }
-
-      if (authData == null) {
+      // UserStorage is overwritten atomically by the latest main-app login.
+      // Never use legacy auth.json here: it can belong to a prior account and
+      // caused the welcome/role screen to show the wrong user after switching.
+      final user = await UserStorage.getUser();
+      if (user == null) {
         return {
           'success': false,
           'message': 'No user authentication data found',
@@ -46,22 +30,16 @@ class RoleManagementService {
         };
       }
 
-      // Extract user data
-      final userData = authData['data']?['user'];
-      if (userData == null) {
-        return {
-          'success': false,
-          'message': 'Invalid user data structure',
-          'roleType': RoleType.denied,
-        };
-      }
-
-      _userName = userData['name'] ?? 'User';
-      final groups = userData['groups'] as List<dynamic>? ?? [];
+      _userName = user['name']?.toString() ?? 'User';
+      final groups = user['groups'] as List<dynamic>? ?? [];
 
       // Extract role names
       _userRoles = groups
-          .map((group) => group['name']?.toString().toLowerCase() ?? '')
+          .map(
+            (group) => group is Map
+                ? group['name']?.toString().toLowerCase() ?? ''
+                : group.toString().toLowerCase(),
+          )
           .where((role) => role.isNotEmpty)
           .toList();
 
@@ -69,9 +47,34 @@ class RoleManagementService {
       print('👤 User: $_userName');
       print('🏷️  Roles: $_userRoles');
 
-      // Tentukan role type berdasarkan prioritas
-      final roleType = _determineRoleType(_userRoles);
+      // Dashboard access is decided server-side by the Go API from the
+      // user's actual RBAC permissions (mobile-access-admin/sales/driver in
+      // s_group_permissions) — not by role name. Never fall back to
+      // keyword-matching the role name (e.g. "developer" containing "dev")
+      // when this call fails: that used to grant admin routing to accounts
+      // whose Go session simply wasn't established yet, letting them reach
+      // screens the backend would then reject on every real request.
+      final dashboardAccess = await DashboardAccessService.fetchDashboardAccess();
 
+      if (dashboardAccess == null) {
+        print(
+          '❌ Could not determine dashboard access from API — denying access '
+          'instead of guessing from role name. Check the Go session '
+          '(ensureSession/login) and mobile-access-* permissions for this user.',
+        );
+        return {
+          'success': true,
+          'roleType': RoleType.denied,
+          'userName': _userName,
+          'userRoles': _userRoles,
+          'message': _getRoleMessage(RoleType.denied),
+          'autoRoute': _shouldAutoRoute(RoleType.denied),
+          'source': 'api-unavailable',
+        };
+      }
+
+      print('✅ Dashboard access from API: driver=${dashboardAccess.driver}, sales=${dashboardAccess.sales}, admin=${dashboardAccess.admin}');
+      final roleType = _determineRoleTypeFromAccess(dashboardAccess);
       return {
         'success': true,
         'roleType': roleType,
@@ -79,6 +82,7 @@ class RoleManagementService {
         'userRoles': _userRoles,
         'message': _getRoleMessage(roleType),
         'autoRoute': _shouldAutoRoute(roleType),
+        'source': 'api',
       };
     } catch (e) {
       print('❌ Error analyzing user role: $e');
@@ -90,7 +94,33 @@ class RoleManagementService {
     }
   }
 
-  /// Tentukan role type berdasarkan prioritas
+  /// Determine role type from API response (database-driven)
+  static RoleType _determineRoleTypeFromAccess(DashboardAccess access) {
+    if (!access.allowed) {
+      print('❌ No dashboard access granted');
+      return RoleType.denied;
+    }
+
+    // Priority: driver > sales > admin
+    if (access.driver) {
+      print('✅ API: driver access granted');
+      return RoleType.driver;
+    }
+
+    if (access.sales) {
+      print('✅ API: sales access granted');
+      return RoleType.sales;
+    }
+
+    if (access.admin) {
+      print('✅ API: admin access granted');
+      return RoleType.admin;
+    }
+
+    return RoleType.denied;
+  }
+
+  /// Tentukan role type berdasarkan prioritas (keyword-based fallback)
   static RoleType _determineRoleType(List<String> roles) {
     // 1. Priority: Driver - jika ada kata "driver" atau "drv"
     for (final role in roles) {

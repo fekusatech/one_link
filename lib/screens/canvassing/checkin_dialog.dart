@@ -1,8 +1,11 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import '../../constants/app_colors.dart';
 import '../../constants/app_text_styles.dart';
 import '../../models/geu/visit_planner_models.dart';
 import '../../services/geu/geu_auth_service.dart';
+import '../../services/geu/checkin_photo_service.dart';
+import '../../services/geu/crm_permission_service.dart';
 import '../../services/geu/gps_service.dart';
 import '../../services/geu/haversine.dart';
 import '../../services/geu/settings_service.dart';
@@ -14,8 +17,14 @@ class CheckinDraft {
   final GpsFix fix;
   final double distanceKm;
   final bool confirmFar;
+  final CapturedVisitPhoto photo;
 
-  CheckinDraft({required this.fix, required this.distanceKm, required this.confirmFar});
+  CheckinDraft({
+    required this.fix,
+    required this.distanceKm,
+    required this.confirmFar,
+    required this.photo,
+  });
 }
 
 /// FR-VP-08/09: haversine distance against the supplier's cached coordinates
@@ -23,7 +32,10 @@ class CheckinDraft {
 /// available for privileged roles (developer/superuser — same group-name
 /// match as src/service/crm/sales_visit_service.go server-side). FR-VP-06:
 /// low-accuracy fixes need an explicit acknowledgement, not blocked outright.
-Future<CheckinDraft?> showCheckinDialog(BuildContext context, MissionItem item) {
+Future<CheckinDraft?> showCheckinDialog(
+  BuildContext context,
+  MissionItem item,
+) {
   if (!item.hasCoordinates) {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Supplier ini belum punya koordinat GPS.')),
@@ -60,11 +72,25 @@ class _CheckinSheetState extends State<_CheckinSheet> {
   bool _isPrivileged = false;
   bool _confirmFarChecked = false;
   bool _lowAccuracyAcknowledged = false;
+  CapturedVisitPhoto? _photo;
+  bool _capturingPhoto = false;
+  bool _photoHandedOff = false;
 
   @override
   void initState() {
     super.initState();
     _acquire();
+  }
+
+  @override
+  void dispose() {
+    // A cancelled sheet must not leave proof photos orphaned on the device.
+    // Once handed to the queue, VisitSyncService owns its lifecycle instead.
+    final photo = _photo;
+    if (!_photoHandedOff && photo != null) {
+      File(photo.file.path).delete().catchError((_) => photo.file);
+    }
+    super.dispose();
   }
 
   Future<void> _acquire() async {
@@ -73,16 +99,23 @@ class _CheckinSheetState extends State<_CheckinSheet> {
       _error = null;
     });
     try {
+      if (!await CrmPermissionService.ensureLocation(context)) {
+        throw GpsException('Izin lokasi diperlukan untuk check-in.');
+      }
       final results = await Future.wait([
         GpsService.getCurrentFix(),
-        SettingsService.getDouble('visit_checkin_max_distance_km', _defaultMaxDistanceKm),
+        SettingsService.getDouble(
+          'visit_checkin_max_distance_km',
+          _defaultMaxDistanceKm,
+        ),
         GeuAuthService.getCachedUser(),
       ]);
       final fix = results[0] as GpsFix;
       final maxDistance = results[1] as double;
       final user = results[2] as GeuUser?;
       final privileged = (user?.roles ?? []).any(
-        (role) => _privilegedKeywords.any((kw) => role.toLowerCase().contains(kw)),
+        (role) =>
+            _privilegedKeywords.any((kw) => role.toLowerCase().contains(kw)),
       );
       if (!mounted) return;
       setState(() {
@@ -104,13 +137,19 @@ class _CheckinSheetState extends State<_CheckinSheet> {
 
   double get _distanceKm {
     final fix = _fix!;
-    return haversineDistanceKm(fix.latitude, fix.longitude, widget.item.lat!, widget.item.lng!);
+    return haversineDistanceKm(
+      fix.latitude,
+      fix.longitude,
+      widget.item.lat!,
+      widget.item.lng!,
+    );
   }
 
   bool get _withinRadius => _distanceKm <= _maxDistanceKm;
   bool get _accuracyOk => _fix!.accuracyMeters <= _accuracyWarnThresholdM;
 
   bool get _canConfirm {
+    if (_photo == null || _capturingPhoto) return false;
     if (!_accuracyOk && !_lowAccuracyAcknowledged) return false;
     if (_withinRadius) return true;
     return _isPrivileged && _confirmFarChecked;
@@ -131,8 +170,10 @@ class _CheckinSheetState extends State<_CheckinSheet> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Check-in — ${widget.item.supplierName}',
-                style: AppTextStyles.h5.copyWith(fontWeight: FontWeight.w700)),
+            Text(
+              'Check-in — ${widget.item.supplierName}',
+              style: AppTextStyles.h5.copyWith(fontWeight: FontWeight.w700),
+            ),
             const SizedBox(height: 16),
             _buildBody(),
           ],
@@ -160,11 +201,17 @@ class _CheckinSheetState extends State<_CheckinSheet> {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(_error!, style: AppTextStyles.bodyMedium.copyWith(color: AppColors.error)),
+          Text(
+            _error!,
+            style: AppTextStyles.bodyMedium.copyWith(color: AppColors.error),
+          ),
           const SizedBox(height: 12),
           SizedBox(
             width: double.infinity,
-            child: ElevatedButton(onPressed: _acquire, child: const Text('Coba Lagi')),
+            child: ElevatedButton(
+              onPressed: _acquire,
+              child: const Text('Coba Lagi'),
+            ),
           ),
         ],
       );
@@ -176,38 +223,113 @@ class _CheckinSheetState extends State<_CheckinSheet> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _infoRow('Jarak ke lokasi', '$distanceM m (maks $maxDistanceM m)',
-            valueColor: _withinRadius ? AppColors.success : AppColors.error),
-        _infoRow('Akurasi GPS', '±${_fix!.accuracyMeters.round()} m',
-            valueColor: _accuracyOk ? AppColors.success : AppColors.warning),
+        _infoRow(
+          'Jarak ke lokasi',
+          '$distanceM m (maks $maxDistanceM m)',
+          valueColor: _withinRadius ? AppColors.success : AppColors.error,
+        ),
+        _infoRow(
+          'Akurasi GPS',
+          '±${_fix!.accuracyMeters.round()} m',
+          valueColor: _accuracyOk ? AppColors.success : AppColors.warning,
+        ),
         if (_fix!.isMocked)
           Padding(
             padding: const EdgeInsets.only(top: 8),
-            child: Text('⚠ Lokasi terdeteksi dari mock provider — dicatat untuk audit.',
-                style: AppTextStyles.caption.copyWith(color: AppColors.warning)),
+            child: Text(
+              '⚠ Lokasi terdeteksi dari mock provider — dicatat untuk audit.',
+              style: AppTextStyles.caption.copyWith(color: AppColors.warning),
+            ),
           ),
         const SizedBox(height: 16),
         if (!_accuracyOk) _lowAccuracyWarning(),
         if (!_withinRadius) _distanceWarning(),
+        _photoSection(),
         const SizedBox(height: 16),
         SizedBox(
           width: double.infinity,
           child: ElevatedButton(
             onPressed: _canConfirm
-                ? () => Navigator.pop(
+                ? () {
+                    _photoHandedOff = true;
+                    Navigator.pop(
                       context,
                       CheckinDraft(
                         fix: _fix!,
                         distanceKm: _distanceKm,
                         confirmFar: !_withinRadius,
+                        photo: _photo!,
                       ),
-                    )
+                    );
+                  }
                 : null,
             child: const Text('Konfirmasi Check-in'),
           ),
         ),
       ],
     );
+  }
+
+  Widget _photoSection() {
+    final photo = _photo;
+    return Container(
+      margin: const EdgeInsets.only(top: 12),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: photo == null
+            ? AppColors.warning.withValues(alpha: 0.12)
+            : AppColors.success.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            photo == null
+                ? Icons.photo_camera_outlined
+                : Icons.check_circle_outline,
+            color: photo == null ? AppColors.warning : AppColors.success,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              photo == null
+                  ? 'Foto check-in wajib diambil dari kamera.'
+                  : 'Foto tersimpan (${(photo.bytes / 1024).ceil()} KB, WebP).',
+              style: AppTextStyles.bodyMedium,
+            ),
+          ),
+          TextButton(
+            onPressed: _capturingPhoto ? null : _capturePhoto,
+            child: Text(photo == null ? 'Ambil Foto' : 'Ulangi'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _capturePhoto() async {
+    setState(() => _capturingPhoto = true);
+    try {
+      if (!await CrmPermissionService.ensureCamera(context)) {
+        throw StateError('Izin kamera diperlukan untuk foto check-in.');
+      }
+      final photo = await CheckinPhotoService.capture();
+      if (!mounted) return;
+      final previous = _photo;
+      if (previous != null) {
+        await File(
+          previous.file.path,
+        ).delete().catchError((_) => previous.file);
+      }
+      setState(() => _photo = photo);
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.toString())));
+    } finally {
+      if (mounted) setState(() => _capturingPhoto = false);
+    }
   }
 
   Widget _lowAccuracyWarning() {
@@ -221,20 +343,29 @@ class _CheckinSheetState extends State<_CheckinSheet> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Akurasi GPS rendah (>${_accuracyWarnThresholdM.round()}m). Coba di area terbuka untuk hasil lebih baik.',
-              style: AppTextStyles.bodyMedium),
+          Text(
+            'Akurasi GPS rendah (>${_accuracyWarnThresholdM.round()}m). Coba di area terbuka untuk hasil lebih baik.',
+            style: AppTextStyles.bodyMedium,
+          ),
           Row(
             children: [
               Expanded(
-                child: TextButton(onPressed: _acquire, child: const Text('Coba Lagi')),
+                child: TextButton(
+                  onPressed: _acquire,
+                  child: const Text('Coba Lagi'),
+                ),
               ),
               Expanded(
                 child: CheckboxListTile(
                   contentPadding: EdgeInsets.zero,
                   dense: true,
                   value: _lowAccuracyAcknowledged,
-                  onChanged: (v) => setState(() => _lowAccuracyAcknowledged = v ?? false),
-                  title: const Text('Tetap lanjutkan', style: TextStyle(fontSize: 12)),
+                  onChanged: (v) =>
+                      setState(() => _lowAccuracyAcknowledged = v ?? false),
+                  title: const Text(
+                    'Tetap lanjutkan',
+                    style: TextStyle(fontSize: 12),
+                  ),
                 ),
               ),
             ],
@@ -267,13 +398,19 @@ class _CheckinSheetState extends State<_CheckinSheet> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Anda berada di luar radius yang diizinkan.', style: AppTextStyles.bodyMedium),
+          Text(
+            'Anda berada di luar radius yang diizinkan.',
+            style: AppTextStyles.bodyMedium,
+          ),
           CheckboxListTile(
             contentPadding: EdgeInsets.zero,
             dense: true,
             value: _confirmFarChecked,
             onChanged: (v) => setState(() => _confirmFarChecked = v ?? false),
-            title: const Text('Saya konfirmasi berada jauh dari titik', style: TextStyle(fontSize: 13)),
+            title: const Text(
+              'Saya konfirmasi berada jauh dari titik',
+              style: TextStyle(fontSize: 13),
+            ),
           ),
         ],
       ),
@@ -286,8 +423,19 @@ class _CheckinSheetState extends State<_CheckinSheet> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary)),
-          Text(value, style: AppTextStyles.bodyMedium.copyWith(color: valueColor, fontWeight: FontWeight.w600)),
+          Text(
+            label,
+            style: AppTextStyles.bodyMedium.copyWith(
+              color: AppColors.textSecondary,
+            ),
+          ),
+          Text(
+            value,
+            style: AppTextStyles.bodyMedium.copyWith(
+              color: valueColor,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
         ],
       ),
     );

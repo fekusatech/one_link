@@ -2,7 +2,7 @@ name: one_link
 description: "One Link - PT Green Energi Utama"
 publish_to: "none"
 
-version: 1.0.7+7
+version: 1.1.5+15
 
 environment:
   sdk: ^3.10.0
@@ -10,10 +10,15 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  flutter_localizations:
+    sdk: flutter
 
   cupertino_icons: ^1.0.8
   google_maps_flutter: ^2.14.0
+  flutter_map: ^8.3.1
+  latlong2: ^0.9.1
   url_launcher: ^6.3.2
+  app_links: ^6.4.1
   http: ^1.6.0
   shared_preferences: ^2.5.3
   geolocator: ^13.0.2
@@ -29,10 +34,14 @@ dependencies:
   dio_cookie_manager: ^3.1.1
   flutter_secure_storage: ^9.2.2
   image_picker: ^1.1.2
+  image: ^4.8.0
+  flutter_image_compress: ^2.4.0
   signature: ^5.4.1
   package_info_plus: ^9.0.0
   device_info_plus: ^10.1.2
   battery_plus: ^6.0.2
+  open_filex: ^4.7.0
+  fl_chart: ^1.2.0
 
 dev_dependencies:
   flutter_test:

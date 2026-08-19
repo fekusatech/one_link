@@ -110,3 +110,157 @@ class TodaysMission {
     cachedAt: time,
   );
 }
+
+class VisitHistoryPage {
+  final List<VisitHistoryItem> items;
+  final bool hasMore;
+  final DateTime? cachedAt;
+
+  const VisitHistoryPage({
+    required this.items,
+    required this.hasMore,
+    this.cachedAt,
+  });
+
+  factory VisitHistoryPage.fromJson(Map<String, dynamic> json) {
+    final rawItems = json['items'] ?? json['data'] ?? json['results'] ?? [];
+    final pagination = json['pagination'] is Map
+        ? Map<String, dynamic>.from(json['pagination'] as Map)
+        : json['meta'] is Map
+        ? Map<String, dynamic>.from(json['meta'] as Map)
+        : json;
+    return VisitHistoryPage(
+      items: (rawItems as List? ?? [])
+          .whereType<Map>()
+          .map(
+            (item) =>
+                VisitHistoryItem.fromJson(Map<String, dynamic>.from(item)),
+          )
+          .toList(),
+      hasMore:
+          pagination['has_more'] == true ||
+          (_asInt(pagination['current_page']) <
+              _asInt(
+                pagination['total_pages'] ?? pagination['last_page'],
+                fallback: 1,
+              )),
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'items': items.map((item) => item.toJson()).toList(),
+    'has_more': hasMore,
+  };
+
+  VisitHistoryPage withCachedAt(DateTime value) =>
+      VisitHistoryPage(items: items, hasMore: hasMore, cachedAt: value);
+}
+
+class VisitHistoryItem {
+  final int id;
+  final String supplierName;
+  final String status;
+  final String checkedInAt;
+  final String checkedOutAt;
+  final String address;
+  final int supplierId;
+  final String supplierPhone;
+  final double? checkinLat;
+  final double? checkinLng;
+  final String? checkinPhoto;
+  final double? checkoutLat;
+  final double? checkoutLng;
+  final String checkoutAddress;
+  final String? checkoutPhoto;
+  final int? durationMinutes;
+  final double? distanceFromSupplier;
+  final String workOrderIds;
+  final String notes;
+
+  const VisitHistoryItem({
+    required this.id,
+    required this.supplierName,
+    required this.status,
+    required this.checkedInAt,
+    required this.checkedOutAt,
+    required this.address,
+    required this.supplierId,
+    required this.supplierPhone,
+    this.checkinLat,
+    this.checkinLng,
+    this.checkinPhoto,
+    this.checkoutLat,
+    this.checkoutLng,
+    required this.checkoutAddress,
+    this.checkoutPhoto,
+    this.durationMinutes,
+    this.distanceFromSupplier,
+    required this.workOrderIds,
+    required this.notes,
+  });
+
+  factory VisitHistoryItem.fromJson(Map<String, dynamic> json) =>
+      VisitHistoryItem(
+        id: _asInt(json['id'] ?? json['visit_id']),
+        supplierName: (json['supplier_name'] ?? json['name'] ?? '-').toString(),
+        supplierId: _asInt(json['supplier_id']),
+        supplierPhone: (json['supplier_phone'] ?? '').toString(),
+        checkinLat: _asDouble(json['checkin_lat']),
+        checkinLng: _asDouble(json['checkin_lng']),
+        checkinPhoto: _nullableText(json['checkin_photo']),
+        checkoutLat: _asDouble(json['checkout_lat']),
+        checkoutLng: _asDouble(json['checkout_lng']),
+        checkoutAddress: (json['checkout_address'] ?? '').toString(),
+        checkoutPhoto: _nullableText(json['checkout_photo']),
+        durationMinutes: _nullableInt(json['duration_minutes']),
+        distanceFromSupplier: _asDouble(json['distance_from_supplier']),
+        workOrderIds: (json['work_order_ids'] ?? '').toString(),
+        notes: (json['notes'] ?? '').toString(),
+        status: (json['status'] ?? 'SELESAI').toString(),
+        checkedInAt:
+            (json['checked_in_at'] ??
+                    json['checkin_at'] ??
+                    json['created_at'] ??
+                    '')
+                .toString(),
+        checkedOutAt: (json['checked_out_at'] ?? json['checkout_at'] ?? '')
+            .toString(),
+        address: (json['address'] ?? '').toString(),
+      );
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'supplier_name': supplierName,
+    'status': status,
+    'checked_in_at': checkedInAt,
+    'checked_out_at': checkedOutAt,
+    'address': address,
+    'supplier_id': supplierId,
+    'supplier_phone': supplierPhone,
+    'checkin_lat': checkinLat,
+    'checkin_lng': checkinLng,
+    'checkin_photo': checkinPhoto,
+    'checkout_lat': checkoutLat,
+    'checkout_lng': checkoutLng,
+    'checkout_address': checkoutAddress,
+    'checkout_photo': checkoutPhoto,
+    'duration_minutes': durationMinutes,
+    'distance_from_supplier': distanceFromSupplier,
+    'work_order_ids': workOrderIds,
+    'notes': notes,
+  };
+}
+
+int _asInt(dynamic value, {int fallback = 0}) => value is num
+    ? value.toInt()
+    : int.tryParse(value?.toString() ?? '') ?? fallback;
+
+int? _nullableInt(dynamic value) => value == null ? null : _asInt(value);
+
+double? _asDouble(dynamic value) =>
+    value is num ? value.toDouble() : double.tryParse(value?.toString() ?? '');
+
+String? _nullableText(dynamic value) {
+  final text = value?.toString().trim();
+  return text == null || text.isEmpty ? null : text;
+}

@@ -179,7 +179,7 @@ class _GpsComplianceWidgetState extends State<GpsComplianceWidget> {
                 ),
                 _buildStatusItem(
                   icon: Icons.gps_fixed,
-                  title: 'Tracking Aktif',
+                  title: 'Lokasi Aktif',
                   status: _status!.isTracking,
                 ),
               ],

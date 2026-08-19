@@ -39,15 +39,22 @@ class LocationTrackingService {
   }
 
   /// Request location permissions with proper explanation
-  Future<bool> requestPermissions(BuildContext context) async {
+  Future<bool> requestPermissions(
+    BuildContext context, {
+    bool isSilentAutoStart = false,
+  }) async {
     bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
-      await _showLocationServiceDialog(context);
+      if (!isSilentAutoStart) {
+        await _showLocationServiceDialog(context);
+      }
       return false;
     }
 
     LocationPermission permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied) {
+      if (isSilentAutoStart) return false;
+
       // Show explanation dialog first
       bool userConsent = await _showPermissionExplanationDialog(context);
       if (!userConsent) return false;
@@ -60,17 +67,14 @@ class LocationTrackingService {
     }
 
     if (permission == LocationPermission.deniedForever) {
+      if (isSilentAutoStart) return false;
       await _showPermissionDeniedForeverDialog(context);
       return false;
     }
 
-    // For background tracking, request background permission
-    if (permission == LocationPermission.whileInUse) {
-      bool backgroundConsent = await _showBackgroundPermissionDialog(context);
-      if (backgroundConsent) {
-        // On Android 10+, background location requires separate permission
-        // This will be handled by the geolocator package
-      }
+    // For background tracking, request background permission optionally (not silent)
+    if (permission == LocationPermission.whileInUse && !isSilentAutoStart) {
+      await _showBackgroundPermissionDialog(context);
     }
 
     return permission == LocationPermission.always ||
@@ -301,7 +305,7 @@ class LocationTrackingService {
       builder: (context) => AlertDialog(
         title: const Text('Layanan Lokasi Dibutuhkan'),
         content: const Text(
-          'Aplikasi memerlukan layanan lokasi untuk melacak rute pengantaran. '
+          'Aplikasi memerlukan layanan lokasi untuk membantu navigasi rute pengantaran. '
           'Silakan aktifkan GPS di pengaturan perangkat Anda.',
         ),
         actions: [
@@ -337,7 +341,7 @@ class LocationTrackingService {
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
                 SizedBox(height: 12),
-                Text('• Melacak rute pengantaran sampah'),
+                Text('• Membantu navigasi rute pengantaran sampah'),
                 Text('• Menunjukkan lokasi supplier terdekat'),
                 Text('• Verifikasi kehadiran di lokasi pickup'),
                 Text('• Optimasi rute perjalanan'),
@@ -369,17 +373,19 @@ class LocationTrackingService {
     return await showDialog<bool>(
           context: context,
           builder: (context) => AlertDialog(
-            title: const Text('Tracking di Background'),
+            title: const Text('Akses Lokasi Saat Aplikasi Tidak Dibuka'),
             content: const Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  'Untuk melacak rute pengantaran secara akurat, aplikasi '
-                  'memerlukan akses lokasi saat berjalan di background.',
+                  'Saat Anda menjalankan tugas pengantaran, aplikasi memerlukan '
+                  'akses lokasi agar navigasi dan verifikasi lokasi tetap berfungsi '
+                  'meski aplikasi tidak sedang dibuka.',
                 ),
                 SizedBox(height: 12),
                 Text(
-                  'Pilih "Izinkan sepanjang waktu" pada dialog berikutnya.',
+                  'Anda dapat memilih "Izinkan sepanjang waktu" pada dialog berikutnya '
+                  'dan mengubah izin ini kapan saja di Pengaturan perangkat.',
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
               ],

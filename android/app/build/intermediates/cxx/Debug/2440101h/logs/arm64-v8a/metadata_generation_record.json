@@ -1,0 +1,147 @@
+[
+{
+  "message": "Start JSON generation. Platform version: 24 min SDK version: arm64-v8a",
+  "file": "/Users/macprom12020/Project/crm-mobile/node_modules/react-native/ReactAndroid/cmake-utils/default-app-setup/CMakeLists.txt",
+  "tag": "debug|arm64-v8a"
+},
+{
+  "message": "rebuilding JSON /Users/macprom12020/Project/crm-mobile/android/app/.cxx/Debug/2440101h/arm64-v8a/android_gradle_build.json due to:",
+  "file": "/Users/macprom12020/Project/crm-mobile/node_modules/react-native/ReactAndroid/cmake-utils/default-app-setup/CMakeLists.txt",
+  "tag": "debug|arm64-v8a"
+},
+{
+  "message": "- a file changed",
+  "file": "/Users/macprom12020/Project/crm-mobile/node_modules/react-native/ReactAndroid/cmake-utils/default-app-setup/CMakeLists.txt",
+  "tag": "debug|arm64-v8a"
+},
+{
+  "message": "  - /Users/macprom12020/Project/crm-mobile/android/app/.cxx/Debug/2440101h/arm64-v8a/prefab_config.json (LAST_MODIFIED_CHANGED)",
+  "file": "/Users/macprom12020/Project/crm-mobile/node_modules/react-native/ReactAndroid/cmake-utils/default-app-setup/CMakeLists.txt",
+  "tag": "debug|arm64-v8a"
+},
+{
+  "message": "  - /Users/macprom12020/Project/crm-mobile/node_modules/@dr.pogodin/react-native-fs/android/build/generated/source/codegen/jni/CMakeLists.txt (LAST_MODIFIED_CHANGED)",
+  "file": "/Users/macprom12020/Project/crm-mobile/node_modules/react-native/ReactAndroid/cmake-utils/default-app-setup/CMakeLists.txt",
+  "tag": "debug|arm64-v8a"
+},
+{
+  "message": "  - /Users/macprom12020/Project/crm-mobile/node_modules/@op-engineering/op-sqlite/android/build/generated/source/codegen/jni/CMakeLists.txt (LAST_MODIFIED_CHANGED)",
+  "file": "/Users/macprom12020/Project/crm-mobile/node_modules/react-native/ReactAndroid/cmake-utils/default-app-setup/CMakeLists.txt",
+  "tag": "debug|arm64-v8a"
+},
+{
+  "message": "  - /Users/macprom12020/Project/crm-mobile/node_modules/@op-engineering/op-sqlite/android/build/intermediates/prefab_package_configuration/prefab_publication.json/debug (DELETED)",
+  "file": "/Users/macprom12020/Project/crm-mobile/node_modules/react-native/ReactAndroid/cmake-utils/default-app-setup/CMakeLists.txt",
+  "tag": "debug|arm64-v8a"
+},
+{
+  "message": "  - /Users/macprom12020/Project/crm-mobile/node_modules/@op-engineering/op-sqlite/android/build/intermediates/prefab_package_header_only/prefab_publication.json/debug (LAST_MODIFIED_CHANGED)",
+  "file": "/Users/macprom12020/Project/crm-mobile/node_modules/react-native/ReactAndroid/cmake-utils/default-app-setup/CMakeLists.txt",
+  "tag": "debug|arm64-v8a"
+},
+{
+  "message": "  - /Users/macprom12020/Project/crm-mobile/node_modules/@react-native-community/netinfo/android/build/generated/source/codegen/jni/CMakeLists.txt (LAST_MODIFIED_CHANGED)",
+  "file": "/Users/macprom12020/Project/crm-mobile/node_modules/react-native/ReactAndroid/cmake-utils/default-app-setup/CMakeLists.txt",
+  "tag": "debug|arm64-v8a"
+},
+{
+  "message": "  - /Users/macprom12020/Project/crm-mobile/node_modules/react-native-get-random-values/android/build/generated/source/codegen/jni/CMakeLists.txt (LAST_MODIFIED_CHANGED)",
+  "file": "/Users/macprom12020/Project/crm-mobile/node_modules/react-native/ReactAndroid/cmake-utils/default-app-setup/CMakeLists.txt",
+  "tag": "debug|arm64-v8a"
+},
+{
+  "message": "  - /Users/macprom12020/Project/crm-mobile/node_modules/react-native-keychain/android/build/generated/source/codegen/jni/CMakeLists.txt (LAST_MODIFIED_CHANGED)",
+  "file": "/Users/macprom12020/Project/crm-mobile/node_modules/react-native/ReactAndroid/cmake-utils/default-app-setup/CMakeLists.txt",
+  "tag": "debug|arm64-v8a"
+},
+{
+  "message": "  - /Users/macprom12020/Project/crm-mobile/node_modules/react-native-nitro-geolocation/android/build/generated/source/codegen/jni/CMakeLists.txt (LAST_MODIFIED_CHANGED)",
+  "file": "/Users/macprom12020/Project/crm-mobile/node_modules/react-native/ReactAndroid/cmake-utils/default-app-setup/CMakeLists.txt",
+  "tag": "debug|arm64-v8a"
+},
+{
+  "message": "  - /Users/macprom12020/Project/crm-mobile/node_modules/react-native-nitro-image/android/build/intermediates/prefab_package_configuration/prefab_publication.json/debug (LAST_MODIFIED_CHANGED)",
+  "file": "/Users/macprom12020/Project/crm-mobile/node_modules/react-native/ReactAndroid/cmake-utils/default-app-setup/CMakeLists.txt",
+  "tag": "debug|arm64-v8a"
+},
+{
+  "message": "  - /Users/macprom12020/Project/crm-mobile/node_modules/react-native-nitro-image/android/build/intermediates/prefab_package_header_only/prefab_publication.json/debug (LAST_MODIFIED_CHANGED)",
+  "file": "/Users/macprom12020/Project/crm-mobile/node_modules/react-native/ReactAndroid/cmake-utils/default-app-setup/CMakeLists.txt",
+  "tag": "debug|arm64-v8a"
+},
+{
+  "message": "  - /Users/macprom12020/Project/crm-mobile/node_modules/react-native-nitro-modules/android/build/generated/source/codegen/jni/CMakeLists.txt (LAST_MODIFIED_CHANGED)",
+  "file": "/Users/macprom12020/Project/crm-mobile/node_modules/react-native/ReactAndroid/cmake-utils/default-app-setup/CMakeLists.txt",
+  "tag": "debug|arm64-v8a"
+},
+{
+  "message": "  - /Users/macprom12020/Project/crm-mobile/node_modules/react-native-nitro-modules/android/build/intermediates/prefab_package_configuration/prefab_publication.json/debug (LAST_MODIFIED_CHANGED)",
+  "file": "/Users/macprom12020/Project/crm-mobile/node_modules/react-native/ReactAndroid/cmake-utils/default-app-setup/CMakeLists.txt",
+  "tag": "debug|arm64-v8a"
+},
+{
+  "message": "  - /Users/macprom12020/Project/crm-mobile/node_modules/react-native-nitro-modules/android/build/intermediates/prefab_package_header_only/prefab_publication.json/debug (LAST_MODIFIED_CHANGED)",
+  "file": "/Users/macprom12020/Project/crm-mobile/node_modules/react-native/ReactAndroid/cmake-utils/default-app-setup/CMakeLists.txt",
+  "tag": "debug|arm64-v8a"
+},
+{
+  "message": "  - /Users/macprom12020/Project/crm-mobile/node_modules/react-native-permissions/android/build/generated/source/codegen/jni/CMakeLists.txt (LAST_MODIFIED_CHANGED)",
+  "file": "/Users/macprom12020/Project/crm-mobile/node_modules/react-native/ReactAndroid/cmake-utils/default-app-setup/CMakeLists.txt",
+  "tag": "debug|arm64-v8a"
+},
+{
+  "message": "  - /Users/macprom12020/Project/crm-mobile/node_modules/react-native-vision-camera/android/build/intermediates/prefab_package_configuration/prefab_publication.json/debug (LAST_MODIFIED_CHANGED)",
+  "file": "/Users/macprom12020/Project/crm-mobile/node_modules/react-native/ReactAndroid/cmake-utils/default-app-setup/CMakeLists.txt",
+  "tag": "debug|arm64-v8a"
+},
+{
+  "message": "  - /Users/macprom12020/Project/crm-mobile/node_modules/react-native-vision-camera/android/build/intermediates/prefab_package_header_only/prefab_publication.json/debug (LAST_MODIFIED_CHANGED)",
+  "file": "/Users/macprom12020/Project/crm-mobile/node_modules/react-native/ReactAndroid/cmake-utils/default-app-setup/CMakeLists.txt",
+  "tag": "debug|arm64-v8a"
+},
+{
+  "message": "/opt/homebrew/Cellar/openjdk@17/17.0.20/libexec/openjdk.jdk/Contents/Home/bin/java \\\n  --enable-native-access \\\n  ALL-UNNAMED \\\n  --class-path \\\n  /Volumes/Fekusa/DevCache/.gradle/caches/modules-2/files-2.1/com.google.prefab/cli/2.1.0/aa32fec809c44fa531f01dcfb739b5b3304d3050/cli-2.1.0-all.jar \\\n  com.google.prefab.cli.AppKt \\\n  --build-system \\\n  cmake \\\n  --platform \\\n  android \\\n  --abi \\\n  arm64-v8a \\\n  --os-version \\\n  24 \\\n  --stl \\\n  c++_shared \\\n  --ndk-version \\\n  27 \\\n  --output \\\n  /var/folders/r5/l15gnhhd4_q_v2n4_qt53zrr0000gp/T/agp-prefab-staging9697224617356868272/staged-cli-output \\\n  /Users/macprom12020/Project/crm-mobile/android/app/build/intermediates/cxx/refs/react-native-nitro-image/13p1u641 \\\n  /Users/macprom12020/Project/crm-mobile/android/app/build/intermediates/cxx/refs/react-native-nitro-modules/2z6o3j1q \\\n  /Users/macprom12020/Project/crm-mobile/android/app/build/intermediates/cxx/refs/react-native-vision-camera/5n60235q \\\n  /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/20ad2d019970f8e91fa7eb3c7227b106/transformed/react-android-0.87.0-debug/prefab \\\n  /Users/macprom12020/Project/crm-mobile/android/app/build/intermediates/cxx/refs/op-engineering_op-sqlite/1m665169 \\\n  /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/82e12f5657b78a2f3001648586ffcf26/transformed/hermes-android-250829098.0.16-debug/prefab \\\n  /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/3cb1792e16d0777e9535521c99f0b7b5/transformed/fbjni-0.7.0/prefab\n",
+  "file": "/Users/macprom12020/Project/crm-mobile/node_modules/react-native/ReactAndroid/cmake-utils/default-app-setup/CMakeLists.txt",
+  "tag": "debug|arm64-v8a"
+},
+{
+  "message": "Received process result: 0",
+  "file": "/Users/macprom12020/Project/crm-mobile/node_modules/react-native/ReactAndroid/cmake-utils/default-app-setup/CMakeLists.txt",
+  "tag": "debug|arm64-v8a"
+},
+{
+  "message": "keeping json folder \u0027/Users/macprom12020/Project/crm-mobile/android/app/.cxx/Debug/2440101h/arm64-v8a\u0027 but regenerating project",
+  "file": "/Users/macprom12020/Project/crm-mobile/node_modules/react-native/ReactAndroid/cmake-utils/default-app-setup/CMakeLists.txt",
+  "tag": "debug|arm64-v8a"
+},
+{
+  "message": "executing cmake /Volumes/Fekusa/Android/sdk/cmake/3.22.1/bin/cmake \\\n  -H/Users/macprom12020/Project/crm-mobile/node_modules/react-native/ReactAndroid/cmake-utils/default-app-setup \\\n  -DCMAKE_SYSTEM_NAME\u003dAndroid \\\n  -DCMAKE_EXPORT_COMPILE_COMMANDS\u003dON \\\n  -DCMAKE_SYSTEM_VERSION\u003d24 \\\n  -DANDROID_PLATFORM\u003dandroid-24 \\\n  -DANDROID_ABI\u003darm64-v8a \\\n  -DCMAKE_ANDROID_ARCH_ABI\u003darm64-v8a \\\n  -DANDROID_NDK\u003d/Volumes/Fekusa/Android/sdk/ndk/27.1.12297006 \\\n  -DCMAKE_ANDROID_NDK\u003d/Volumes/Fekusa/Android/sdk/ndk/27.1.12297006 \\\n  -DCMAKE_TOOLCHAIN_FILE\u003d/Volumes/Fekusa/Android/sdk/ndk/27.1.12297006/build/cmake/android.toolchain.cmake \\\n  -DCMAKE_MAKE_PROGRAM\u003d/Volumes/Fekusa/Android/sdk/cmake/3.22.1/bin/ninja \\\n  -DCMAKE_LIBRARY_OUTPUT_DIRECTORY\u003d/Users/macprom12020/Project/crm-mobile/android/app/build/intermediates/cxx/Debug/2440101h/obj/arm64-v8a \\\n  -DCMAKE_RUNTIME_OUTPUT_DIRECTORY\u003d/Users/macprom12020/Project/crm-mobile/android/app/build/intermediates/cxx/Debug/2440101h/obj/arm64-v8a \\\n  -DCMAKE_BUILD_TYPE\u003dDebug \\\n  -DCMAKE_FIND_ROOT_PATH\u003d/Users/macprom12020/Project/crm-mobile/android/app/.cxx/Debug/2440101h/prefab/arm64-v8a/prefab \\\n  -B/Users/macprom12020/Project/crm-mobile/android/app/.cxx/Debug/2440101h/arm64-v8a \\\n  -GNinja \\\n  -DPROJECT_BUILD_DIR\u003d/Users/macprom12020/Project/crm-mobile/android/app/build \\\n  -DPROJECT_ROOT_DIR\u003d/Users/macprom12020/Project/crm-mobile/android \\\n  -DREACT_ANDROID_DIR\u003d/Users/macprom12020/Project/crm-mobile/node_modules/react-native/ReactAndroid \\\n  -DANDROID_STL\u003dc++_shared \\\n  -DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES\u003dON\n",
+  "file": "/Users/macprom12020/Project/crm-mobile/node_modules/react-native/ReactAndroid/cmake-utils/default-app-setup/CMakeLists.txt",
+  "tag": "debug|arm64-v8a"
+},
+{
+  "message": "/Volumes/Fekusa/Android/sdk/cmake/3.22.1/bin/cmake \\\n  -H/Users/macprom12020/Project/crm-mobile/node_modules/react-native/ReactAndroid/cmake-utils/default-app-setup \\\n  -DCMAKE_SYSTEM_NAME\u003dAndroid \\\n  -DCMAKE_EXPORT_COMPILE_COMMANDS\u003dON \\\n  -DCMAKE_SYSTEM_VERSION\u003d24 \\\n  -DANDROID_PLATFORM\u003dandroid-24 \\\n  -DANDROID_ABI\u003darm64-v8a \\\n  -DCMAKE_ANDROID_ARCH_ABI\u003darm64-v8a \\\n  -DANDROID_NDK\u003d/Volumes/Fekusa/Android/sdk/ndk/27.1.12297006 \\\n  -DCMAKE_ANDROID_NDK\u003d/Volumes/Fekusa/Android/sdk/ndk/27.1.12297006 \\\n  -DCMAKE_TOOLCHAIN_FILE\u003d/Volumes/Fekusa/Android/sdk/ndk/27.1.12297006/build/cmake/android.toolchain.cmake \\\n  -DCMAKE_MAKE_PROGRAM\u003d/Volumes/Fekusa/Android/sdk/cmake/3.22.1/bin/ninja \\\n  -DCMAKE_LIBRARY_OUTPUT_DIRECTORY\u003d/Users/macprom12020/Project/crm-mobile/android/app/build/intermediates/cxx/Debug/2440101h/obj/arm64-v8a \\\n  -DCMAKE_RUNTIME_OUTPUT_DIRECTORY\u003d/Users/macprom12020/Project/crm-mobile/android/app/build/intermediates/cxx/Debug/2440101h/obj/arm64-v8a \\\n  -DCMAKE_BUILD_TYPE\u003dDebug \\\n  -DCMAKE_FIND_ROOT_PATH\u003d/Users/macprom12020/Project/crm-mobile/android/app/.cxx/Debug/2440101h/prefab/arm64-v8a/prefab \\\n  -B/Users/macprom12020/Project/crm-mobile/android/app/.cxx/Debug/2440101h/arm64-v8a \\\n  -GNinja \\\n  -DPROJECT_BUILD_DIR\u003d/Users/macprom12020/Project/crm-mobile/android/app/build \\\n  -DPROJECT_ROOT_DIR\u003d/Users/macprom12020/Project/crm-mobile/android \\\n  -DREACT_ANDROID_DIR\u003d/Users/macprom12020/Project/crm-mobile/node_modules/react-native/ReactAndroid \\\n  -DANDROID_STL\u003dc++_shared \\\n  -DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES\u003dON\n",
+  "file": "/Users/macprom12020/Project/crm-mobile/node_modules/react-native/ReactAndroid/cmake-utils/default-app-setup/CMakeLists.txt",
+  "tag": "debug|arm64-v8a"
+},
+{
+  "message": "Received process result: 0",
+  "file": "/Users/macprom12020/Project/crm-mobile/node_modules/react-native/ReactAndroid/cmake-utils/default-app-setup/CMakeLists.txt",
+  "tag": "debug|arm64-v8a"
+},
+{
+  "message": "Exiting generation of /Users/macprom12020/Project/crm-mobile/android/app/.cxx/Debug/2440101h/arm64-v8a/compile_commands.json.bin normally",
+  "file": "/Users/macprom12020/Project/crm-mobile/node_modules/react-native/ReactAndroid/cmake-utils/default-app-setup/CMakeLists.txt",
+  "tag": "debug|arm64-v8a"
+},
+{
+  "message": "done executing cmake",
+  "file": "/Users/macprom12020/Project/crm-mobile/node_modules/react-native/ReactAndroid/cmake-utils/default-app-setup/CMakeLists.txt",
+  "tag": "debug|arm64-v8a"
+},
+{
+  "message": "JSON generation completed without problems",
+  "file": "/Users/macprom12020/Project/crm-mobile/node_modules/react-native/ReactAndroid/cmake-utils/default-app-setup/CMakeLists.txt",
+  "tag": "debug|arm64-v8a"
+}
+]

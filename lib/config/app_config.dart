@@ -48,7 +48,7 @@ class AppConfig {
   // Fitur Aplikasi
   static const List<String> appFeatures = [
     'Menjadwalkan penjemputan minyak jelantah',
-    'Melacak lokasi pengumpulan terdekat',
+    'Menampilkan lokasi pengumpulan terdekat',
     'Memantau riwayat kontribusi lingkungan',
     'Mendapatkan informasi edukasi tentang daur ulang',
   ];

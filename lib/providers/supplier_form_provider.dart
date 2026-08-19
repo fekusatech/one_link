@@ -64,6 +64,10 @@ class SupplierFormProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Lets form fields notify dependent dropdowns without exposing the
+  /// protected ChangeNotifier API to widgets.
+  void refreshSelection() => notifyListeners();
+
   // Load initial master data
   Future<void> loadMasterData() async {
     print('🔄 Loading master data...');

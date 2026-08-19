@@ -93,6 +93,26 @@ class GeuApiClient {
 
   /// Wipe the session (logout).
   static Future<void> clearSession() async {
+    // The jar is lazy. Instantiate it first so logout also clears a session
+    // restored from disk after an app restart.
+    await instance;
     await _cookieJar?.deleteAll();
+    _dio = null;
   }
+
+  /// Reset client instance & clear in-memory dio cache so new user session is fetched fresh
+  static void resetClient() {
+    _dio = null;
+  }
+
+  /// The CRM API follows the same envelope used by crm-react:
+  /// `{status, code, message, data}`. Services consume this helper so a
+  /// successful list/object response is never mistaken for an invalid shape.
+  static dynamic unwrapData(dynamic body) {
+    if (body is Map && body.containsKey('data')) return body['data'];
+    return body;
+  }
+
+  static String? responseMessage(dynamic body) =>
+      body is Map ? body['message']?.toString() : null;
 }

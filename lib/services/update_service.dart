@@ -2,9 +2,13 @@ import 'dart:async';
 import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:open_filex/open_filex.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../config/app_config.dart';
+import '../constants/app_colors.dart';
+import 'geu/geu_api_client.dart';
 
 class UpdateService {
   static final UpdateService _instance = UpdateService._internal();
@@ -36,7 +40,18 @@ class UpdateService {
     _hasCheckedOnThisLoad = false;
   }
 
-  Future<void> _checkForUpdate(BuildContext context) async {
+  /// Manual "Cek Pembaruan" entry point (Profile screen) — same check as
+  /// the silent startup one, but bypasses the once-per-load throttle and
+  /// gives feedback either way (update dialog, maintenance dialog, or a
+  /// "already latest" / error snackbar) since a user who explicitly asked
+  /// shouldn't get silence as the answer.
+  Future<void> checkNow(BuildContext context) =>
+      _checkForUpdate(context, manual: true);
+
+  Future<void> _checkForUpdate(
+    BuildContext context, {
+    bool manual = false,
+  }) async {
     if (_isDialogShowing || !context.mounted) return;
 
     try {
@@ -47,6 +62,29 @@ class UpdateService {
       debugPrint(
         'Checking for update. Current version: $currentVersion (build $currentBuildNumber)',
       );
+
+      // Mobile release policy is maintained by the Go API. It is checked
+      // first so Play Store force-updates do not rely on the legacy ERP API.
+      final mobileConfig = await _dio.get(
+        '${GeuApiClient.baseUrl}/api/mobile/config',
+      );
+      if (mobileConfig.statusCode == 200 && mobileConfig.data is Map) {
+        final config = mobileConfig.data as Map;
+        final minimum = config['min_version']?.toString() ?? '';
+        final latest = config['latest_version']?.toString() ?? '';
+        final force = config['force_update'] == true;
+        final storeUrl = config['store_url']?.toString() ?? '';
+        if (force &&
+            minimum.isNotEmpty &&
+            _isNewerVersion(currentVersion, minimum)) {
+          _showStoreUpdateDialog(
+            context,
+            latest.isEmpty ? minimum : latest,
+            storeUrl,
+          );
+          return;
+        }
+      }
 
       // Call API with current version parameter
       final response = await _dio.get(
@@ -105,13 +143,27 @@ class UpdateService {
           debugPrint(
             'No update available - version $currentVersion is already latest (no_update=$noUpdate)',
           );
+          if (manual) _showSnackBar(context, 'Aplikasi sudah versi terbaru.');
         }
       } else {
         debugPrint('Failed to check version: ${response.data}');
+        if (manual) {
+          _showSnackBar(context, 'Gagal memeriksa pembaruan. Coba lagi.');
+        }
       }
     } catch (e) {
       debugPrint("Update check failed: $e");
+      if (manual) {
+        _showSnackBar(context, 'Gagal memeriksa pembaruan. Coba lagi.');
+      }
     }
+  }
+
+  void _showSnackBar(BuildContext context, String message) {
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   void _showMaintenanceDialog(BuildContext context, String message) {
@@ -128,17 +180,27 @@ class UpdateService {
             Text('Maintenance'),
           ],
         ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(message),
-            const SizedBox(height: 15),
-            const Text(
-              'Hubungi admin untuk info lebih lanjut.',
-              style: TextStyle(fontSize: 12, color: Colors.grey),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(dialogContext).size.height * 0.6,
             ),
-          ],
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(message),
+                  const SizedBox(height: 15),
+                  const Text(
+                    'Hubungi admin untuk info lebih lanjut.',
+                    style: TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
+                ],
+              ),
+            ),
+          ),
         ),
         actions: [
           ElevatedButton(
@@ -149,6 +211,38 @@ class UpdateService {
             child: const Text('Tutup'),
           ),
         ],
+      ),
+    );
+  }
+
+  void _showStoreUpdateDialog(
+    BuildContext context,
+    String version,
+    String url,
+  ) {
+    _isDialogShowing = true;
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => PopScope(
+        canPop: false,
+        child: AlertDialog(
+          title: Text('Update wajib v$version'),
+          content: const Text(
+            'Versi aplikasi ini sudah tidak didukung. Perbarui melalui Play Store untuk melanjutkan.',
+          ),
+          actions: [
+            ElevatedButton(
+              onPressed: url.isEmpty
+                  ? null
+                  : () => launchUrl(
+                      Uri.parse(url),
+                      mode: LaunchMode.externalApplication,
+                    ),
+              child: const Text('Buka Play Store'),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -170,28 +264,43 @@ class UpdateService {
           canPop: !isMandatory,
           child: AlertDialog(
             title: Text("Update Tersedia v$version"),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(notes),
-                const SizedBox(height: 10),
-                const Text(
-                  "Versi terbaru diperlukan untuk performa terbaik.",
-                  style: TextStyle(fontSize: 12, color: Colors.grey),
+            // Release notes can be a long multi-line changelog (see
+            // screenshot report: unbounded Column overflowed the dialog by
+            // 1500+ px, rendered as Flutter's black/yellow debug hazard
+            // stripes). Cap the dialog's content height and let the notes
+            // scroll inside it instead.
+            content: SizedBox(
+              width: double.maxFinite,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.of(dialogContext).size.height * 0.6,
                 ),
-                if (isMandatory)
-                  const Padding(
-                    padding: EdgeInsets.only(top: 10),
-                    child: Text(
-                      "* Update ini Wajib",
-                      style: TextStyle(
-                        color: Colors.red,
-                        fontWeight: FontWeight.bold,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(notes),
+                      const SizedBox(height: 10),
+                      const Text(
+                        "Versi terbaru diperlukan untuk performa terbaik.",
+                        style: TextStyle(fontSize: 12, color: Colors.grey),
                       ),
-                    ),
+                      if (isMandatory)
+                        const Padding(
+                          padding: EdgeInsets.only(top: 10),
+                          child: Text(
+                            "* Update ini Wajib",
+                            style: TextStyle(
+                              color: Colors.red,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
-              ],
+                ),
+              ),
             ),
             actions: [
               if (!isMandatory)
@@ -279,20 +388,14 @@ class _DownloadProgressDialogState extends State<_DownloadProgressDialog> {
 
       final url = widget.downloadUrl;
 
-      String filePath;
-
-      if (Platform.isAndroid) {
-        final downloadsDir = Directory('/storage/emulated/0/Download');
-        if (await downloadsDir.exists()) {
-          filePath = '${downloadsDir.path}/one_link_update.apk';
-        } else {
-          final dir = await getApplicationDocumentsDirectory();
-          filePath = '${dir.path}/one_link_update.apk';
-        }
-      } else {
-        final directory = await getApplicationDocumentsDirectory();
-        filePath = '${directory.path}/one_link_update.apk';
+      // Save in temporary/cache directory where FileProvider has full read access
+      Directory directory;
+      try {
+        directory = await getTemporaryDirectory();
+      } catch (_) {
+        directory = await getApplicationDocumentsDirectory();
       }
+      final filePath = '${directory.path}/one_link_update.apk';
 
       _filePath = filePath;
 
@@ -331,6 +434,7 @@ class _DownloadProgressDialogState extends State<_DownloadProgressDialog> {
           _status = 'Download selesai!';
           _isComplete = true;
         });
+        _installApk();
       }
     } catch (e) {
       debugPrint('Download error: $e');
@@ -346,31 +450,41 @@ class _DownloadProgressDialogState extends State<_DownloadProgressDialog> {
     setState(() => _isInstalling = true);
 
     try {
-      final tempPath = '/data/local/tmp/one_link_update.apk';
-      final sourceFile = File(_filePath!);
+      final file = File(_filePath!);
+      if (!await file.exists()) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Berkas APK tidak ditemukan. Silakan unduh ulang.')),
+          );
+        }
+        return;
+      }
 
-      await sourceFile.copy(tempPath);
-      debugPrint('Copied APK to temp: $tempPath');
-
-      final result = await Process.run('pm', ['install', '-r', tempPath]);
-
-      debugPrint('Install result: ${result.exitCode}');
-      debugPrint('stdout: ${result.stdout}');
-      debugPrint('stderr: ${result.stderr}');
-
-      try {
-        await File(tempPath).delete();
-      } catch (e) {}
+      final result = await OpenFilex.open(
+        _filePath!,
+        type: 'application/vnd.android.package-archive',
+      );
+      debugPrint('OpenFilex result: ${result.type} - ${result.message}');
 
       if (mounted) {
-        if (result.exitCode == 0) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(const SnackBar(content: Text('Berhasil install!')));
+        if (result.type == ResultType.done) {
           Navigator.of(context).pop();
         } else {
+          // If OpenFilex returned error, try launchUrl fallback
+          try {
+            final uri = Uri.file(_filePath!);
+            if (await canLaunchUrl(uri)) {
+              await launchUrl(uri);
+              Navigator.of(context).pop();
+              return;
+            }
+          } catch (_) {}
+
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Install gagal: ${result.stderr}')),
+            SnackBar(
+              content: Text('Gagal membuka installer: ${result.message}'),
+              behavior: SnackBarBehavior.floating,
+            ),
           );
         }
       }
@@ -379,61 +493,140 @@ class _DownloadProgressDialogState extends State<_DownloadProgressDialog> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Gagal install. Silakan install manual.'),
+            content: Text('Gagal membuka installer. Silakan install manual.'),
+            behavior: SnackBarBehavior.floating,
           ),
         );
       }
-    }
-
-    if (mounted) {
-      setState(() => _isInstalling = false);
+    } finally {
+      if (mounted) {
+        setState(() => _isInstalling = false);
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: Text(_isComplete ? 'Update Selesai' : 'Mengunduh Update'),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      contentPadding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           if (!_isComplete) ...[
-            Text(_status),
-            const SizedBox(height: 20),
-            LinearProgressIndicator(value: _progress),
-            const SizedBox(height: 10),
-            Text('${(_progress * 100).toStringAsFixed(0)}%'),
-          ] else ...[
-            const Icon(Icons.check_circle, color: Colors.green, size: 48),
-            const SizedBox(height: 15),
+            // Downloading State Icon
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppColors.primaryGreen.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.cloud_download_rounded,
+                color: AppColors.primaryGreen,
+                size: 42,
+              ),
+            ),
+            const SizedBox(height: 16),
             const Text(
-              'APK berhasil diunduh!',
-              style: TextStyle(fontWeight: FontWeight.bold),
+              'Mengunduh Pembaruan',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17, color: AppColors.textPrimary),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              _status.isNotEmpty ? _status : 'Sedang mengunduh berkas aplikasi...',
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+            ),
+            const SizedBox(height: 20),
+            // Progress Bar
+            ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: LinearProgressIndicator(
+                value: _progress > 0 ? _progress : null,
+                minHeight: 10,
+                backgroundColor: AppColors.lightGrey,
+                valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primaryGreen),
+              ),
             ),
             const SizedBox(height: 10),
-            Text('Lokasi: $_filePath', style: const TextStyle(fontSize: 11)),
-            const SizedBox(height: 10),
-            const Text('Klik tombol di bawah untuk install otomatis'),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Mohon tunggu sebentar',
+                  style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                ),
+                Text(
+                  '${(_progress * 100).toStringAsFixed(0)}%',
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.primaryGreen),
+                ),
+              ],
+            ),
+          ] else ...[
+            // Completed State
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: const BoxDecoration(
+                color: Color(0xFFE8F5E9),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.check_circle_rounded,
+                color: AppColors.primaryGreen,
+                size: 48,
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Pembaruan Siap Dipasang',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17, color: AppColors.textPrimary),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              _isInstalling
+                  ? 'Membuka paket instalasi Android...'
+                  : 'Versi terbaru berhasil diunduh. Tekan "Install Sekarang" untuk memasang.',
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+            ),
           ],
         ],
       ),
+      actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
       actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Tutup'),
-        ),
-        if (_isComplete && !_isInstalling)
-          ElevatedButton.icon(
-            onPressed: _installApk,
-            icon: const Icon(Icons.install_desktop),
-            label: const Text('Install Sekarang'),
+        if (!_isComplete)
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Batalkan', style: TextStyle(color: AppColors.grey)),
+          )
+        else ...[
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Batal', style: TextStyle(color: AppColors.grey)),
           ),
-        if (_isInstalling)
-          const SizedBox(
-            width: 20,
-            height: 20,
-            child: CircularProgressIndicator(strokeWidth: 2),
-          ),
+          if (!_isInstalling)
+            ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primaryGreen,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              onPressed: _installApk,
+              icon: const Icon(Icons.system_update, size: 18),
+              label: const Text('Install Sekarang', style: TextStyle(fontWeight: FontWeight.bold)),
+            ),
+          if (_isInstalling)
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16),
+              child: SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(strokeWidth: 2.5, color: AppColors.primaryGreen),
+              ),
+            ),
+        ],
       ],
     );
   }

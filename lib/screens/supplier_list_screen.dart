@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../constants/app_colors.dart';
 import '../constants/app_text_styles.dart';
 import 'add_supplier_screen_simple.dart';
+import '../providers/supplier_form_provider.dart';
 import '../services/supplier_list_service.dart';
 import '../models/supplier_list_model.dart';
 import '../services/user_storage.dart';
@@ -22,9 +24,6 @@ class _SupplierListScreenState extends State<SupplierListScreen> {
   // Real supplier data
   List<SupplierListItem> _suppliers = [];
   List<SupplierListItem> _filteredSuppliers = [];
-
-  // Date filter - default to wide range (1978 to now)
-  String _toDate = DateTime.now().toIso8601String().substring(0, 10);
 
   int? _currentUserId;
 
@@ -68,12 +67,13 @@ class _SupplierListScreenState extends State<SupplierListScreen> {
       // Get current user ID
       _currentUserId = await UserStorage.getUserId();
 
-      // Load suppliers with wide date range to show all
+      // No `date` filter here — the API filters by exact-date match, and
+      // this screen has no date-picker UI, so passing one only ever hid
+      // every supplier not created on that exact day.
       final response = await SupplierListService.getSupplierList(
         page: 1,
         limit: 100, // Get more data
         picId: _currentUserId,
-        date: _toDate, // Use current date as filter
       );
 
       if (response.status && response.data != null) {
@@ -204,7 +204,10 @@ class _SupplierListScreenState extends State<SupplierListScreen> {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => const AddSupplierScreenSimple(),
+                  builder: (context) => ChangeNotifierProvider(
+                    create: (_) => SupplierFormProvider(),
+                    child: const AddSupplierScreenSimple(),
+                  ),
                 ),
               ).then((_) => _loadSupplierData());
             },
@@ -235,7 +238,10 @@ class _SupplierListScreenState extends State<SupplierListScreen> {
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => const AddSupplierScreenSimple(),
+              builder: (context) => ChangeNotifierProvider(
+                create: (_) => SupplierFormProvider(),
+                child: const AddSupplierScreenSimple(),
+              ),
             ),
           ).then((_) => _loadSupplierData());
         },
@@ -333,6 +339,7 @@ class _SupplierListScreenState extends State<SupplierListScreen> {
   }) {
     return DropdownButtonFormField<String>(
       value: value,
+      isExpanded: true,
       onChanged: onChanged,
       decoration: InputDecoration(
         labelText: label,
@@ -351,7 +358,10 @@ class _SupplierListScreenState extends State<SupplierListScreen> {
         contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       ),
       items: options.map((String option) {
-        return DropdownMenuItem<String>(value: option, child: Text(option));
+        return DropdownMenuItem<String>(
+          value: option,
+          child: Text(option, overflow: TextOverflow.ellipsis),
+        );
       }).toList(),
     );
   }
@@ -410,6 +420,8 @@ class _SupplierListScreenState extends State<SupplierListScreen> {
                     children: [
                       Text(
                         supplier.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: AppTextStyles.bodyLarge.copyWith(
                           fontWeight: FontWeight.bold,
                           color: AppColors.textPrimary,
@@ -556,6 +568,8 @@ class _SupplierListScreenState extends State<SupplierListScreen> {
           const SizedBox(height: 4),
           Text(
             value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: AppTextStyles.caption.copyWith(
               color: AppColors.textPrimary,
               fontWeight: FontWeight.w600,

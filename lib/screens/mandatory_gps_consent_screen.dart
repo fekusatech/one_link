@@ -75,7 +75,7 @@ class _MandatoryGpsConsentScreenState extends State<MandatoryGpsConsentScreen> {
                 // Features List
                 _buildFeatureItem(
                   Icons.navigation,
-                  'Tracking rute pengantaran real-time',
+                  'Navigasi rute pengantaran saat tugas aktif',
                 ),
                 _buildFeatureItem(
                   Icons.location_searching,
@@ -297,45 +297,35 @@ class _MandatoryGpsConsentScreenState extends State<MandatoryGpsConsentScreen> {
         await UserStorage.setLocationTrackingConsent(true);
         await UserStorage.setMandatoryGpsConsentGiven(true);
 
-        // Start tracking automatically
-        bool trackingStarted = await LocationTrackingService.instance
-            .startTracking(
-              context: context,
-              onLocationUpdate: (position) {
-                // Location updates will be handled automatically by the service
-              },
-            );
-
-        if (trackingStarted) {
-          // Start GPS enforcement service
+        // Start tracking automatically (best effort)
+        try {
+          await LocationTrackingService.instance
+              .startTrackingWithoutPermissionCheck();
           GpsEnforcementService.instance.startEnforcement();
+        } catch (_) {}
 
-          // Navigate to main app based on role or passed target
-          if (mounted) {
-            String routeToPush = widget.targetRoute ?? '/dashboard';
+        // Navigate to main app based on role or passed target
+        if (mounted) {
+          String routeToPush = widget.targetRoute ?? '/dashboard';
 
-            // If no target route explicit, try to detect from user role
-            if (widget.targetRoute == null) {
-              final user = await UserStorage.getUser();
-              if (user != null) {
-                final groups = user['groups'] as List<dynamic>?;
-                if (groups != null && groups.isNotEmpty) {
-                  final role = groups.first.toString().toLowerCase();
-                  if (role.contains('sales') || role.contains('sal')) {
-                    routeToPush = '/sales-dashboard';
-                  } else if (role.contains('drv') || role.contains('driver')) {
-                    routeToPush = '/driver-dashboard';
-                  }
+          if (widget.targetRoute == null) {
+            final user = await UserStorage.getUser();
+            if (user != null) {
+              final groups = user['groups'] as List<dynamic>?;
+              if (groups != null && groups.isNotEmpty) {
+                final role = groups.first.toString().toLowerCase();
+                if (role.contains('sales') || role.contains('sal')) {
+                  routeToPush = '/sales-dashboard';
+                } else if (role.contains('drv') || role.contains('driver')) {
+                  routeToPush = '/driver-dashboard';
                 }
               }
             }
-
-            if (mounted) {
-              Navigator.of(context).pushReplacementNamed(routeToPush);
-            }
           }
-        } else {
-          _showPermissionErrorDialog();
+
+          if (mounted) {
+            Navigator.of(context).pushReplacementNamed(routeToPush);
+          }
         }
       } else {
         _showPermissionErrorDialog();

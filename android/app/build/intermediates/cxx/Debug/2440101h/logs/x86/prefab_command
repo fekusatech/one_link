@@ -1,0 +1,27 @@
+/opt/homebrew/Cellar/openjdk@17/17.0.20/libexec/openjdk.jdk/Contents/Home/bin/java \
+  --enable-native-access \
+  ALL-UNNAMED \
+  --class-path \
+  /Volumes/Fekusa/DevCache/.gradle/caches/modules-2/files-2.1/com.google.prefab/cli/2.1.0/aa32fec809c44fa531f01dcfb739b5b3304d3050/cli-2.1.0-all.jar \
+  com.google.prefab.cli.AppKt \
+  --build-system \
+  cmake \
+  --platform \
+  android \
+  --abi \
+  x86 \
+  --os-version \
+  24 \
+  --stl \
+  c++_shared \
+  --ndk-version \
+  27 \
+  --output \
+  /var/folders/r5/l15gnhhd4_q_v2n4_qt53zrr0000gp/T/agp-prefab-staging14025736913266793499/staged-cli-output \
+  /Users/macprom12020/Project/crm-mobile/android/app/build/intermediates/cxx/refs/react-native-nitro-image/4v3d3n16 \
+  /Users/macprom12020/Project/crm-mobile/android/app/build/intermediates/cxx/refs/react-native-nitro-modules/4u1k2k2d \
+  /Users/macprom12020/Project/crm-mobile/android/app/build/intermediates/cxx/refs/react-native-vision-camera/6n41r2q2 \
+  /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/20ad2d019970f8e91fa7eb3c7227b106/transformed/react-android-0.87.0-debug/prefab \
+  /Users/macprom12020/Project/crm-mobile/android/app/build/intermediates/cxx/refs/op-engineering_op-sqlite/1m665169 \
+  /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/82e12f5657b78a2f3001648586ffcf26/transformed/hermes-android-250829098.0.16-debug/prefab \
+  /Volumes/Fekusa/DevCache/.gradle/caches/9.4.1/transforms/3cb1792e16d0777e9535521c99f0b7b5/transformed/fbjni-0.7.0/prefab

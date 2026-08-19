@@ -124,6 +124,31 @@ class SuratJalan {
           [],
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'surat_jalan_id': suratJalanId,
+      'kode': kode,
+      'tanggal': tanggal,
+      'tanggal_formatted': tanggalFormatted,
+      'status': status,
+      'kode_pickup': kodePickup,
+      'driver_name': driverName,
+      'plat': plat,
+      'gudang_name': gudangName,
+      'gudang_gps': gudangGps,
+      'supplier_names': supplierNames,
+      'total_suppliers': totalSuppliers,
+      'total_qty': totalQty,
+      'total_qty_real': totalQtyReal,
+      'total_liter': totalLiter,
+      'total_harga': totalHarga,
+      'progress': progress.toJson(),
+      'created_at': createdAt,
+      'updated_at': updatedAt,
+      'surat_jalan_detail': suratJalanDetail.map((d) => d.toJson()).toList(),
+    };
+  }
 }
 
 class Progress {
@@ -153,6 +178,17 @@ class Progress {
       statusSummary: StatusSummary.fromJson(json['status_summary'] ?? {}),
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'total_items': totalItems,
+      'completed_items': completedItems,
+      'pickup_items': pickupItems,
+      'cancelled_items': cancelledItems,
+      'percentage': percentage,
+      'status_summary': statusSummary.toJson(),
+    };
+  }
 }
 
 class StatusSummary {
@@ -176,6 +212,15 @@ class StatusSummary {
       cancelled: json['cancelled']?.toString() ?? '0',
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'done': done,
+      'pickup': pickup,
+      'pending': pending,
+      'cancelled': cancelled,
+    };
+  }
 }
 
 class SuratJalanDetail {
@@ -196,6 +241,14 @@ class SuratJalanDetail {
   final String? fotoAt;
   final String? ttd;
   final String? ttdAt;
+  /// Liter-per-kemasan conversion factor (only populated when this object
+  /// came from GeuSuratJalanDetail.toLegacy() — the old PHP API never had
+  /// an equivalent field). 1 means "already in liter" / unknown.
+  final double totLiter;
+  /// All uploaded photos for this item (resolved URLs), fetched separately
+  /// from `foto` above — see GeuSuratJalanService.getById(). Empty for
+  /// data that came from the old PHP API path.
+  final List<String> photoUrls;
 
   SuratJalanDetail({
     required this.suratJalanDetailId,
@@ -215,6 +268,8 @@ class SuratJalanDetail {
     this.fotoAt,
     this.ttd,
     this.ttdAt,
+    this.totLiter = 1,
+    this.photoUrls = const [],
   });
 
   factory SuratJalanDetail.fromJson(Map<String, dynamic> json) {
@@ -243,6 +298,17 @@ class SuratJalanDetail {
   String? get fotoUrl {
     if (foto == null || foto!.isEmpty) return null;
 
+    // Go API (ResolveFilemanagerURL) sudah mengembalikan URL absolut penuh
+    // (baik ke erp.greenenergiutama.co.id maupun langsung ke R2) — kalau
+    // dicek startsWith('filemanager/') doang, URL absolut ini lolos ke
+    // cabang else di bawah dan didobel-prefix jadi
+    // "erp.../filemanager/foto-pengambilan/https://...", yang otomatis
+    // gagal dimuat (NetworkImage: empty file). Selalu pass-through kalau
+    // sudah http(s).
+    if (foto!.startsWith('http://') || foto!.startsWith('https://')) {
+      return foto;
+    }
+
     // Jika foto sudah berupa path lengkap (dimulai dengan filemanager/),
     // maka hanya tambahkan domain
     if (foto!.startsWith('filemanager/')) {
@@ -256,6 +322,12 @@ class SuratJalanDetail {
   String? get ttdUrl {
     if (ttd == null || ttd!.isEmpty) return null;
 
+    // Sama seperti fotoUrl di atas — URL absolut dari Go API harus
+    // pass-through, jangan didobel-prefix.
+    if (ttd!.startsWith('http://') || ttd!.startsWith('https://')) {
+      return ttd;
+    }
+
     // Jika ttd sudah berupa path lengkap (dimulai dengan filemanager/),
     // maka hanya tambahkan domain
     if (ttd!.startsWith('filemanager/')) {
@@ -264,6 +336,30 @@ class SuratJalanDetail {
 
     // Jika hanya nama file, tambahkan path lengkap
     return '${AppConfig.serverDomain}/filemanager/ttd/$ttd';
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'surat_jalan_detail_id': suratJalanDetailId,
+      'supplier_name': supplierName,
+      'supplier_alamat': supplierAlamat,
+      'work_order_kode': workOrderKode,
+      'qty_order': qtyOrder,
+      'qty_real': qtyReal,
+      'harga': harga,
+      'satuan': satuan,
+      'status': status,
+      'supplier_gps': supplierGps,
+      'supplier_gps_user': supplierGpsUser,
+      'surat_jalan_detail_gps': suratJalanDetailGps,
+      'foto': foto,
+      'photos_data': photosData,
+      'foto_at': fotoAt,
+      'ttd': ttd,
+      'ttd_at': ttdAt,
+      'tot_liter': totLiter,
+      'photo_urls': photoUrls,
+    };
   }
 }
 

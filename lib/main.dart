@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter/services.dart';
-import 'dart:io';
 import 'package:provider/provider.dart';
 import 'constants/app_colors.dart';
 import 'screens/splash_screen.dart';
@@ -24,18 +24,27 @@ import 'config/app_config.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  HttpOverrides.global = MyHttpOverrides();
+  await _configureOrientation();
   await AppConfig.init();
   runApp(const MyApp());
 }
 
-class MyHttpOverrides extends HttpOverrides {
-  @override
-  HttpClient createHttpClient(SecurityContext? context) {
-    return super.createHttpClient(context)
-      ..badCertificateCallback =
-          (X509Certificate cert, String host, int port) => true;
+/// Ponsel memakai portrait agar alur kerja lapangan tidak berubah ketika
+/// perangkat terbalik. Layar tablet (shortest side >= 600dp) tetap bebas
+/// berotasi untuk memanfaatkan ruang kerja yang lebih luas.
+Future<void> _configureOrientation() async {
+  final view = WidgetsBinding.instance.platformDispatcher.views.first;
+  final shortestSide = view.physicalSize.shortestSide / view.devicePixelRatio;
+
+  if (shortestSide < 600) {
+    await SystemChrome.setPreferredOrientations(const [
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
+    ]);
+    return;
   }
+
+  await SystemChrome.setPreferredOrientations(DeviceOrientation.values);
 }
 
 class MyApp extends StatelessWidget {
@@ -46,6 +55,13 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'One Link',
       debugShowCheckedModeBanner: false,
+      locale: const Locale('id'),
+      supportedLocales: const [Locale('id'), Locale('en')],
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
           seedColor: AppColors.primaryGreen,
@@ -55,6 +71,22 @@ class MyApp extends StatelessWidget {
         useMaterial3: true,
         scaffoldBackgroundColor: AppColors.background,
       ),
+      darkTheme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: AppColors.primaryGreen,
+          primary: AppColors.primaryGreen,
+          secondary: AppColors.accentOrange,
+          brightness: Brightness.dark,
+        ),
+        textTheme: ThemeData.dark().textTheme,
+        useMaterial3: true,
+      ),
+      // App masih didesain penuh untuk light mode (warna teks di seluruh
+      // screen pakai AppColors hardcoded, bukan theme-aware). Mengikuti
+      // ThemeMode.system membuat teks abu-abu/hitam tidak terbaca di atas
+      // background gelap. Dikunci ke light sampai ada refactor warna
+      // theme-aware menyeluruh.
+      themeMode: ThemeMode.light,
       // Set initial route to SplashScreen for auto-login check
       initialRoute: '/',
       routes: {

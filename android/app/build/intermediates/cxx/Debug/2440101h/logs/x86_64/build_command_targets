@@ -1,0 +1,7 @@
+/Volumes/Fekusa/Android/sdk/cmake/3.22.1/bin/ninja \
+  -C \
+  /Users/macprom12020/Project/crm-mobile/android/app/.cxx/Debug/2440101h/x86_64 \
+  appmodules \
+  react_codegen_rngesturehandler_codegen \
+  react_codegen_rnscreens \
+  react_codegen_safeareacontext

@@ -7,6 +7,7 @@
     <!-- Foreground location for delivery/pickup tracking -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.CAMERA" />
     
     <!-- Background location for delivery route tracking (API 29+) -->
     <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
@@ -27,7 +28,9 @@
     <application
         android:label="One Link - GEU"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        android:allowBackup="false"
+        android:usesCleartextTraffic="false">
         
 
         <activity
@@ -51,6 +54,17 @@
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
+            <!-- One Login redirects the browser here after Google OAuth. Keep
+                 this exact scheme/host/path aligned with the API whitelist. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:scheme="onelink"
+                    android:host="auth"
+                    android:path="/callback" />
+            </intent-filter>
         </activity>
         
         <!-- Foreground service for location tracking -->
@@ -65,6 +79,12 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+        <!-- app_links owns the custom SSO callback. Without this opt-out,
+             Flutter treats /callback as an in-app Navigator route before the
+             plugin can exchange the one-time SSO code. -->
+        <meta-data
+            android:name="flutter_deeplinking_enabled"
+            android:value="false" />
         <!-- FileProvider for Auto Update -->
         <provider
             android:name="androidx.core.content.FileProvider"
