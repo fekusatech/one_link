@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
+import 'package:camera/camera.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -7,6 +9,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:shake/shake.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../constants/app_colors.dart';
+import '../utils/image_compress_utils.dart';
 import 'geu/geu_api_client.dart';
 import 'user_storage.dart';
 
@@ -254,7 +257,10 @@ class EmergencyShakeService {
         debugPrint('Error reading device info: $e');
       }
 
-      // 3. Send API request to /api/emergency/sos via Go REST API
+      // 3. Auto capture front & back photos from camera
+      final photos = await _captureFrontAndBackPhotos();
+
+      // 4. Send API request to /api/emergency/sos via Go REST API
       final dio = await GeuApiClient.instance;
       final response = await dio.post(
         '/api/emergency/sos',
@@ -263,7 +269,8 @@ class EmergencyShakeService {
           'os_version': osVersion,
           'latitude': lat,
           'longitude': lng,
-          'message_extra': 'Sinyal darurat dikirim otomatis dengan mengocok ponsel.',
+          'photo_front_base64': photos['front'] ?? '',
+          'photo_back_base64': photos['back'] ?? '',
         },
       );
 
@@ -289,6 +296,65 @@ class EmergencyShakeService {
         _openDirectWhatsAppSOS(context);
       }
     }
+  }
+
+  Future<Map<String, String>> _captureFrontAndBackPhotos() async {
+    String frontB64 = '';
+    String backB64 = '';
+
+    try {
+      final cameras = await availableCameras();
+      if (cameras.isEmpty) return {'front': '', 'back': ''};
+
+      CameraDescription? backCamera;
+      CameraDescription? frontCamera;
+
+      for (var cam in cameras) {
+        if (cam.lensDirection == CameraLensDirection.back && backCamera == null) {
+          backCamera = cam;
+        } else if (cam.lensDirection == CameraLensDirection.front && frontCamera == null) {
+          frontCamera = cam;
+        }
+      }
+
+      Future<String> captureCamera(CameraDescription camera) async {
+        CameraController? controller;
+        try {
+          controller = CameraController(
+            camera,
+            ResolutionPreset.low,
+            enableAudio: false,
+          );
+          await controller.initialize();
+          final XFile file = await controller.takePicture();
+          final rawFile = File(file.path);
+          final compressedFile = await ImageCompressUtils.compressImage(rawFile, quality: 60, minWidth: 720);
+          final bytes = await compressedFile.readAsBytes();
+          await controller.dispose();
+          return 'data:image/webp;base64,${base64Encode(bytes)}';
+        } catch (e) {
+          debugPrint('Error taking photo on ${camera.lensDirection}: $e');
+          try {
+            await controller?.dispose();
+          } catch (_) {}
+          return '';
+        }
+      }
+
+      if (backCamera != null) {
+        backB64 = await captureCamera(backCamera);
+      }
+      if (frontCamera != null) {
+        frontB64 = await captureCamera(frontCamera);
+      }
+    } catch (e) {
+      debugPrint('Error initializing cameras for Emergency SOS: $e');
+    }
+
+    return {
+      'front': frontB64,
+      'back': backB64,
+    };
   }
 
   Future<void> _openDirectWhatsAppSOS(BuildContext context) async {

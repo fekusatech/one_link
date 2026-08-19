@@ -42,6 +42,7 @@ dependencies:
   battery_plus: ^6.0.2
   open_filex: ^4.7.0
   fl_chart: ^1.2.0
+  camera: ^0.11.0+2
   sensors_plus: ^6.0.0
   shake: ^3.0.0
 
