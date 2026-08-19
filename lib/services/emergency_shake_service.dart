@@ -26,7 +26,7 @@ class EmergencyShakeService {
 
     _shakeDetector = ShakeDetector.autoStart(
       shakeThresholdGravity: 2.7,
-      onPhoneShake: () {
+      onPhoneShake: (event) {
         final now = DateTime.now();
         if (_lastShakeTime != null && now.difference(_lastShakeTime!).inSeconds < 8) {
           return; // Cooldown 8s

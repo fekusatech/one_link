@@ -42,7 +42,8 @@ dependencies:
   battery_plus: ^6.0.2
   open_filex: ^4.7.0
   fl_chart: ^1.2.0
-  shake: ^2.2.0
+  sensors_plus: ^6.0.0
+  shake: ^3.0.0
 
 dev_dependencies:
   flutter_test:
