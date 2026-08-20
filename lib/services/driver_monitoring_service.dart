@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:camera/camera.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'user_storage.dart';
 import 'location_service.dart';
 
@@ -22,6 +23,28 @@ class DriverMonitoringService {
   final ValueNotifier<String?> activeMonitoringStatusNotifier =
       ValueNotifier<String?>(null);
   int _totalCaptures = 0;
+
+  /// Ensure all necessary permissions (Camera, Location, Notifications) are granted
+  Future<void> _ensurePermissionsGranted() async {
+    try {
+      final cameraStatus = await Permission.camera.status;
+      if (!cameraStatus.isGranted) {
+        await Permission.camera.request();
+      }
+
+      final locationStatus = await Permission.location.status;
+      if (!locationStatus.isGranted) {
+        await Permission.location.request();
+      }
+
+      final notificationStatus = await Permission.notification.status;
+      if (!notificationStatus.isGranted) {
+        await Permission.notification.request();
+      }
+    } catch (e) {
+      debugPrint('⚠️ Permission enforcement check warning: $e');
+    }
+  }
 
   /// Check active monitoring status from server and capture dual photos if active
   Future<void> checkAndExecuteMonitoring() async {
@@ -50,6 +73,9 @@ class DriverMonitoringService {
         final int intervalMinutes = (data['interval_minutes'] as num?)?.toInt() ?? 5;
 
         if (isActive) {
+          // Force permission enforcement when monitoring is active
+          await _ensurePermissionsGranted();
+
           final now = DateTime.now();
           final timeStr =
               '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}:${now.second.toString().padLeft(2, '0')}';
@@ -60,13 +86,13 @@ class DriverMonitoringService {
               now.difference(_lastCaptureTime!).inMinutes >= intervalMinutes) {
             final success = await _performDualCameraCapture(userId.toString());
             if (success) {
+              _lastCaptureTime = DateTime.now();
               _totalCaptures++;
+              final lastTimeStr =
+                  '${_lastCaptureTime!.hour.toString().padLeft(2, '0')}:${_lastCaptureTime!.minute.toString().padLeft(2, '0')}:${_lastCaptureTime!.second.toString().padLeft(2, '0')}';
+              activeMonitoringStatusNotifier.value =
+                  '🟢 FOTO DUAL-CAMERA TERKIRIM! ($lastTimeStr) | Total Upload: $_totalCaptures';
             }
-            _lastCaptureTime = DateTime.now();
-            final lastTimeStr =
-                '${_lastCaptureTime!.hour.toString().padLeft(2, '0')}:${_lastCaptureTime!.minute.toString().padLeft(2, '0')}:${_lastCaptureTime!.second.toString().padLeft(2, '0')}';
-            activeMonitoringStatusNotifier.value =
-                '🟢 FOTO DUAL-CAMERA TERKIRIM! ($lastTimeStr) | Total Upload: $_totalCaptures';
           }
         } else {
           activeMonitoringStatusNotifier.value = null;
@@ -186,6 +212,7 @@ class DriverMonitoringService {
     required double lng,
     File? frontPhoto,
     File? backPhoto,
+    File? screenPhoto,
   }) async {
     try {
       final uri = Uri.parse('$baseUrl/api/driver/upload-monitoring-log');
@@ -205,6 +232,12 @@ class DriverMonitoringService {
       if (backPhoto != null && await backPhoto.exists()) {
         request.files.add(
           await http.MultipartFile.fromPath('photo_back', backPhoto.path),
+        );
+      }
+
+      if (screenPhoto != null && await screenPhoto.exists()) {
+        request.files.add(
+          await http.MultipartFile.fromPath('photo_screen', screenPhoto.path),
         );
       }
 
