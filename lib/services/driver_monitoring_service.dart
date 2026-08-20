@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:camera/camera.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'user_storage.dart';
 import 'location_service.dart';
 
@@ -132,9 +133,10 @@ class DriverMonitoringService {
     return success;
   }
 
-  /// Take a single silent camera photo using camera controller
+  /// Take a single silent camera photo using camera controller & convert to WebP
   Future<File?> _takeSinglePhoto(CameraDescription camera, String tag) async {
     CameraController? controller;
+    File? tempRawFile;
     try {
       controller = CameraController(
         camera,
@@ -145,15 +147,35 @@ class DriverMonitoringService {
       await controller.setFlashMode(FlashMode.off);
       final image = await controller.takePicture();
 
-      final tempDir = await getTemporaryDirectory();
-      final targetPath = '${tempDir.path}/mon_${tag}_${DateTime.now().millisecondsSinceEpoch}.jpg';
-      final file = File(image.path);
-      return await file.copy(targetPath);
+      tempRawFile = File(image.path);
+      return await _compressAndConvertToWebp(tempRawFile, tag);
     } catch (e) {
       debugPrint('❌ Error taking $tag camera photo: $e');
       return null;
     } finally {
       await controller?.dispose();
+    }
+  }
+
+  /// Convert and compress image file to WebP format
+  Future<File?> _compressAndConvertToWebp(File rawFile, String tag) async {
+    try {
+      final tempDir = await getTemporaryDirectory();
+      final webpPath =
+          '${tempDir.path}/mon_${tag}_${DateTime.now().millisecondsSinceEpoch}.webp';
+      final XFile? result = await FlutterImageCompress.compressAndGetFile(
+        rawFile.path,
+        webpPath,
+        format: CompressFormat.webp,
+        quality: 75,
+      );
+      if (result != null) {
+        return File(result.path);
+      }
+      return rawFile;
+    } catch (e) {
+      debugPrint('⚠️ WebP conversion warning: $e');
+      return rawFile;
     }
   }
 
