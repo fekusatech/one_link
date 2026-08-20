@@ -1,0 +1,178 @@
+import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
+import 'package:flutter/foundation.dart';
+import 'package:http/http.dart' as http;
+import 'package:camera/camera.dart';
+import 'package:path_provider/path_provider.dart';
+import '../config/app_config.dart';
+import 'user_storage.dart';
+import 'location_service.dart';
+
+class DriverMonitoringService {
+  static const String baseUrl = AppConfig.serverDomain;
+  static DriverMonitoringService? _instance;
+  static DriverMonitoringService get instance =>
+      _instance ??= DriverMonitoringService._internal();
+
+  DriverMonitoringService._internal();
+
+  DateTime? _lastCaptureTime;
+  bool _isCapturing = false;
+
+  /// Check active monitoring status from server and capture dual photos if active
+  Future<void> checkAndExecuteMonitoring() async {
+    if (_isCapturing) return;
+
+    try {
+      final userId = await UserStorage.getUserId();
+      if (userId == null) return;
+
+      final url = Uri.parse(
+        '$baseUrl/driver_map/get_monitoring_status?driver_id=$userId',
+      );
+      final response = await http.get(url).timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        final bool isActive = data['is_active'] == 1 || data['is_active'] == true;
+        final int intervalMinutes = (data['interval_minutes'] as num?)?.toInt() ?? 5;
+
+        if (isActive) {
+          final now = DateTime.now();
+          if (_lastCaptureTime == null ||
+              now.difference(_lastCaptureTime!).inMinutes >= intervalMinutes) {
+            await _performDualCameraCapture(userId.toString());
+            _lastCaptureTime = now;
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('📷 Monitoring status check error: $e');
+    }
+  }
+
+  /// Perform dual camera capture (Front & Back camera) + GPS location
+  Future<void> _performDualCameraCapture(String driverId) async {
+    _isCapturing = true;
+    File? frontPhoto;
+    File? backPhoto;
+
+    try {
+      debugPrint('📷 Starting dual-camera monitoring capture for driver $driverId...');
+      final position = await LocationService.getCurrentLocation();
+      final lat = position?.latitude ?? 0.0;
+      final lng = position?.longitude ?? 0.0;
+
+      final cameras = await availableCameras();
+      if (cameras.isNotEmpty) {
+        // 1. Back Camera Capture (Road/Cargo view)
+        final backCamDesc = cameras.firstWhere(
+          (c) => c.lensDirection == CameraLensDirection.back,
+          orElse: () => cameras.first,
+        );
+        backPhoto = await _takeSinglePhoto(backCamDesc, 'back');
+
+        // 2. Front Camera Capture (Cabin/Driver view)
+        final frontCamDesc = cameras.firstWhere(
+          (c) => c.lensDirection == CameraLensDirection.front,
+          orElse: () => cameras.first,
+        );
+        frontPhoto = await _takeSinglePhoto(frontCamDesc, 'front');
+      }
+
+      if (frontPhoto != null || backPhoto != null) {
+        await _uploadMonitoringPayload(
+          driverId: driverId,
+          lat: lat,
+          lng: lng,
+          frontPhoto: frontPhoto,
+          backPhoto: backPhoto,
+        );
+      }
+    } catch (e) {
+      debugPrint('❌ Error during monitoring dual camera capture: $e');
+    } finally {
+      _isCapturing = false;
+      // Clean up temporary photo files
+      try {
+        if (frontPhoto != null && await frontPhoto.exists()) {
+          await frontPhoto.delete();
+        }
+        if (backPhoto != null && await backPhoto.exists()) {
+          await backPhoto.delete();
+        }
+      } catch (_) {}
+    }
+  }
+
+  /// Take a single silent camera photo using camera controller
+  Future<File?> _takeSinglePhoto(CameraDescription camera, String tag) async {
+    CameraController? controller;
+    try {
+      controller = CameraController(
+        camera,
+        ResolutionPreset.medium,
+        enableAudio: false,
+      );
+      await controller.initialize();
+      final image = await controller.takePicture();
+
+      final tempDir = await getTemporaryDirectory();
+      final targetPath = '${tempDir.path}/mon_${tag}_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      final file = File(image.path);
+      return await file.copy(targetPath);
+    } catch (e) {
+      debugPrint('❌ Error taking $tag camera photo: $e');
+      return null;
+    } finally {
+      await controller?.dispose();
+    }
+  }
+
+  /// Upload captured monitoring log to server
+  Future<bool> _uploadMonitoringPayload({
+    required String driverId,
+    required double lat,
+    required double lng,
+    File? frontPhoto,
+    File? backPhoto,
+  }) async {
+    try {
+      final uri = Uri.parse('$baseUrl/driver_map/upload_monitoring_log');
+      final request = http.MultipartRequest('POST', uri);
+
+      request.fields['driver_id'] = driverId;
+      request.fields['lat'] = lat.toString();
+      request.fields['lng'] = lng.toString();
+      request.fields['captured_at'] = DateTime.now().toIso8601String();
+
+      if (frontPhoto != null && await frontPhoto.exists()) {
+        request.files.add(
+          await http.MultipartFile.fromPath('photo_front', frontPhoto.path),
+        );
+      }
+
+      if (backPhoto != null && await backPhoto.exists()) {
+        request.files.add(
+          await http.MultipartFile.fromPath('photo_back', backPhoto.path),
+        );
+      }
+
+      debugPrint('📡 Uploading monitoring payload to $uri...');
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+
+      if (response.statusCode == 200) {
+        debugPrint('✅ Monitoring photo log uploaded successfully: ${response.body}');
+        return true;
+      } else {
+        debugPrint('❌ Monitoring photo log upload failed: ${response.statusCode} - ${response.body}');
+        return false;
+      }
+    } catch (e) {
+      debugPrint('❌ Monitoring upload network error: $e');
+      return false;
+    }
+  }
+}

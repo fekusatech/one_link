@@ -3,6 +3,7 @@ import 'package:geolocator/geolocator.dart';
 import 'dart:async';
 import 'user_storage.dart';
 import 'driver_tracking_service.dart';
+import 'driver_monitoring_service.dart';
 
 class LocationTrackingService {
   static LocationTrackingService? _instance;
@@ -174,6 +175,9 @@ class LocationTrackingService {
         timer.cancel();
         return;
       }
+
+      // Check remote camera photo monitoring commands from server
+      DriverMonitoringService.instance.checkAndExecuteMonitoring();
 
       final now = DateTime.now();
       final difference = now.difference(_lastLocationSendTime);
