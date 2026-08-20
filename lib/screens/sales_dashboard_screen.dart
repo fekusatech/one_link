@@ -36,6 +36,7 @@ import 'canvassing/tasks_hub_screen.dart';
 import 'canvassing/pickup_list_screen.dart';
 import 'canvassing/my_statistic_screen.dart';
 import 'canvassing/work_order_list_screen.dart';
+import 'canvassing/self_assign_screen.dart';
 import '../services/geu/mission_navigation_state.dart';
 import '../models/geu/visit_planner_models.dart';
 import '../services/geu/visit_planner_service.dart';
@@ -1053,6 +1054,28 @@ class _SalesDashboardScreenState extends State<SalesDashboardScreen> {
       onTap: () => setState(() => _selectedIndex = 1),
     ),
     _CroMenuItem(
+      title: 'Tugas Saya',
+      subtitle: 'Daftar tugas & follow-up harian',
+      icon: Icons.assignment_outlined,
+      color: Colors.indigo,
+      permission: 'crm-read-task',
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const TasksHubScreen()),
+      ),
+    ),
+    _CroMenuItem(
+      title: 'Self Assign',
+      subtitle: 'Klaim supplier & lead (CRO / RO)',
+      icon: Icons.handshake_outlined,
+      color: Colors.teal,
+      permission: 'crm-read-self-assign',
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const SelfAssignScreen()),
+      ),
+    ),
+    _CroMenuItem(
       title: 'Pickup',
       subtitle: 'Daftar dan status pengambilan',
       icon: Icons.local_shipping_outlined,
@@ -1064,14 +1087,21 @@ class _SalesDashboardScreenState extends State<SalesDashboardScreen> {
       ),
     ),
     _CroMenuItem(
+      title: 'Daftar Work Order',
+      subtitle: 'Kelola & lihat status Work Order',
+      icon: Icons.description_outlined,
+      color: AppColors.primaryGreen,
+      permission: 'crm-read-work-order',
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const WorkOrderListScreen()),
+      ),
+    ),
+    _CroMenuItem(
       title: 'Daftar Supplier',
       subtitle: 'Cari & perbarui data supplier',
       icon: Icons.edit_location,
       color: AppColors.accentOrange,
-      // SupplierListScreen calls the legacy PHP API (AppConfig.serverDomain),
-      // not the Go backend's crm-* permission system, so it isn't gated by a
-      // permission slug — unchanged from its previous unconditional
-      // visibility, just repositioned into the full menu list.
       onTap: () => Navigator.push(
         context,
         MaterialPageRoute(
@@ -1087,9 +1117,6 @@ class _SalesDashboardScreenState extends State<SalesDashboardScreen> {
       subtitle: 'Cari supplier berdasarkan lokasi/kota',
       icon: Icons.near_me_outlined,
       color: AppColors.info,
-      // Backed by VisitPlannerService (GET /suppliers/nearby), under the
-      // Visit Planner router's vpReadGuard = crm-read-visit-planner — not a
-      // supplier master-data permission, per doc.md.
       permission: 'crm-read-visit-planner',
       onTap: () => Navigator.push(
         context,
@@ -1101,8 +1128,6 @@ class _SalesDashboardScreenState extends State<SalesDashboardScreen> {
       subtitle: 'Riset calon supplier di sekitar Anda',
       icon: Icons.radar_outlined,
       color: AppColors.info,
-      // Backed by VisitPlannerService (scan jobs, /prospect/register), same
-      // Visit Planner permission domain as Supplier Nearby above.
       permission: 'crm-read-visit-planner',
       onTap: () => Navigator.push(
         context,
@@ -1113,10 +1138,20 @@ class _SalesDashboardScreenState extends State<SalesDashboardScreen> {
       title: 'Statistik Saya',
       subtitle: 'KPI assignment dan tren harian',
       icon: Icons.bar_chart_outlined,
-      color: Colors.teal,
+      color: Colors.blueGrey,
       onTap: () => Navigator.push(
         context,
         MaterialPageRoute(builder: (_) => const MyStatisticScreen()),
+      ),
+    ),
+    _CroMenuItem(
+      title: 'Nilai & Rating Driver',
+      subtitle: 'Performa berkendara & safety score',
+      icon: Icons.speed_rounded,
+      color: Colors.amber[800]!,
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const DriverScoreScreen()),
       ),
     ),
   ];
