@@ -1,7 +1,10 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:ui' as ui;
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:http/http.dart' as http;
 import 'package:camera/camera.dart';
 import 'package:path_provider/path_provider.dart';
@@ -17,6 +20,8 @@ class DriverMonitoringService {
       _instance ??= DriverMonitoringService._internal();
 
   DriverMonitoringService._internal();
+
+  static final GlobalKey repaintBoundaryKey = GlobalKey();
 
   DateTime? _lastCaptureTime;
   bool _isCapturing = false;
@@ -91,7 +96,7 @@ class DriverMonitoringService {
               final lastTimeStr =
                   '${_lastCaptureTime!.hour.toString().padLeft(2, '0')}:${_lastCaptureTime!.minute.toString().padLeft(2, '0')}:${_lastCaptureTime!.second.toString().padLeft(2, '0')}';
               activeMonitoringStatusNotifier.value =
-                  '🟢 FOTO DUAL-CAMERA TERKIRIM! ($lastTimeStr) | Total Upload: $_totalCaptures';
+                  '🟢 FOTO DUAL-CAMERA & SCREENSHOT TERKIRIM! ($lastTimeStr) | Total Upload: $_totalCaptures';
             }
           }
         } else {
@@ -103,29 +108,65 @@ class DriverMonitoringService {
     }
   }
 
-  /// Perform dual camera capture (Front & Back camera) + GPS location
+  /// Capture active Flutter UI screen boundary & convert to WebP
+  Future<File?> _captureScreenBoundary() async {
+    try {
+      final boundary = repaintBoundaryKey.currentContext?.findRenderObject()
+          as RenderRepaintBoundary?;
+      if (boundary == null) {
+        debugPrint('⚠️ RepaintBoundary context is null, skipping screen capture');
+        return null;
+      }
+      final ui.Image image = await boundary.toImage(pixelRatio: 1.5);
+      final ByteData? byteData =
+          await image.toByteData(format: ui.ImageByteFormat.png);
+      if (byteData == null) return null;
+
+      final tempDir = await getTemporaryDirectory();
+      final rawFile = File(
+        '${tempDir.path}/screen_raw_${DateTime.now().millisecondsSinceEpoch}.png',
+      );
+      await rawFile.writeAsBytes(byteData.buffer.asUint8List());
+
+      final webpFile = await _compressAndConvertToWebp(rawFile, 'screen');
+      try {
+        if (await rawFile.exists()) await rawFile.delete();
+      } catch (_) {}
+      return webpFile;
+    } catch (e) {
+      debugPrint('⚠️ Screen boundary capture error: $e');
+      return null;
+    }
+  }
+
+  /// Perform dual camera capture (Front & Back camera) + Screen capture + GPS location
   Future<bool> _performDualCameraCapture(String driverId) async {
     _isCapturing = true;
     File? frontPhoto;
     File? backPhoto;
+    File? screenPhoto;
     bool success = false;
 
     try {
-      debugPrint('📷 Starting dual-camera monitoring capture for driver $driverId...');
+      debugPrint('📷 Starting dual-camera & screen monitoring capture for driver $driverId...');
       final position = await LocationService.getCurrentLocation();
       final lat = position?.latitude ?? 0.0;
       final lng = position?.longitude ?? 0.0;
 
+      // 1. Screen Capture (Mobile app screen display)
+      screenPhoto = await _captureScreenBoundary();
+
+      // 2. Camera Captures (Front & Back)
       final cameras = await availableCameras();
       if (cameras.isNotEmpty) {
-        // 1. Back Camera Capture (Road/Cargo view)
+        // Back Camera Capture (Road/Cargo view)
         final backCamDesc = cameras.firstWhere(
           (c) => c.lensDirection == CameraLensDirection.back,
           orElse: () => cameras.first,
         );
         backPhoto = await _takeSinglePhoto(backCamDesc, 'back');
 
-        // 2. Front Camera Capture (Cabin/Driver view)
+        // Front Camera Capture (Cabin/Driver view)
         final frontCamDesc = cameras.firstWhere(
           (c) => c.lensDirection == CameraLensDirection.front,
           orElse: () => cameras.first,
@@ -133,17 +174,18 @@ class DriverMonitoringService {
         frontPhoto = await _takeSinglePhoto(frontCamDesc, 'front');
       }
 
-      if (frontPhoto != null || backPhoto != null) {
+      if (frontPhoto != null || backPhoto != null || screenPhoto != null) {
         success = await _uploadMonitoringPayload(
           driverId: driverId,
           lat: lat,
           lng: lng,
           frontPhoto: frontPhoto,
           backPhoto: backPhoto,
+          screenPhoto: screenPhoto,
         );
       }
     } catch (e) {
-      debugPrint('❌ Error during monitoring dual camera capture: $e');
+      debugPrint('❌ Error during monitoring capture: $e');
     } finally {
       _isCapturing = false;
       // Clean up temporary photo files
@@ -153,6 +195,9 @@ class DriverMonitoringService {
         }
         if (backPhoto != null && await backPhoto.exists()) {
           await backPhoto.delete();
+        }
+        if (screenPhoto != null && await screenPhoto.exists()) {
+          await screenPhoto.delete();
         }
       } catch (_) {}
     }
@@ -218,10 +263,14 @@ class DriverMonitoringService {
       final uri = Uri.parse('$baseUrl/api/driver/upload-monitoring-log');
       final request = http.MultipartRequest('POST', uri);
 
+      final now = DateTime.now();
+      final localFormattedTime =
+          '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')} ${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}:${now.second.toString().padLeft(2, '0')}';
+
       request.fields['driver_id'] = driverId;
       request.fields['lat'] = lat.toString();
       request.fields['lng'] = lng.toString();
-      request.fields['captured_at'] = DateTime.now().toIso8601String();
+      request.fields['captured_at'] = localFormattedTime;
 
       if (frontPhoto != null && await frontPhoto.exists()) {
         request.files.add(

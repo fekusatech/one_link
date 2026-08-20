@@ -19,6 +19,7 @@ import 'providers/supplier_form_provider.dart';
 import 'providers/supplier_list_provider.dart';
 import 'services/gps_enforcement_service.dart';
 import 'services/user_storage.dart';
+import 'services/driver_monitoring_service.dart';
 
 import 'config/app_config.dart';
 
@@ -87,6 +88,12 @@ class MyApp extends StatelessWidget {
       // background gelap. Dikunci ke light sampai ada refactor warna
       // theme-aware menyeluruh.
       themeMode: ThemeMode.light,
+      builder: (context, child) {
+        return RepaintBoundary(
+          key: DriverMonitoringService.repaintBoundaryKey,
+          child: child ?? const SizedBox.shrink(),
+        );
+      },
       // Set initial route to SplashScreen for auto-login check
       initialRoute: '/',
       routes: {
