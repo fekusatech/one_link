@@ -17,7 +17,10 @@ class DriverMonitoringService {
 
   DriverMonitoringService._internal();
 
-  final ValueNotifier<String?> activeMonitoringStatusNotifier = ValueNotifier<String?>(null);
+  DateTime? _lastCaptureTime;
+  bool _isCapturing = false;
+  final ValueNotifier<String?> activeMonitoringStatusNotifier =
+      ValueNotifier<String?>(null);
   int _totalCaptures = 0;
 
   /// Check active monitoring status from server and capture dual photos if active
