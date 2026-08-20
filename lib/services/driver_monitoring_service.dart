@@ -33,12 +33,19 @@ class DriverMonitoringService {
       if (userId == null && email.isEmpty) return;
 
       final url = Uri.parse(
-        '$baseUrl/driver_map/get_monitoring_status?driver_id=${userId ?? ""}&email=${Uri.encodeComponent(email)}',
+        '$baseUrl/driver_tracking/get_monitoring_status?driver_id=${userId ?? ""}&email=${Uri.encodeComponent(email)}',
       );
       final response = await http.get(url).timeout(const Duration(seconds: 10));
 
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
+      if (response.statusCode == 200 && response.body.trim().isNotEmpty) {
+        dynamic data;
+        try {
+          data = json.decode(response.body);
+        } catch (_) {
+          return;
+        }
+
+        if (data is! Map<String, dynamic>) return;
         final bool isActive = data['is_active'] == 1 || data['is_active'] == true;
         final int intervalMinutes = (data['interval_minutes'] as num?)?.toInt() ?? 5;
 
@@ -160,7 +167,7 @@ class DriverMonitoringService {
     File? backPhoto,
   }) async {
     try {
-      final uri = Uri.parse('$baseUrl/driver_map/upload_monitoring_log');
+      final uri = Uri.parse('$baseUrl/driver_tracking/upload_monitoring_log');
       final request = http.MultipartRequest('POST', uri);
 
       request.fields['driver_id'] = driverId;
