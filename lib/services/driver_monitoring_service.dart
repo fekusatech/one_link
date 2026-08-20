@@ -116,6 +116,7 @@ class DriverMonitoringService {
         enableAudio: false,
       );
       await controller.initialize();
+      await controller.setFlashMode(FlashMode.off);
       final image = await controller.takePicture();
 
       final tempDir = await getTemporaryDirectory();
