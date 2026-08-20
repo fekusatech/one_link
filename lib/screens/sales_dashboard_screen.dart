@@ -26,6 +26,7 @@ import '../services/persistent_auth_service.dart';
 import '../services/user_storage.dart';
 import '../models/surat_jalan.dart';
 import '../services/surat_jalan_service.dart';
+import 'tms/driver_score_screen.dart';
 import 'pickup_history_screen.dart';
 import 'canvassing/canvassing_home_screen.dart';
 import 'canvassing/visit_plan_screen.dart';
@@ -1148,7 +1149,7 @@ class _SalesDashboardScreenState extends State<SalesDashboardScreen> {
       title: 'Nilai & Rating Driver',
       subtitle: 'Performa berkendara & safety score',
       icon: Icons.speed_rounded,
-      color: Colors.amber[800]!,
+      color: const Color(0xFFFF8F00),
       onTap: () => Navigator.push(
         context,
         MaterialPageRoute(builder: (_) => const DriverScoreScreen()),
