@@ -199,6 +199,7 @@ class GeuSuratJalanDetail {
   final int? pickupDetailId;
   final String? supplierName;
   final String? supplierAlamat;
+  final String? supplierPhone;
   final double qtyPlan;
   final double qtyReal;
   final String status;
@@ -231,6 +232,7 @@ class GeuSuratJalanDetail {
     this.pickupDetailId,
     this.supplierName,
     this.supplierAlamat,
+    this.supplierPhone,
     required this.qtyPlan,
     required this.qtyReal,
     required this.status,
@@ -256,6 +258,7 @@ class GeuSuratJalanDetail {
         pickupDetailId: pickupDetailId,
         supplierName: supplierName,
         supplierAlamat: supplierAlamat,
+        supplierPhone: supplierPhone,
         qtyPlan: qtyPlan,
         qtyReal: qtyReal,
         status: status,
@@ -282,6 +285,11 @@ class GeuSuratJalanDetail {
       pickupDetailId: json['pickup_detail_id'],
       supplierName: json['supplier_name']?.toString(),
       supplierAlamat: json['supplier_alamat']?.toString(),
+      supplierPhone: json['supplier_phone']?.toString() ??
+          json['phone']?.toString() ??
+          json['supplier_hp']?.toString() ??
+          json['no_hp']?.toString() ??
+          json['hp']?.toString(),
       qtyPlan: (json['qty_plan'] as num?)?.toDouble() ?? 0,
       qtyReal: (json['qty_real'] as num?)?.toDouble() ?? 0,
       status: json['status']?.toString() ?? 'progress',
@@ -306,6 +314,7 @@ class GeuSuratJalanDetail {
       suratJalanDetailId: id.toString(),
       supplierName: supplierName ?? '-',
       supplierAlamat: supplierAlamat ?? '-',
+      supplierPhone: supplierPhone ?? '',
       workOrderKode: woKode ?? '-',
       qtyOrder: qtyPlan.toString(),
       qtyReal: qtyReal.toString(),
@@ -388,7 +397,7 @@ SuratJalan buildLegacySuratJalan(
     suratJalanId: header.id.toString(),
     kode: header.kode ?? '-',
     tanggal: header.tgl ?? '',
-    tanggalFormatted: header.tgl ?? '',
+    tanggalFormatted: formatIndoDate(header.tgl),
     status: header.status,
     kodePickup: header.kodePickup,
     driverName: '-',

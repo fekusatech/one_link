@@ -2,6 +2,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'dart:convert';
 import 'emergency_shake_service.dart';
+import 'proximity_wa_service.dart';
 
 class UserStorage {
   static const String _keyUser = 'user_data';
@@ -155,6 +156,9 @@ class UserStorage {
 
     // Stop emergency shake listener on logout
     EmergencyShakeService.instance.stopListening();
+    // Stop proximity WA listener on logout
+    ProximityWaService.instance.stop();
+    ProximityWaService.instance.resetSession();
 
     // Clear all user-scoped cached Surat Jalan data
     final keys = prefs.getKeys().where((k) => k.startsWith('tms_cached_today_surat_jalan_json_')).toList();

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../constants/app_colors.dart';
 import '../../constants/app_text_styles.dart';
@@ -84,6 +83,22 @@ class _MissionTodayScreenState extends State<MissionTodayScreen> {
     }
   }
 
+  /// Buka Google Maps external menuju koordinat supplier pertama yang punya
+  /// koordinat (Google Maps URL hanya mendukung 1 destinasi).
+  Future<void> _openAllInGoogleMaps() async {
+    final mission = _mission;
+    if (mission == null) return;
+    final withCoords = mission.items.where((item) => item.hasCoordinates).toList();
+    if (withCoords.isEmpty) return;
+    final dest = withCoords.first;
+    await launchUrl(
+      Uri.parse(
+        'https://www.google.com/maps/dir/?api=1&destination=${dest.lat},${dest.lng}',
+      ),
+      mode: LaunchMode.externalApplication,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -134,14 +149,9 @@ class _MissionTodayScreenState extends State<MissionTodayScreen> {
           ),
           if (_mission?.items.any((item) => item.hasCoordinates) ?? false)
             IconButton(
-              icon: const Icon(Icons.map_outlined),
-              tooltip: 'Peta mission',
-              onPressed: () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => _MissionMapScreen(items: _mission!.items),
-                ),
-              ),
+              icon: const Icon(Icons.navigation_outlined),
+              tooltip: 'Buka Google Maps',
+              onPressed: _openAllInGoogleMaps,
             ),
         ],
       ),
@@ -674,122 +684,27 @@ class _MissionMapScreen extends StatefulWidget {
 }
 
 class _MissionMapScreenState extends State<_MissionMapScreen> {
-  LatLng? _currentPosition;
-  GoogleMapController? _mapController;
-  MissionItem? _selectedItem;
+  // Halaman ini TANPA inline map: tombol pojok kanan atas langsung membuka
+  // Google Maps (external app). Setiap supplier punya tombol WhatsApp +
+  // Navigasi direct ke Google Maps.
 
-  @override
-  void initState() {
-    super.initState();
-    _loadCurrentPosition();
-  }
+  static final _actionButtonStyle = TextButton.styleFrom(
+    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+  );
 
-  Future<void> _loadCurrentPosition() async {
-    try {
-      final fix = await GpsService.getCurrentFix();
-      if (mounted) {
-        setState(() => _currentPosition = LatLng(fix.latitude, fix.longitude));
-        _fitMarkers();
-      }
-    } catch (_) {
-      // Supplier markers remain useful when the user's GPS is unavailable.
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final mappable = widget.items.where((item) => item.hasCoordinates).toList();
-    final center =
-        _currentPosition ?? LatLng(mappable.first.lat!, mappable.first.lng!);
-    final markers = <Marker>{
-      ...mappable.map(
-        (item) => Marker(
-          markerId: MarkerId('supplier-${item.supplierId}'),
-          position: LatLng(item.lat!, item.lng!),
-          infoWindow: InfoWindow(
-            title: item.supplierName,
-            snippet: item.status,
-          ),
-          icon: BitmapDescriptor.defaultMarkerWithHue(_statusHue(item.status)),
-          onTap: () => setState(() => _selectedItem = item),
-        ),
+  /// Buka Google Maps external menuju supplier pertama yang punya koordinat.
+  Future<void> _openAllInGoogleMaps() async {
+    final first = widget.items
+        .where((item) => item.hasCoordinates)
+        .toList()
+        .firstOrNull;
+    if (first == null) return;
+    await launchUrl(
+      Uri.parse(
+        'https://www.google.com/maps/dir/?api=1&destination=${first.lat},${first.lng}',
       ),
-      if (_currentPosition != null)
-        Marker(
-          markerId: const MarkerId('current-position'),
-          position: _currentPosition!,
-          infoWindow: const InfoWindow(title: 'Posisi Anda'),
-          icon: BitmapDescriptor.defaultMarkerWithHue(
-            BitmapDescriptor.hueAzure,
-          ),
-        ),
-    };
-    return Scaffold(
-      appBar: AppBar(title: const Text('Peta Mission')),
-      body: Stack(
-        children: [
-          GoogleMap(
-            initialCameraPosition: CameraPosition(target: center, zoom: 12),
-            markers: markers,
-            myLocationEnabled: _currentPosition != null,
-            myLocationButtonEnabled: true,
-            onMapCreated: (controller) {
-              _mapController = controller;
-              _fitMarkers();
-            },
-            onTap: (_) => setState(() => _selectedItem = null),
-          ),
-          if (_selectedItem != null)
-            SafeArea(
-              child: Align(
-                alignment: Alignment.bottomCenter,
-                child: Container(
-                  margin: const EdgeInsets.all(16),
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: AppColors.cardBackground,
-                    borderRadius: BorderRadius.circular(14),
-                    boxShadow: const [
-                      BoxShadow(color: Color(0x22000000), blurRadius: 10),
-                    ],
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              _selectedItem!.supplierName,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: AppTextStyles.bodyLarge.copyWith(
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                            const SizedBox(height: 3),
-                            Text(
-                              _selectedItem!.status,
-                              style: AppTextStyles.caption.copyWith(
-                                color: _statusColor(_selectedItem!.status),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      TextButton.icon(
-                        onPressed: () => _navigateTo(_selectedItem!),
-                        icon: const Icon(Icons.directions_outlined),
-                        label: const Text('Navigasi'),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-        ],
-      ),
+      mode: LaunchMode.externalApplication,
     );
   }
 
@@ -797,53 +712,137 @@ class _MissionMapScreenState extends State<_MissionMapScreen> {
     Uri.parse(
       'https://www.google.com/maps/search/?api=1&query=${item.lat},${item.lng}',
     ),
+    mode: LaunchMode.externalApplication,
   );
 
-  void _fitMarkers() {
-    final controller = _mapController;
-    final points = <LatLng>[
-      ...widget.items
-          .where((item) => item.hasCoordinates)
-          .map((item) => LatLng(item.lat!, item.lng!)),
-      if (_currentPosition != null) _currentPosition!,
-    ];
-    if (controller == null || points.isEmpty) return;
-    if (points.length == 1) {
-      controller.animateCamera(CameraUpdate.newLatLngZoom(points.first, 14));
-      return;
-    }
-    var south = points.first.latitude,
-        north = south,
-        west = points.first.longitude,
-        east = west;
-    for (final point in points.skip(1)) {
-      south = point.latitude < south ? point.latitude : south;
-      north = point.latitude > north ? point.latitude : north;
-      west = point.longitude < west ? point.longitude : west;
-      east = point.longitude > east ? point.longitude : east;
-    }
-    controller.animateCamera(
-      CameraUpdate.newLatLngBounds(
-        LatLngBounds(
-          southwest: LatLng(south, west),
-          northeast: LatLng(north, east),
+  Future<void> _call(String phone) async {
+    await launchUrl(Uri.parse('tel:$phone'));
+  }
+
+  Future<void> _whatsApp(MissionItem item) async {
+    final message =
+        'Halo ${item.supplierName}, saya dari One Link terkait kunjungan hari ini.';
+    final launched = await launchUrl(
+      Uri.parse(waUrl(item.supplierPhone, text: message)),
+      mode: LaunchMode.externalApplication,
+    );
+    if (!launched && mounted)
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('WhatsApp tidak tersedia di perangkat ini.'),
         ),
-        56,
+      );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final mappable = widget.items.where((item) => item.hasCoordinates).toList();
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Peta Mission'),
+        backgroundColor: AppColors.primaryGreen,
+        foregroundColor: AppColors.white,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.navigation_outlined),
+            tooltip: 'Buka di Google Maps',
+            onPressed: mappable.isEmpty ? null : _openAllInGoogleMaps,
+          ),
+        ],
       ),
+      body: mappable.isEmpty
+          ? const Center(
+              child: Text('Tidak ada supplier dengan koordinat.'),
+            )
+          : ListView.builder(
+              padding: const EdgeInsets.all(16),
+              itemCount: mappable.length,
+              itemBuilder: (_, index) => _buildSupplierCard(mappable[index]),
+            ),
     );
   }
 
-  double _statusHue(String status) => switch (status.toUpperCase()) {
-    'VISITED' => BitmapDescriptor.hueGreen,
-    'SKIPPED' => BitmapDescriptor.hueRed,
-    'ACTIVE' => BitmapDescriptor.hueOrange,
-    _ => BitmapDescriptor.hueYellow,
-  };
-
-  Color _statusColor(String status) => switch (status.toUpperCase()) {
-    'VISITED' => AppColors.success,
-    'SKIPPED' => AppColors.error,
-    'ACTIVE' => AppColors.accentOrange,
-    _ => AppColors.info,
-  };
+  Widget _buildSupplierCard(MissionItem item) {
+    final statusColor = switch (item.status.toUpperCase()) {
+      'VISITED' => AppColors.success,
+      'SKIPPED' => AppColors.error,
+      'ACTIVE' => AppColors.accentOrange,
+      _ => AppColors.info,
+    };
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.cardBackground,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.borderColor),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  item.supplierName,
+                  style: AppTextStyles.bodyLarge.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: statusColor.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  item.status,
+                  style: AppTextStyles.caption.copyWith(
+                    color: statusColor,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            item.address,
+            style: AppTextStyles.bodyMedium.copyWith(
+              color: AppColors.textSecondary,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 4,
+            runSpacing: 12,
+            children: [
+              if (item.supplierPhone.isNotEmpty)
+                TextButton.icon(
+                  style: _actionButtonStyle,
+                  onPressed: () => _call(item.supplierPhone),
+                  icon: const Icon(Icons.phone, size: 16),
+                  label: const Text('Telepon'),
+                ),
+              if (item.supplierPhone.isNotEmpty)
+                TextButton.icon(
+                  style: _actionButtonStyle,
+                  onPressed: () => _whatsApp(item),
+                  icon: const Icon(Icons.chat_bubble_outline, size: 16),
+                  label: const Text('WhatsApp'),
+                ),
+              if (item.hasCoordinates)
+                TextButton.icon(
+                  style: _actionButtonStyle,
+                  onPressed: () => _navigateTo(item),
+                  icon: const Icon(Icons.directions, size: 16),
+                  label: const Text('Navigasi'),
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
 }

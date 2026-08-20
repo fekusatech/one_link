@@ -1,4 +1,3 @@
-import 'dart:convert';
 import '../config/app_config.dart';
 
 class SuratJalanResponse {
@@ -227,6 +226,7 @@ class SuratJalanDetail {
   final String suratJalanDetailId;
   final String supplierName;
   final String supplierAlamat;
+  final String supplierPhone;
   final String workOrderKode;
   final String qtyOrder;
   final String qtyReal;
@@ -254,6 +254,7 @@ class SuratJalanDetail {
     required this.suratJalanDetailId,
     required this.supplierName,
     required this.supplierAlamat,
+    required this.supplierPhone,
     required this.workOrderKode,
     required this.qtyOrder,
     required this.qtyReal,
@@ -277,6 +278,7 @@ class SuratJalanDetail {
       suratJalanDetailId: json['surat_jalan_detail_id']?.toString() ?? '',
       supplierName: json['supplier_name']?.toString() ?? '',
       supplierAlamat: json['supplier_alamat']?.toString() ?? '',
+      supplierPhone: json['supplier_phone']?.toString() ?? '',
       workOrderKode: json['work_order_kode']?.toString() ?? '',
       qtyOrder: json['qty_order']?.toString() ?? '0',
       qtyReal: json['qty_real']?.toString() ?? '0',

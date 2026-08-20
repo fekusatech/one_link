@@ -30,6 +30,9 @@ import '../services/update_service.dart';
 import '../services/location_tracking_service.dart';
 import '../services/driver_tracking_service.dart';
 import '../services/emergency_shake_service.dart';
+import '../services/proximity_wa_service.dart';
+import '../services/dashboard_access_service.dart';
+import '../services/local_notify_service.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -48,8 +51,29 @@ class _DashboardScreenState extends State<DashboardScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       UpdateService.instance.startMonitoring(context);
       EmergencyShakeService.instance.startListening(context);
+      LocalNotifyService.instance.init();
+      LocalNotifyService.instance.ensurePermission();
+      // Floating Surat Jalan + notif WA (disabled per user request)
+      // _startProximityIfDriver();
       _startLocationTracking();
     });
+  }
+
+  /// Mulai ProximityWaService hanya jika user punya akses driver (server-side).
+  Future<void> _startProximityIfDriver() async {
+    try {
+      final access = await DashboardAccessService.fetchDashboardAccess();
+      if (access?.driver == true) {
+        ProximityWaService.instance.start(context);
+      } else {
+        debugPrint(
+          '🛰️ ProximityWaService skipped: user bukan driver '
+          '(driver=${access?.driver})',
+        );
+      }
+    } catch (e) {
+      debugPrint('🛰️ ProximityWaService role check error: $e');
+    }
   }
 
   Future<void> _startLocationTracking() async {
