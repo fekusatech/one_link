@@ -542,13 +542,25 @@ class _HomeScreenState extends State<_HomeScreen> {
     }
   }
 
+  List<_RouteStop> get _filteredStopsForMap {
+    if (_statusFilter == 'all') return _optimizedStops;
+    return _optimizedStops.where((stop) {
+      final status = stop.detail.status.toLowerCase();
+      if (_statusFilter == 'done') return status == 'done';
+      if (_statusFilter == 'pickup') return status == 'pickup' || status == 'progress';
+      if (_statusFilter == 'pending') return status == 'pending' || (status != 'done' && status != 'pickup' && status != 'progress' && status != 'cancelled');
+      return true;
+    }).toList();
+  }
+
   void _fitMarkersInView() {
-    if (_optimizedStops.isEmpty) return;
+    final activeStops = _filteredStopsForMap;
+    if (activeStops.isEmpty) return;
     double minLat = double.infinity;
     double maxLat = -double.infinity;
     double minLng = double.infinity;
     double maxLng = -double.infinity;
-    for (final stop in _optimizedStops) {
+    for (final stop in activeStops) {
       final lat = stop.position.latitude;
       final lng = stop.position.longitude;
       if (lat < minLat) minLat = lat;
@@ -625,15 +637,15 @@ class _HomeScreenState extends State<_HomeScreen> {
                 ),
                 const SizedBox(height: 12),
 
-                // Map legend
+                // Map legend filter chips
                 Wrap(
                   spacing: 8,
                   runSpacing: 8,
                   children: [
-                    _buildLegendItem('Selesai', AppColors.success),
-                    _buildLegendItem('Pickup', const Color(0xFFFF9500)),
-                    _buildLegendItem('Pending', AppColors.error),
-                    _buildLegendItem('Rute', const Color(0xFF1877F2)),
+                    _buildLegendItem('Semua', AppColors.primaryGreen, 'all'),
+                    _buildLegendItem('Selesai', AppColors.success, 'done'),
+                    _buildLegendItem('Pickup', const Color(0xFFFF9500), 'pickup'),
+                    _buildLegendItem('Pending', AppColors.error, 'pending'),
                   ],
                 ),
 
@@ -657,7 +669,7 @@ class _HomeScreenState extends State<_HomeScreen> {
                   child: DynamicPickupMapWidget(
                     mapController: _mapController,
                     driverPosition: _driverPosition,
-                    stops: _optimizedStops,
+                    stops: _filteredStopsForMap,
                     routePolyline: _routePolyline,
                     onMapReady: _fitMarkersInView,
                     onStopTap: (stop, order) async {
@@ -1668,31 +1680,59 @@ class _HomeScreenState extends State<_HomeScreen> {
     return monthNames[month - 1];
   }
 
-  Widget _buildLegendItem(String label, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 8,
-            height: 8,
-            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+  Widget _buildLegendItem(String label, Color color, String filterValue) {
+    final isSelected = _statusFilter == filterValue;
+    return InkWell(
+      onTap: () {
+        setState(() {
+          _statusFilter = filterValue;
+          _sjCurrentPage = 1;
+        });
+        _fitMarkersInView();
+      },
+      borderRadius: BorderRadius.circular(20),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: isSelected ? color : color.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isSelected ? color : color.withValues(alpha: 0.3),
+            width: isSelected ? 2 : 1,
           ),
-          const SizedBox(width: 6),
-          Text(
-            label,
-            style: AppTextStyles.caption.copyWith(
-              color: AppColors.darkGrey,
-              fontWeight: FontWeight.w500,
-              fontSize: 11,
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: color.withValues(alpha: 0.3),
+                    blurRadius: 6,
+                    offset: const Offset(0, 2),
+                  )
+                ]
+              : null,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 8,
+              height: 8,
+              decoration: BoxDecoration(
+                color: isSelected ? Colors.white : color,
+                shape: BoxShape.circle,
+              ),
             ),
-          ),
-        ],
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: AppTextStyles.caption.copyWith(
+                color: isSelected ? Colors.white : AppColors.darkGrey,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                fontSize: 11,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
