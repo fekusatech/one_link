@@ -509,22 +509,53 @@ class _SalesDashboardScreenState extends State<SalesDashboardScreen> {
                   ],
                 ),
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 6,
-                ),
-                decoration: BoxDecoration(
-                  color: AppColors.white.withValues(alpha: .15),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  dateLabel,
-                  style: AppTextStyles.caption.copyWith(
-                    color: AppColors.white,
-                    fontWeight: FontWeight.w600,
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 5,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.accentOrange,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      _has('crm-self-assign-cro') && _has('crm-self-assign-ro')
+                          ? 'CRO / RO'
+                          : _has('crm-self-assign-cro')
+                              ? 'CRO'
+                              : _has('crm-self-assign-ro')
+                                  ? 'RO / ROE'
+                                  : 'SALES',
+                      style: AppTextStyles.caption.copyWith(
+                        color: AppColors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 10.5,
+                      ),
+                    ),
                   ),
-                ),
+                  const SizedBox(width: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 5,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.white.withValues(alpha: .15),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      dateLabel,
+                      style: AppTextStyles.caption.copyWith(
+                        color: AppColors.white,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 10.5,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
@@ -1164,31 +1195,61 @@ class _SalesDashboardScreenState extends State<SalesDashboardScreen> {
     if (visible.isEmpty) return const SizedBox.shrink();
 
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Menu',
-          style: AppTextStyles.h6.copyWith(
-            fontWeight: FontWeight.bold,
-            color: AppColors.textPrimary,
-          ),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Menu Layanan',
+              style: AppTextStyles.h6.copyWith(
+                fontWeight: FontWeight.bold,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: AppColors.primaryGreen.withValues(alpha: .1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                '${visible.length} Fitur',
+                style: AppTextStyles.caption.copyWith(
+                  color: AppColors.primaryGreen,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
         ),
-        const SizedBox(height: 16),
-        for (var i = 0; i < visible.length; i++) ...[
-          _buildActionCard(
-            title: visible[i].title,
-            subtitle: visible[i].subtitle,
-            icon: visible[i].icon,
-            color: visible[i].color,
-            onTap: visible[i].onTap,
+        const SizedBox(height: 14),
+        GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            crossAxisSpacing: 12,
+            mainAxisSpacing: 12,
+            childAspectRatio: 1.35,
           ),
-          if (i != visible.length - 1) const SizedBox(height: 12),
-        ],
+          itemCount: visible.length,
+          itemBuilder: (context, index) {
+            final item = visible[index];
+            return _buildGridActionCard(
+              title: item.title,
+              subtitle: item.subtitle,
+              icon: item.icon,
+              color: item.color,
+              onTap: item.onTap,
+            );
+          },
+        ),
       ],
     );
   }
 
-  Widget _buildActionCard({
+  Widget _buildGridActionCard({
     required String title,
     required String subtitle,
     required IconData icon,
@@ -1202,54 +1263,65 @@ class _SalesDashboardScreenState extends State<SalesDashboardScreen> {
         borderRadius: BorderRadius.circular(16),
         onTap: onTap,
         child: Container(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: color.withOpacity(0.2)),
+            border: Border.all(color: color.withValues(alpha: .2)),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.05),
+                color: Colors.black.withValues(alpha: .04),
                 blurRadius: 10,
-                offset: const Offset(0, 5),
+                offset: const Offset(0, 4),
               ),
             ],
           ),
-          child: Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(icon, color: color, size: 24),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: AppTextStyles.bodyLarge.copyWith(
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textPrimary,
-                      ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(9),
+                    decoration: BoxDecoration(
+                      color: color.withValues(alpha: .12),
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                    const SizedBox(height: 2),
-                    Text(
-                      subtitle,
-                      style: AppTextStyles.bodyMedium.copyWith(
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                  ],
-                ),
+                    child: Icon(icon, color: color, size: 22),
+                  ),
+                  Icon(
+                    Icons.arrow_forward_ios_rounded,
+                    size: 13,
+                    color: AppColors.textSecondary.withValues(alpha: .5),
+                  ),
+                ],
               ),
-              const Icon(
-                Icons.arrow_forward_ios,
-                size: 14,
-                color: AppColors.textSecondary,
+              const SizedBox(height: 8),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTextStyles.bodyMedium.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textPrimary,
+                      fontSize: 13.5,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTextStyles.caption.copyWith(
+                      color: AppColors.textSecondary,
+                      fontSize: 11,
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
