@@ -20,6 +20,7 @@ import 'canvassing/my_statistic_screen.dart';
 import 'canvassing/my_claims_screen.dart';
 import 'canvassing/visit_history_screen.dart';
 import 'tms/driver_settlement_list_screen.dart';
+import 'tms/driver_score_screen.dart';
 import 'tms/vehicle_issue_report_screen.dart';
 import '../services/geu/my_statistic_service.dart';
 import '../services/update_service.dart';
@@ -456,6 +457,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           icon: Icons.payments_outlined,
                           title: 'Laporan Uang Jalan & Settlement',
                           onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DriverSettlementListScreen())),
+                        ),
+                        _buildDivider(),
+                        _buildMenuItem(
+                          icon: Icons.verified_user_rounded,
+                          title: 'Penilaian & Rating Berkendara Driver',
+                          iconColor: const Color(0xFF1877F2),
+                          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DriverScoreScreen())),
                         ),
                         _buildDivider(),
                         _buildMenuItem(

@@ -19,6 +19,7 @@ import 'navigation_screen.dart';
 import 'notification_screen.dart';
 import 'tms/driver_settlement_list_screen.dart';
 import 'tms/driver_movement_screen.dart';
+import 'tms/driver_score_screen.dart';
 import 'profile_screen.dart';
 import 'pickup_history_screen.dart';
 import '../widgets/shared_bottom_navbar.dart';
@@ -1064,7 +1065,7 @@ class _HomeScreenState extends State<_HomeScreen> {
                   },
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 8),
               Expanded(
                 child: _buildQuickActionButton(
                   icon: Icons.local_shipping,
@@ -1075,6 +1076,22 @@ class _HomeScreenState extends State<_HomeScreen> {
                       context,
                       MaterialPageRoute(
                         builder: (context) => const DriverMovementScreen(),
+                      ),
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _buildQuickActionButton(
+                  icon: Icons.verified_user_rounded,
+                  color: const Color(0xFF1877F2),
+                  label: 'Nilai &\nRating Driver',
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const DriverScoreScreen(),
                       ),
                     );
                   },

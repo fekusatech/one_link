@@ -2,7 +2,7 @@ name: one_link
 description: "One Link - PT Green Energi Utama"
 publish_to: "none"
 
-version: 1.1.5+15
+version: 1.1.6+16
 
 environment:
   sdk: ^3.10.0
