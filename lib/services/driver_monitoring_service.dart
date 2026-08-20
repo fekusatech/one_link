@@ -232,16 +232,26 @@ class DriverMonitoringService {
         enableAudio: false,
       );
       await controller.initialize();
-      await controller.setFlashMode(FlashMode.off);
-      final image = await controller.takePicture();
+      if (!controller.value.isInitialized) {
+        debugPrint('⚠️ Camera $tag controller not initialized');
+        return null;
+      }
+      try {
+        await controller.setFlashMode(FlashMode.off);
+      } catch (_) {}
 
+      final image = await controller.takePicture();
       tempRawFile = File(image.path);
       return await _compressAndConvertToWebp(tempRawFile, tag);
     } catch (e) {
       debugPrint('❌ Error taking $tag camera photo: $e');
       return null;
     } finally {
-      await controller?.dispose();
+      try {
+        await controller?.dispose();
+      } catch (_) {}
+      // Give camera HAL 150ms to release hardware lock before next camera init
+      await Future.delayed(const Duration(milliseconds: 150));
     }
   }
 
