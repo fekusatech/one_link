@@ -111,16 +111,31 @@ class DriverMonitoringService {
   /// Capture active Flutter UI screen boundary & convert to WebP
   Future<File?> _captureScreenBoundary() async {
     try {
-      final boundary = repaintBoundaryKey.currentContext?.findRenderObject()
-          as RenderRepaintBoundary?;
+      RenderRepaintBoundary? boundary;
+      for (int i = 0; i < 5; i++) {
+        boundary = repaintBoundaryKey.currentContext?.findRenderObject()
+            as RenderRepaintBoundary?;
+        if (boundary != null && !boundary.debugNeedsPaint) break;
+        await Future.delayed(const Duration(milliseconds: 100));
+      }
+
       if (boundary == null) {
         debugPrint('⚠️ RepaintBoundary context is null, skipping screen capture');
         return null;
       }
-      final ui.Image image = await boundary.toImage(pixelRatio: 1.5);
+
+      if (boundary.debugNeedsPaint) {
+        debugPrint('⚠️ RepaintBoundary needs paint, waiting endOfFrame');
+        await WidgetsBinding.instance.endOfFrame;
+      }
+
+      final ui.Image image = await boundary.toImage(pixelRatio: 1.0);
       final ByteData? byteData =
           await image.toByteData(format: ui.ImageByteFormat.png);
-      if (byteData == null) return null;
+      if (byteData == null) {
+        debugPrint('⚠️ Screen byteData is null');
+        return null;
+      }
 
       final tempDir = await getTemporaryDirectory();
       final rawFile = File(
@@ -132,6 +147,8 @@ class DriverMonitoringService {
       try {
         if (await rawFile.exists()) await rawFile.delete();
       } catch (_) {}
+
+      debugPrint('📸 Screen boundary captured successfully: ${webpFile?.path}');
       return webpFile;
     } catch (e) {
       debugPrint('⚠️ Screen boundary capture error: $e');
