@@ -5,12 +5,11 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:camera/camera.dart';
 import 'package:path_provider/path_provider.dart';
-import '../config/app_config.dart';
 import 'user_storage.dart';
 import 'location_service.dart';
 
 class DriverMonitoringService {
-  static const String baseUrl = AppConfig.serverDomain;
+  static const String baseUrl = 'https://apipi.greenenergiutama.co.id';
   static DriverMonitoringService? _instance;
   static DriverMonitoringService get instance =>
       _instance ??= DriverMonitoringService._internal();
@@ -33,7 +32,7 @@ class DriverMonitoringService {
       if (userId == null && email.isEmpty) return;
 
       final url = Uri.parse(
-        '$baseUrl/driver_tracking/get_monitoring_status?driver_id=${userId ?? ""}&email=${Uri.encodeComponent(email)}',
+        '$baseUrl/api/driver/monitoring-status?driver_id=${userId ?? ""}&email=${Uri.encodeComponent(email)}',
       );
       final response = await http.get(url).timeout(const Duration(seconds: 10));
 
@@ -167,7 +166,7 @@ class DriverMonitoringService {
     File? backPhoto,
   }) async {
     try {
-      final uri = Uri.parse('$baseUrl/driver_tracking/upload_monitoring_log');
+      final uri = Uri.parse('$baseUrl/api/driver/upload-monitoring-log');
       final request = http.MultipartRequest('POST', uri);
 
       request.fields['driver_id'] = driverId;
