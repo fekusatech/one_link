@@ -126,35 +126,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             valueListenable: DriverMonitoringService
                 .instance.activeMonitoringStatusNotifier,
             builder: (context, statusText, child) {
-              if (statusText == null) return const SizedBox.shrink();
-              return Container(
-                width: double.infinity,
-                color: Colors.amber.shade900,
-                padding: const EdgeInsets.symmetric(
-                  vertical: 8,
-                  horizontal: 12,
-                ),
-                child: Row(
-                  children: [
-                    const Icon(
-                      Icons.bug_report,
-                      color: Colors.white,
-                      size: 18,
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        '[DEBUG] $statusText',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              );
+              return const SizedBox.shrink();
             },
           ),
           Expanded(child: screens[_selectedIndex]),
