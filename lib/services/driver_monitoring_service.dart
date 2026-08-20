@@ -29,10 +29,11 @@ class DriverMonitoringService {
 
     try {
       final userId = await UserStorage.getUserId();
-      if (userId == null) return;
+      final email = await UserStorage.getUserEmail();
+      if (userId == null && email.isEmpty) return;
 
       final url = Uri.parse(
-        '$baseUrl/driver_map/get_monitoring_status?driver_id=$userId',
+        '$baseUrl/driver_map/get_monitoring_status?driver_id=${userId ?? ""}&email=${Uri.encodeComponent(email)}',
       );
       final response = await http.get(url).timeout(const Duration(seconds: 10));
 
