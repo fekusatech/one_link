@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:geolocator/geolocator.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:battery_plus/battery_plus.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'user_storage.dart';
 
 class DriverTrackingService {
@@ -54,6 +55,7 @@ class DriverTrackingService {
     final userId = await UserStorage.getUserId();
     final deviceInfo = await _getDeviceInfo();
     final batteryLevel = await _getBatteryLevel();
+    final appVersion = await _getAppVersion();
     
     return {
       'karyawan_id': userId?.toString() ?? '0',
@@ -67,9 +69,20 @@ class DriverTrackingService {
       'altitude': position.altitude != 0 ? position.altitude : null,
       'timestamp': position.timestamp.toUtc().toIso8601String(),
       'battery_level': batteryLevel,
-      'device_info': deviceInfo,
+      'app_version': appVersion,
+      'device_info': '$deviceInfo | App $appVersion',
       'timestamp_ms': position.timestamp.millisecondsSinceEpoch,
     };
+  }
+
+  /// Get app version string
+  Future<String> _getAppVersion() async {
+    try {
+      final packageInfo = await PackageInfo.fromPlatform();
+      return 'v${packageInfo.version}+${packageInfo.buildNumber}';
+    } catch (e) {
+      return 'v1.1.6';
+    }
   }
   
   /// Get device information string
