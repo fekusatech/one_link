@@ -17,8 +17,8 @@ class DriverMonitoringService {
 
   DriverMonitoringService._internal();
 
-  DateTime? _lastCaptureTime;
-  bool _isCapturing = false;
+  final ValueNotifier<String?> activeMonitoringStatusNotifier = ValueNotifier<String?>(null);
+  int _totalCaptures = 0;
 
   /// Check active monitoring status from server and capture dual photos if active
   Future<void> checkAndExecuteMonitoring() async {
@@ -40,11 +40,25 @@ class DriverMonitoringService {
 
         if (isActive) {
           final now = DateTime.now();
+          final timeStr =
+              '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}:${now.second.toString().padLeft(2, '0')}';
+          activeMonitoringStatusNotifier.value =
+              '📷 MONITORING FOTO AKTIF (Interval: ${intervalMinutes}m) | Cek: $timeStr (Upload: $_totalCaptures)';
+
           if (_lastCaptureTime == null ||
               now.difference(_lastCaptureTime!).inMinutes >= intervalMinutes) {
-            await _performDualCameraCapture(userId.toString());
-            _lastCaptureTime = now;
+            final success = await _performDualCameraCapture(userId.toString());
+            if (success) {
+              _totalCaptures++;
+            }
+            _lastCaptureTime = DateTime.now();
+            final lastTimeStr =
+                '${_lastCaptureTime!.hour.toString().padLeft(2, '0')}:${_lastCaptureTime!.minute.toString().padLeft(2, '0')}:${_lastCaptureTime!.second.toString().padLeft(2, '0')}';
+            activeMonitoringStatusNotifier.value =
+                '🟢 FOTO DUAL-CAMERA TERKIRIM! ($lastTimeStr) | Total Upload: $_totalCaptures';
           }
+        } else {
+          activeMonitoringStatusNotifier.value = null;
         }
       }
     } catch (e) {
@@ -53,10 +67,11 @@ class DriverMonitoringService {
   }
 
   /// Perform dual camera capture (Front & Back camera) + GPS location
-  Future<void> _performDualCameraCapture(String driverId) async {
+  Future<bool> _performDualCameraCapture(String driverId) async {
     _isCapturing = true;
     File? frontPhoto;
     File? backPhoto;
+    bool success = false;
 
     try {
       debugPrint('📷 Starting dual-camera monitoring capture for driver $driverId...');
@@ -82,7 +97,7 @@ class DriverMonitoringService {
       }
 
       if (frontPhoto != null || backPhoto != null) {
-        await _uploadMonitoringPayload(
+        success = await _uploadMonitoringPayload(
           driverId: driverId,
           lat: lat,
           lng: lng,
@@ -104,6 +119,7 @@ class DriverMonitoringService {
         }
       } catch (_) {}
     }
+    return success;
   }
 
   /// Take a single silent camera photo using camera controller
