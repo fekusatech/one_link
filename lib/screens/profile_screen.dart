@@ -2,9 +2,6 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
-import '../config/app_config.dart';
 import '../constants/app_colors.dart';
 import '../constants/app_text_styles.dart';
 import '../services/user_storage.dart';
@@ -141,29 +138,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
       });
     }
 
-    // Live fetch updated avatar from backend
+    // Live fetch updated avatar from backend (GET /api-auth/me)
     try {
-      final userId = await UserStorage.getUserId();
-      final queryParam = userId != null ? 'karyawan_id=$userId' : 'email=${Uri.encodeComponent(email)}';
-      final res = await http.get(Uri.parse('${AppConfig.serverDomain}/driver_tracking/get_profile?$queryParam'));
-      if (res.statusCode == 200) {
-        final data = json.decode(res.body);
-        if (data['status'] == true && data['data'] != null && data['data']['avatar'] != null) {
-          final serverAvatar = data['data']['avatar'].toString().trim();
-          if (serverAvatar.isNotEmpty) {
-            if (mounted) {
-              setState(() {
-                _userAvatar = serverAvatar;
-              });
-            }
-            if (user != null) {
-              user['avatar'] = serverAvatar;
-              user['avatar_path'] = serverAvatar;
-              final prefs = await SharedPreferences.getInstance();
-              await prefs.setString('user_data', jsonEncode(user));
-            }
-          }
-        }
+      final serverAvatar = await GeuAuthService.syncAvatar();
+      if (serverAvatar != null && mounted) {
+        setState(() {
+          _userAvatar = serverAvatar;
+        });
       }
     } catch (e) {
       debugPrint('Profile live avatar fetch error: $e');

@@ -5,10 +5,10 @@ import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:path_provider/path_provider.dart';
-import '../config/app_config.dart';
 import '../constants/app_colors.dart';
 import '../constants/app_text_styles.dart';
 import '../services/geu/geu_api_client.dart';
+import '../services/geu/geu_auth_service.dart';
 import '../services/user_storage.dart';
 import '../services/persistent_auth_service.dart';
 
@@ -77,6 +77,18 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         _currentAvatarPath = avatar;
         _isDataLoaded = true;
       });
+
+      // Login only caches {id, name, email, groups, roles} — never the
+      // avatar — so a freshly logged-in user has no local avatar to show
+      // here until this syncs it from the Go API (see profile_screen.dart's
+      // own call to the same method for why the legacy PHP fetch was
+      // replaced).
+      final serverAvatar = await GeuAuthService.syncAvatar();
+      if (serverAvatar != null && mounted) {
+        setState(() {
+          _currentAvatarPath = serverAvatar;
+        });
+      }
     } catch (e) {
       print('Error loading user data: $e');
     }

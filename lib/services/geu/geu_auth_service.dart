@@ -114,6 +114,40 @@ class GeuAuthService {
     return user;
   }
 
+  /// Refresh & cache the current user's avatar from the Go API.
+  ///
+  /// login() only caches {id, name, email, groups, roles} — nothing calls
+  /// this again after that, and the legacy PHP `driver_tracking/get_profile`
+  /// endpoint some screens used to poll for the avatar is dead now that
+  /// apipi.greenenergiutama.co.id serves only the Go API (404). GET
+  /// /api-auth/me is the real replacement (model.User.Profile already
+  /// includes `avatar`). Any screen showing a profile photo should call
+  /// this once and fall back to whatever's already cached in UserStorage.
+  static Future<String?> syncAvatar() async {
+    try {
+      final dio = await GeuApiClient.instance;
+      final res = await dio.get('/api-auth/me');
+      final body = res.data as Map<String, dynamic>;
+      if (body['status'] != 'success') return null;
+
+      final data = body['data'] as Map<String, dynamic>?;
+      final avatar = data?['avatar']?.toString().trim();
+      if (avatar == null || avatar.isEmpty) return null;
+
+      final user = await UserStorage.getUser();
+      final token = await UserStorage.getToken();
+      if (user != null && token != null) {
+        await UserStorage.saveUser(
+          user: {...user, 'avatar': avatar, 'avatar_path': avatar},
+          token: token,
+        );
+      }
+      return avatar;
+    } catch (_) {
+      return null;
+    }
+  }
+
   /// Driver session, isolated from the main-app login (same pattern as
   /// Canvassing): sends a WhatsApp OTP to `phone` via the Go API's own
   /// otp/request endpoint. This does NOT touch the driver's existing PHP
