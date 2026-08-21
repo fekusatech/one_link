@@ -383,6 +383,10 @@ class _DownloadProgressDialogState extends State<_DownloadProgressDialog> {
   }
 
   Future<void> _startDownload() async {
+    if (kIsWeb) {
+      setState(() => _status = 'Update APK hanya didukung di Android');
+      return;
+    }
     try {
       setState(() => _status = 'Menghubungi server...');
 

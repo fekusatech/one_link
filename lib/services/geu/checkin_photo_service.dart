@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:image/image.dart' as img;
 import 'package:image_picker/image_picker.dart';
@@ -29,6 +30,9 @@ class CheckinPhotoService {
       throw StateError('Foto check-in wajib diambil dari kamera.');
     }
     final output = await _compress(await picked.readAsBytes());
+    if (kIsWeb) {
+      return CapturedVisitPhoto(file: File(picked.path), bytes: output.length);
+    }
     final dir = await getApplicationDocumentsDirectory();
     final photosDir = Directory('${dir.path}/geu_visit_photos');
     await photosDir.create(recursive: true);

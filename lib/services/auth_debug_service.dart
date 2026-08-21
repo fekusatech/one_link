@@ -1,11 +1,13 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 
 /// Service for debugging authentication responses
 class AuthDebugService {
   /// Get the auth.json file path
-  static Future<String> getAuthFilePath() async {
+  static Future<String?> getAuthFilePath() async {
+    if (kIsWeb) return null;
     final directory = await getApplicationDocumentsDirectory();
     return '${directory.path}/auth.json';
   }
@@ -13,7 +15,9 @@ class AuthDebugService {
   /// Read the saved auth response from auth.json
   static Future<Map<String, dynamic>?> getAuthResponse() async {
     try {
+      if (kIsWeb) return null;
       final filePath = await getAuthFilePath();
+      if (filePath == null) return null;
       final file = File(filePath);
 
       if (await file.exists()) {

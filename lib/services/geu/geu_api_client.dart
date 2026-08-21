@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
 import 'package:cookie_jar/cookie_jar.dart';
 import 'package:dio_cookie_manager/dio_cookie_manager.dart';
@@ -16,6 +17,17 @@ class GeuApiClient {
   static Future<Dio> get instance async {
     final existing = _dio;
     if (existing != null) return existing;
+
+    if (kIsWeb) {
+      final dio = Dio(
+        BaseOptions(
+          baseUrl: baseUrl,
+          headers: {'Content-Type': 'application/json'},
+        ),
+      );
+      _dio = dio;
+      return dio;
+    }
 
     final dir = await getApplicationDocumentsDirectory();
     final cookieJar = PersistCookieJar(
