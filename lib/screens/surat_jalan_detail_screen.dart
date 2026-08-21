@@ -241,12 +241,13 @@ class _SuratJalanDetailScreenState extends State<SuratJalanDetailScreen> {
         : (detail.fotoUrl != null && detail.fotoUrl!.isNotEmpty ? [detail.fotoUrl!] : const <String>[]);
     final canContinue = detail.status != 'done' && detail.status != 'cancel' && !_headerFinished;
     final rawPhone = detail.supplierPhone.trim();
-    final digits = rawPhone.replaceAll(RegExp(r'\D'), '');
+    final cleanDigits = rawPhone.replaceAll(RegExp(r'\D'), '');
     final hasValidPhone = rawPhone.isNotEmpty &&
         rawPhone != '-' &&
         rawPhone != '0' &&
         rawPhone.toLowerCase() != 'null' &&
-        digits.length >= 5;
+        rawPhone.toLowerCase() != 'undefined' &&
+        cleanDigits.isNotEmpty;
 
     return Container(
       decoration: BoxDecoration(

@@ -282,7 +282,12 @@ class SuratJalanDetail {
       suratJalanDetailId: json['surat_jalan_detail_id']?.toString() ?? '',
       supplierName: json['supplier_name']?.toString() ?? '',
       supplierAlamat: json['supplier_alamat']?.toString() ?? '',
-      supplierPhone: json['supplier_phone']?.toString() ?? '',
+      supplierPhone: json['supplier_phone']?.toString() ??
+          json['phone']?.toString() ??
+          json['supplier_hp']?.toString() ??
+          json['no_hp']?.toString() ??
+          json['pic_phone']?.toString() ??
+          '',
       workOrderKode: json['work_order_kode']?.toString() ?? '',
       qtyOrder: json['qty_order']?.toString() ?? '0',
       qtyReal: json['qty_real']?.toString() ?? '0',

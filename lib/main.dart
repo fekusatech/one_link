@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter/services.dart';
@@ -20,14 +21,33 @@ import 'providers/supplier_list_provider.dart';
 import 'services/gps_enforcement_service.dart';
 import 'services/user_storage.dart';
 import 'services/driver_monitoring_service.dart';
+import 'services/file_logger_service.dart';
 
 import 'config/app_config.dart';
 
 Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  await _configureOrientation();
-  await AppConfig.init();
-  runApp(const MyApp());
+  // Wrapping startup in a Zone with a custom print handler captures every
+  // print()/debugPrint() call app-wide (debugPrint funnels through the
+  // zone's print in debug builds) into the rotating file log, with zero
+  // changes needed at existing call sites. Uncaught errors go there too.
+  runZonedGuarded(
+    () async {
+      WidgetsFlutterBinding.ensureInitialized();
+      await _configureOrientation();
+      await AppConfig.init();
+      await FileLoggerService.instance.init();
+      runApp(const MyApp());
+    },
+    (error, stack) {
+      FileLoggerService.instance.write('UNCAUGHT ERROR: $error\n$stack');
+    },
+    zoneSpecification: ZoneSpecification(
+      print: (self, parent, zone, line) {
+        parent.print(zone, line);
+        FileLoggerService.instance.write(line);
+      },
+    ),
+  );
 }
 
 /// Ponsel memakai portrait agar alur kerja lapangan tidak berubah ketika
