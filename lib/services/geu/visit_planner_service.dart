@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../models/geu/visit_planner_models.dart';
 import 'geu_api_client.dart';
@@ -260,12 +261,22 @@ class VisitPlannerService {
     );
     final body = response.data;
     final data = GeuApiClient.unwrapData(body);
-    if (response.statusCode != 200 || data is! Map) {
+    debugPrint(
+      '📡 Prospect scan response: status=${response.statusCode}, body=$body',
+    );
+    if (response.statusCode == null ||
+        response.statusCode! < 200 ||
+        response.statusCode! >= 300 ||
+        data is! Map) {
       throw VisitPlannerException(
-        GeuApiClient.responseMessage(body) ?? 'Scan Google Maps gagal.',
+        'Scan gagal (HTTP ${response.statusCode ?? 0}): '
+        '${GeuApiClient.responseMessage(body) ?? body}',
       );
     }
-    return int.tryParse(data['saved'].toString()) ?? 0;
+    final found = int.tryParse(data['found']?.toString() ?? '') ?? 0;
+    final saved = int.tryParse(data['saved']?.toString() ?? '') ?? 0;
+    debugPrint('✅ Prospect scan completed: found=$found, saved=$saved');
+    return saved;
   }
 
   static Future<List<ScannedProspect>> getScannedProspects(ScanJob job) async {

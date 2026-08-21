@@ -109,6 +109,9 @@ class _ScanProspectScreenState extends State<ScanProspectScreen>
         minRating: 0,
         requirePhone: _requirePhone,
       );
+      debugPrint(
+        '🧾 Prospect scan job created: id=$jobId, keyword=$keyword, radius=$_radius',
+      );
       final saved = await VisitPlannerService.runProspectScan(
         jobId: jobId,
         keyword: keyword,
@@ -117,6 +120,7 @@ class _ScanProspectScreenState extends State<ScanProspectScreen>
         radiusMeters: _radius,
         requirePhone: _requirePhone,
       );
+      debugPrint('📦 Prospect scan saved count: $saved');
       final scanJob = ScanJob(
         id: jobId,
         keyword: keyword,
@@ -220,7 +224,7 @@ class _ScanProspectScreenState extends State<ScanProspectScreen>
         .replaceFirst('VisitPlannerException: ', '')
         .trim();
     if (raw.isEmpty || raw.toLowerCase() == 'success') {
-      return 'Scan belum menghasilkan data. Coba lagi dalam beberapa saat.';
+      return 'Scan gagal: server mengembalikan respons kosong. Coba lagi.';
     }
     return raw;
   }
