@@ -48,7 +48,9 @@ class AuthDebugService {
   /// Check if auth.json file exists
   static Future<bool> hasAuthFile() async {
     try {
+      if (kIsWeb) return false;
       final filePath = await getAuthFilePath();
+      if (filePath == null) return false;
       final file = File(filePath);
       return await file.exists();
     } catch (e) {
@@ -59,7 +61,9 @@ class AuthDebugService {
   /// Delete auth.json file
   static Future<bool> clearAuthFile() async {
     try {
+      if (kIsWeb) return false;
       final filePath = await getAuthFilePath();
+      if (filePath == null) return false;
       final file = File(filePath);
 
       if (await file.exists()) {
@@ -79,7 +83,9 @@ class AuthDebugService {
   /// Get file info
   static Future<Map<String, dynamic>?> getAuthFileInfo() async {
     try {
+      if (kIsWeb) return null;
       final filePath = await getAuthFilePath();
+      if (filePath == null) return null;
       final file = File(filePath);
 
       if (await file.exists()) {
