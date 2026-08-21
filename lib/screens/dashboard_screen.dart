@@ -1510,7 +1510,7 @@ class _HomeScreenState extends State<_HomeScreen> {
                               hasReal ? detail.qtyReal : detail.qtyOrder,
                             );
                             return Text(
-                              hasReal ? '$kgText kg' : '~$kgText kg (estimasi)',
+                              hasReal ? '$kgText kg' : 'Estimasi $kgText kg',
                               style: AppTextStyles.caption.copyWith(
                                 color: AppColors.grey,
                               ),

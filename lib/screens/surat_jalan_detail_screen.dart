@@ -240,6 +240,13 @@ class _SuratJalanDetailScreenState extends State<SuratJalanDetailScreen> {
         ? detail.photoUrls
         : (detail.fotoUrl != null && detail.fotoUrl!.isNotEmpty ? [detail.fotoUrl!] : const <String>[]);
     final canContinue = detail.status != 'done' && detail.status != 'cancel' && !_headerFinished;
+    final rawPhone = detail.supplierPhone.trim();
+    final digits = rawPhone.replaceAll(RegExp(r'\D'), '');
+    final hasValidPhone = rawPhone.isNotEmpty &&
+        rawPhone != '-' &&
+        rawPhone != '0' &&
+        rawPhone.toLowerCase() != 'null' &&
+        digits.length >= 5;
 
     return Container(
       decoration: BoxDecoration(
@@ -268,14 +275,13 @@ class _SuratJalanDetailScreenState extends State<SuratJalanDetailScreen> {
                         overflow: TextOverflow.ellipsis,
                         style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary),
                       ),
-                      if (detail.supplierPhone.trim().isNotEmpty && detail.supplierPhone.trim() != '-')
+                      if (hasValidPhone)
                         InkWell(
                           onTap: () {
-                            final phone = detail.supplierPhone.trim();
                             final message =
                                 'Halo ${detail.supplierName}, saya driver GEU One Link terkait Surat Jalan ${_current.kode}.';
                             WaFormat.launchWhatsApp(
-                              phone: phone,
+                              phone: rawPhone,
                               message: message,
                             );
                           },
@@ -300,7 +306,7 @@ class _SuratJalanDetailScreenState extends State<SuratJalanDetailScreen> {
                                 const SizedBox(width: 5),
                                 Flexible(
                                   child: Text(
-                                    detail.supplierPhone.trim(),
+                                    rawPhone,
                                     overflow: TextOverflow.ellipsis,
                                     style: AppTextStyles.caption.copyWith(
                                       color: AppColors.success,
@@ -361,14 +367,13 @@ class _SuratJalanDetailScreenState extends State<SuratJalanDetailScreen> {
             const SizedBox(height: 12),
             Row(
               children: [
-                if (detail.supplierPhone.trim().isNotEmpty && detail.supplierPhone.trim() != '-')
+                if (hasValidPhone)
                   Expanded(
                     child: FilledButton.icon(
                       onPressed: () {
-                        final phone = detail.supplierPhone.trim();
                         final message =
                             'Halo ${detail.supplierName}, saya driver GEU One Link terkait Surat Jalan ${_current.kode}.';
-                        WaFormat.launchWhatsApp(phone: phone, message: message);
+                        WaFormat.launchWhatsApp(phone: rawPhone, message: message);
                       },
                       style: FilledButton.styleFrom(
                         backgroundColor: AppColors.success,
@@ -383,7 +388,7 @@ class _SuratJalanDetailScreenState extends State<SuratJalanDetailScreen> {
                       ),
                     ),
                   ),
-                if ((detail.supplierPhone.trim().isNotEmpty && detail.supplierPhone.trim() != '-') && canContinue)
+                if (hasValidPhone && canContinue)
                   const SizedBox(width: 8),
                 if (canContinue)
                   Expanded(
