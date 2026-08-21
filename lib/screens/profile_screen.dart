@@ -519,7 +519,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     children: [
                       _buildMenuItem(
                         icon: Icons.my_location_outlined,
-                        title: 'Pengaturan Lokasi GPS & Tracking',
+                        title: 'Pengaturan Peta & Alamat GPS',
                         onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const LocationTrackingSettingsScreen())),
                       ),
                       _buildDivider(),

@@ -80,8 +80,8 @@ class ShiftReminderService {
           ],
         ),
         content: const Text(
-          'Waktu kerja standar telah berakhir. Apakah tugas Anda hari ini sudah selesai?\n\n'
-          'Matikan Mode Bekerja untuk menghentikan pengiriman GPS & kamera agar baterai HP tetap awet & dingin.',
+          'Waktu shift kerja telah berakhir. Apakah tugas pengiriman Anda hari ini sudah selesai?\n\n'
+          'Selesaikan Shift Kerja untuk menghemat daya baterai HP.',
           style: TextStyle(fontSize: 13, height: 1.4),
         ),
         actions: [

@@ -95,11 +95,11 @@ class _WorkingModePreflightDialogState extends State<WorkingModePreflightDialog>
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Pemeriksaan Mode Bekerja',
+                        'Persiapan Shift Kerja',
                         style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppColors.textPrimary),
                       ),
                       Text(
-                        'Verifikasi izin sensor HP',
+                        'Kelengkapan izin fitur aplikasi',
                         style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
                       ),
                     ],
@@ -117,16 +117,16 @@ class _WorkingModePreflightDialogState extends State<WorkingModePreflightDialog>
                     children: [
                       CircularProgressIndicator(color: AppColors.primaryGreen),
                       SizedBox(height: 12),
-                      Text('Memeriksa sensor GPS & Kamera...', style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+                      Text('Memeriksa kesiapan aplikasi...', style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
                     ],
                   ),
                 ),
               ),
             ] else ...[
               _buildPermissionRow(
-                icon: Icons.location_on_rounded,
-                title: 'Akses Lokasi GPS',
-                subtitle: 'Presisi posisi driver & surat jalan',
+                icon: Icons.map_rounded,
+                title: 'Layanan Peta & Navigasi',
+                subtitle: 'Petunjuk rute & alamat supplier',
                 isGranted: _gpsGranted,
                 onRequest: () async {
                   await Geolocator.requestPermission();
@@ -136,8 +136,8 @@ class _WorkingModePreflightDialogState extends State<WorkingModePreflightDialog>
               const SizedBox(height: 10),
               _buildPermissionRow(
                 icon: Icons.camera_alt_rounded,
-                title: 'Akses Kamera Dual-Cam',
-                subtitle: 'Monitoring keselamatan berkendara',
+                title: 'Kamera Foto Pengiriman',
+                subtitle: 'Foto bukti pengambilan & muatan',
                 isGranted: _cameraGranted,
                 onRequest: () async {
                   await Permission.camera.request();
@@ -147,8 +147,8 @@ class _WorkingModePreflightDialogState extends State<WorkingModePreflightDialog>
               const SizedBox(height: 10),
               _buildPermissionRow(
                 icon: Icons.notifications_active_rounded,
-                title: 'Akses Notifikasi & Alert',
-                subtitle: 'Pengingat otomatis jam 17:00',
+                title: 'Pengingat Jam Shift',
+                subtitle: 'Notifikasi otomatis jam kerja',
                 isGranted: _notificationGranted,
                 onRequest: () async {
                   await Permission.notification.request();

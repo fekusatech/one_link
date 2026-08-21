@@ -47,7 +47,7 @@ class _WorkingModeHeaderWidgetState extends State<WorkingModeHeaderWidget> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('👁️ Mode Lihat Histori Only Aktif (GPS & Kamera Matikan). Baterai HP Hemat!'),
+            content: Text('👍 Shift Kerja Selesai. Baterai HP Hemat!'),
             backgroundColor: AppColors.darkGrey,
           ),
         );
@@ -69,7 +69,7 @@ class _WorkingModeHeaderWidgetState extends State<WorkingModeHeaderWidget> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('🟢 Mode Bekerja AKTIF! Sensor GPS & Kamera mulai dipantau.'),
+              content: Text('🟢 Shift Kerja AKTIF! Siap untuk tugas pengiriman.'),
               backgroundColor: AppColors.primaryGreen,
             ),
           );
@@ -111,7 +111,7 @@ class _WorkingModeHeaderWidgetState extends State<WorkingModeHeaderWidget> {
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
-                  _isWorkingMode ? Icons.radar_rounded : Icons.visibility_outlined,
+                  _isWorkingMode ? Icons.badge_outlined : Icons.visibility_outlined,
                   color: _isWorkingMode ? Colors.green.shade800 : Colors.amber.shade900,
                   size: 22,
                 ),
@@ -133,7 +133,7 @@ class _WorkingModeHeaderWidgetState extends State<WorkingModeHeaderWidget> {
                         ),
                         const SizedBox(width: 6),
                         Text(
-                          _isWorkingMode ? 'Mode Bekerja Aktif' : 'Mode Lihat Histori (Off-Shift)',
+                          _isWorkingMode ? 'Status Shift Kerja (Aktif)' : 'Diluar Jam Kerja (Off-Shift)',
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 14,
@@ -145,8 +145,8 @@ class _WorkingModeHeaderWidgetState extends State<WorkingModeHeaderWidget> {
                     const SizedBox(height: 2),
                     Text(
                       _isWorkingMode
-                          ? 'Pengiriman lokasi GPS & dual-camera monitoring aktif.'
-                          : 'Sensor HP mati (0% baterai drain). Bebas akses histori.',
+                          ? 'Siap melayani penjemputan & navigasi rute.'
+                          : 'Hemat baterai 100%. Bebas lihat riwayat.',
                       style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
                     ),
                   ],
@@ -171,7 +171,7 @@ class _WorkingModeHeaderWidgetState extends State<WorkingModeHeaderWidget> {
                 size: 18,
               ),
               label: Text(
-                _isWorkingMode ? '⏹️ Selesai Bekerja (Clock Out)' : '🚀 Mulai Bekerja (Clock In)',
+                _isWorkingMode ? '⏹️ Selesai Kerja (Off-Shift)' : '🚀 Mulai Kerja (Absen Shift)',
                 style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
               ),
             ),

@@ -118,7 +118,7 @@ class _LocationTrackingSettingsScreenState
     if (_isLoading) {
       return Scaffold(
         appBar: AppBar(
-          title: const Text('Pengaturan Lokasi'),
+          title: const Text('Pengaturan Peta & Navigasi'),
           backgroundColor: AppColors.primaryGreen,
           foregroundColor: AppColors.white,
         ),
@@ -132,7 +132,7 @@ class _LocationTrackingSettingsScreenState
         backgroundColor: AppColors.primaryGreen,
         foregroundColor: AppColors.white,
         title: Text(
-          'Pengaturan Lokasi',
+          'Pengaturan Peta & Navigasi',
           style: AppTextStyles.h5.copyWith(
             color: AppColors.white,
             fontWeight: FontWeight.bold,
@@ -164,7 +164,7 @@ class _LocationTrackingSettingsScreenState
             Row(
               children: [
                 Icon(
-                  _trackingEnabled ? Icons.gps_fixed : Icons.gps_off,
+                  _trackingEnabled ? Icons.map : Icons.map_outlined,
                   color: _trackingEnabled
                       ? AppColors.primaryGreen
                       : Colors.grey,
@@ -172,7 +172,7 @@ class _LocationTrackingSettingsScreenState
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    'Pembaruan Lokasi',
+                    'Layanan Peta & Navigasi',
                     style: AppTextStyles.h6.copyWith(
                       fontWeight: FontWeight.bold,
                     ),
@@ -188,8 +188,8 @@ class _LocationTrackingSettingsScreenState
             const SizedBox(height: 8),
             Text(
               _trackingEnabled
-                  ? 'Aktif - Lokasi digunakan saat tugas berjalan'
-                  : 'Nonaktif - Fitur navigasi terbatas',
+                  ? 'Aktif - Peta & rute otomatis saat jam kerja'
+                  : 'Nonaktif - Mode hemat baterai',
               style: AppTextStyles.bodyMedium.copyWith(
                 color: AppColors.textSecondary,
               ),
