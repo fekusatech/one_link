@@ -5,6 +5,7 @@ import '../constants/app_text_styles.dart';
 
 import '../services/surat_jalan_service.dart';
 import '../services/geu/surat_jalan_service.dart';
+import '../services/user_storage.dart';
 import '../models/surat_jalan.dart';
 import 'surat_jalan_detail_screen.dart';
 
@@ -82,7 +83,7 @@ class _PickupHistoryScreenState extends State<PickupHistoryScreen> {
             userId: (userId ?? 1).toString(),
             status: 'all',
           );
-          history = legacyRes.suratJalan.where((s) {
+          history = legacyRes.data.suratJalan.where((s) {
             final st = s.status.toLowerCase();
             return st == 'done' || st == 'cancel' || st == 'cancelled';
           }).toList();

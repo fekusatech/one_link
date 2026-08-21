@@ -3,6 +3,7 @@ import 'package:dio/dio.dart';
 import 'package:cookie_jar/cookie_jar.dart';
 import 'package:dio_cookie_manager/dio_cookie_manager.dart';
 import 'package:path_provider/path_provider.dart';
+import '../user_storage.dart';
 
 /// Shared Dio client for the new Go REST API (apipi.greenenergiutama.co.id).
 /// Auth is httpOnly JWT cookies (auth_token/refresh_token), not Bearer —
