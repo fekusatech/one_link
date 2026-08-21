@@ -76,28 +76,34 @@ class _PickupHistoryScreenState extends State<PickupHistoryScreen> {
         }).toList();
       } catch (err) {
         debugPrint('⚠️ GeuSuratJalanService error, falling back to SuratJalanService: $err');
-        final userId = await UserStorage.getUserId();
-        final legacyRes = await SuratJalanService.getSuratJalan(
-          userId: (userId ?? 1).toString(),
-          status: 'all',
-        );
-        history = legacyRes.suratJalan.where((s) {
-          final st = s.status.toLowerCase();
-          return st == 'done' || st == 'cancel' || st == 'cancelled';
-        }).toList();
+        try {
+          final userId = await UserStorage.getUserId();
+          final legacyRes = await SuratJalanService.getSuratJalan(
+            userId: (userId ?? 1).toString(),
+            status: 'all',
+          );
+          history = legacyRes.suratJalan.where((s) {
+            final st = s.status.toLowerCase();
+            return st == 'done' || st == 'cancel' || st == 'cancelled';
+          }).toList();
+        } catch (innerErr) {
+          debugPrint('⚠️ SuratJalanService fallback also failed: $innerErr');
+          history = [];
+        }
       }
 
       if (mounted) {
         setState(() {
           _allHistory = history;
           _isLoading = false;
+          _errorMessage = null;
         });
         _applyFilters();
       }
     } catch (e) {
       if (mounted) {
         setState(() {
-          _errorMessage = 'Gagal memuat data riwayat. Silakan geser ke bawah untuk memperbarui.';
+          _errorMessage = 'Gagal memuat data riwayat. Silakan coba lagi.';
           _isLoading = false;
         });
       }
