@@ -3,6 +3,7 @@ import 'package:dio/dio.dart';
 import '../../models/surat_jalan.dart';
 import '../../models/geu/surat_jalan_models.dart';
 import 'geu_api_client.dart';
+import 'geu_auth_service.dart';
 import 'surat_jalan_service.dart';
 
 class TrackingLiveItem {
@@ -107,6 +108,7 @@ class GeuDriverTrackingService {
   /// Fetch live tracking positions of all active drivers (Admin view)
   static Future<List<TrackingLiveItem>> getLiveTracking() async {
     try {
+      await GeuAuthService.ensureSession();
       final dio = await GeuApiClient.instance;
       final res = await dio.get('/api-tms/tracking/live');
       final data = res.data;
@@ -133,6 +135,7 @@ class GeuDriverTrackingService {
     required String date,
   }) async {
     try {
+      await GeuAuthService.ensureSession();
       final dio = await GeuApiClient.instance;
       final res = await dio.get(
         '/api-tms/tracking/history',
@@ -166,6 +169,7 @@ class GeuDriverTrackingService {
     String? driverId,
   }) async {
     try {
+      await GeuAuthService.ensureSession();
       final dio = await GeuApiClient.instance;
       final res = await dio.get(
         '/api-tms/surat-jalan',

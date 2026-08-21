@@ -400,6 +400,7 @@ SuratJalan buildLegacySuratJalan(
     tanggalFormatted: formatIndoDate(header.tgl),
     status: header.status,
     kodePickup: header.kodePickup,
+    driverId: header.driverId?.toString(),
     driverName: '-',
     plat: '-',
     gudangName: '-',

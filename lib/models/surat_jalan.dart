@@ -57,6 +57,7 @@ class SuratJalan {
   final String tanggalFormatted;
   final String status;
   final String kodePickup;
+  final String? driverId;
   final String driverName;
   final String plat;
   final String gudangName;
@@ -79,6 +80,7 @@ class SuratJalan {
     required this.tanggalFormatted,
     required this.status,
     required this.kodePickup,
+    this.driverId,
     required this.driverName,
     required this.plat,
     required this.gudangName,
@@ -103,6 +105,7 @@ class SuratJalan {
       tanggalFormatted: json['tanggal_formatted']?.toString() ?? '',
       status: json['status']?.toString() ?? '',
       kodePickup: json['kode_pickup']?.toString() ?? '',
+      driverId: json['driver_id']?.toString(),
       driverName: json['driver_name']?.toString() ?? '',
       plat: json['plat']?.toString() ?? '',
       gudangName: json['gudang_name']?.toString() ?? '',
@@ -132,6 +135,7 @@ class SuratJalan {
       'tanggal_formatted': tanggalFormatted,
       'status': status,
       'kode_pickup': kodePickup,
+      'driver_id': driverId,
       'driver_name': driverName,
       'plat': plat,
       'gudang_name': gudangName,

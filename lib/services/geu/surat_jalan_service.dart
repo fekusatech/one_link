@@ -126,7 +126,7 @@ class GeuSuratJalanService {
         shallow.map((s) async {
           try {
             final full = await getById(int.parse(s.suratJalanId));
-            return _mergeListFields(base: full, listItem: s);
+            return mergeListFields(base: full, listItem: s);
           } catch (_) {
             return s;
           }
@@ -143,7 +143,10 @@ class GeuSuratJalanService {
     }
   }
 
-  static SuratJalan _mergeListFields({
+  /// Fills in fields the detail endpoint doesn't carry (driver/fleet/gudang
+  /// info only lives in the List response's JOINs) with the shallow list
+  /// item's values, keeping everything else from the hydrated detail.
+  static SuratJalan mergeListFields({
     required SuratJalan base,
     required SuratJalan listItem,
   }) {
@@ -154,6 +157,7 @@ class GeuSuratJalanService {
       tanggalFormatted: base.tanggalFormatted,
       status: base.status,
       kodePickup: listItem.kodePickup,
+      driverId: listItem.driverId,
       driverName: listItem.driverName,
       plat: listItem.plat,
       gudangName: listItem.gudangName,
