@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
@@ -31,10 +32,26 @@ class _NavigationScreenState extends State<NavigationScreen> {
   String _primarySupplierName = 'Lokasi Penjemputan';
 
   LatLng? _currentPosition;
+  double _heading = 0.0;
   bool _isLoadingLocation = true;
   bool _isLoadingRoute = false;
   String _locationStatus = 'Mencari lokasi GPS real-time...';
   bool _followDriver = true; // Auto-follow driver on map
+
+  double _calculateBearing(LatLng start, LatLng end) {
+    final startLat = start.latitude * (math.pi / 180.0);
+    final startLng = start.longitude * (math.pi / 180.0);
+    final endLat = end.latitude * (math.pi / 180.0);
+    final endLng = end.longitude * (math.pi / 180.0);
+
+    final dLng = endLng - startLng;
+    final y = math.sin(dLng) * math.cos(endLat);
+    final x = math.cos(startLat) * math.sin(endLat) -
+        math.sin(startLat) * math.cos(endLat) * math.cos(dLng);
+
+    final bearingRad = math.atan2(y, x);
+    return (bearingRad * (180.0 / math.pi) + 360.0) % 360.0;
+  }
 
   static const LatLng _defaultCenter = LatLng(-7.9797, 112.6304);
 
@@ -151,8 +168,17 @@ class _NavigationScreenState extends State<NavigationScreen> {
         if (!mounted) return;
 
         final newPos = LatLng(position.latitude, position.longitude);
+        double heading = position.heading;
+
+        if ((heading == 0 || heading.isNaN) && _currentPosition != null) {
+          heading = _calculateBearing(_currentPosition!, newPos);
+        }
+
         setState(() {
           _currentPosition = newPos;
+          if (!heading.isNaN && heading != 0) {
+            _heading = heading;
+          }
         });
 
         // Auto-center map following real driver movement
@@ -328,25 +354,28 @@ class _NavigationScreenState extends State<NavigationScreen> {
               // Markers (Real Driver Position + Destination Pins)
               MarkerLayer(
                 markers: [
-                  // Real-time Driver Position Marker
+                  // Real-time Driver Position Marker (Rotates with direction)
                   if (_currentPosition != null)
                     Marker(
                       point: _currentPosition!,
-                      width: 42,
-                      height: 42,
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF1877F2),
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white, width: 3),
-                          boxShadow: const [
-                            BoxShadow(color: Color(0x66000000), blurRadius: 8),
-                          ],
-                        ),
-                        child: const Icon(
-                          Icons.navigation_rounded,
-                          color: Colors.white,
-                          size: 24,
+                      width: 44,
+                      height: 44,
+                      child: Transform.rotate(
+                        angle: (_heading * (math.pi / 180.0)),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF1877F2),
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 3),
+                            boxShadow: const [
+                              BoxShadow(color: Color(0x66000000), blurRadius: 8),
+                            ],
+                          ),
+                          child: const Icon(
+                            Icons.navigation_rounded,
+                            color: Colors.white,
+                            size: 24,
+                          ),
                         ),
                       ),
                     ),
@@ -511,10 +540,27 @@ class _NavigationScreenState extends State<NavigationScreen> {
             child: FloatingActionButton.small(
               heroTag: 'follow_driver_btn',
               backgroundColor: _followDriver ? const Color(0xFF1877F2) : Colors.white,
-              onPressed: () {
+              onPressed: () async {
                 setState(() => _followDriver = true);
                 if (_currentPosition != null) {
                   _mapController.move(_currentPosition!, 16);
+                } else {
+                  try {
+                    final pos = await Geolocator.getCurrentPosition(
+                      locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
+                    );
+                    final latLng = LatLng(pos.latitude, pos.longitude);
+                    if (mounted) {
+                      setState(() {
+                        _currentPosition = latLng;
+                      });
+                      _mapController.move(latLng, 16);
+                    }
+                  } catch (_) {
+                    if (_destinations.isNotEmpty) {
+                      _mapController.move(_destinations.first, 15);
+                    }
+                  }
                 }
               },
               child: Icon(

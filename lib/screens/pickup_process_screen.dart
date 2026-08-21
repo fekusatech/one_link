@@ -8,6 +8,7 @@ import '../constants/app_text_styles.dart';
 import '../models/surat_jalan.dart';
 import '../services/geu/surat_jalan_service.dart';
 import '../services/geu/photo_watermark_service.dart';
+import '../services/user_storage.dart';
 
 /// Mirrors application/views/surat-jalan/detail_form.php + new_take.php
 /// (web ERP): a "KELENGKAPAN DATA" checklist (foto/GPS/TTD), multi-photo
@@ -103,14 +104,17 @@ class _PickupProcessScreenState extends State<PickupProcessScreen> {
   double get _totLiter => _currentDetail?.totLiter ?? 1;
   bool get _hasConversion => _totLiter > 1;
 
+  bool _isWorkingMode = true;
+
   double get _qtyRealKemasan => double.tryParse(_kemasanController.text.replaceAll(',', '.')) ?? 0;
   bool get _hasAnyPhoto => _existingPhotoUrls.isNotEmpty || _photos.isNotEmpty;
   bool get _hasGps => _gpsLat != null && _gpsLng != null;
-  bool get _canSubmit => _hasAnyPhoto && _hasGps && _ttdSaved && _qtyRealKemasan > 0;
+  bool get _canSubmit => _isWorkingMode && _hasAnyPhoto && _hasGps && _ttdSaved && _qtyRealKemasan > 0;
 
   @override
   void initState() {
     super.initState();
+    _checkWorkingMode();
     _signatureController.addListener(() {
       if (mounted && _signatureController.isNotEmpty != _hasDrawnSignature) {
         setState(() {
@@ -122,6 +126,11 @@ class _PickupProcessScreenState extends State<PickupProcessScreen> {
     _kemasanController.text = _currentDetail?.qtyOrder ?? '';
     _syncLiterFromKemasan();
     _seedExistingEvidence();
+  }
+
+  Future<void> _checkWorkingMode() async {
+    final active = await UserStorage.isWorkingModeActive();
+    if (mounted) setState(() => _isWorkingMode = active);
   }
 
   // Resuming a partially-completed item (driver left mid-way and came back)
@@ -559,6 +568,28 @@ class _PickupProcessScreenState extends State<PickupProcessScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              if (!_isWorkingMode)
+                Container(
+                  margin: const EdgeInsets.only(bottom: 16),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.amber.shade100,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.amber.shade400),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.info_outline, color: Colors.amber.shade900),
+                      const SizedBox(width: 10),
+                      const Expanded(
+                        child: Text(
+                          '👁️ Mode Pratinjau (Off-Shift): Anda dapat melihat detail WO & supplier. Aktifkan Shift Kerja di Beranda untuk mengisi data.',
+                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.black87),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               _buildHeader(),
               const SizedBox(height: 20),
               _buildChecklist(),
