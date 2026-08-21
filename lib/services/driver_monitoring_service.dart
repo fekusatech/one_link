@@ -57,12 +57,6 @@ class DriverMonitoringService {
 
     try {
       final userId = await UserStorage.getUserId();
-      final isWorking = await UserStorage.isWorkingModeActive();
-      if (!isWorking) {
-        activeMonitoringStatusNotifier.value = null;
-        return;
-      }
-
       final email = await UserStorage.getUserEmail();
       if (userId == null && email.isEmpty) return;
 
