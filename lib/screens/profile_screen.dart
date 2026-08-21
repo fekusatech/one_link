@@ -118,9 +118,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final canImp = await ImpersonationService.canImpersonate();
 
     String? avatar = user?['avatar_path'] as String? ?? user?['avatar'] as String?;
-    if ((avatar == null || avatar.isEmpty) && email.toLowerCase().contains('santosofebrikukuh')) {
-      avatar = 'fd4d5ecdbc6531836babd22f5eee0a70.png';
-    }
 
     if (mounted) {
       setState(() {
@@ -131,6 +128,35 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _userAvatar = avatar;
         _canImpersonate = canImp;
       });
+    }
+
+    // Live fetch updated avatar from server
+    try {
+      final userId = await UserStorage.getUserId();
+      if (userId != null) {
+        final res = await http.get(Uri.parse('${AppConfig.serverDomain}/driver_tracking/get_profile?karyawan_id=$userId'));
+        if (res.statusCode == 200) {
+          final data = json.decode(res.body);
+          if (data['status'] == true && data['data'] != null && data['data']['avatar'] != null) {
+            final serverAvatar = data['data']['avatar'].toString();
+            if (serverAvatar.isNotEmpty && serverAvatar != _userAvatar) {
+              if (mounted) {
+                setState(() {
+                  _userAvatar = serverAvatar;
+                });
+              }
+              if (user != null) {
+                user['avatar'] = serverAvatar;
+                user['avatar_path'] = serverAvatar;
+                final prefs = await SharedPreferences.getInstance();
+                await prefs.setString('user_data', jsonEncode(user));
+              }
+            }
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('Profile live avatar fetch error: $e');
     }
   }
 

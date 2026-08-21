@@ -35,6 +35,8 @@ import '../services/emergency_shake_service.dart';
 import '../services/proximity_wa_service.dart';
 import '../services/dashboard_access_service.dart';
 import '../services/local_notify_service.dart';
+import '../widgets/working_mode_header_widget.dart';
+import '../services/shift_reminder_service.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -55,8 +57,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       EmergencyShakeService.instance.startListening(context);
       LocalNotifyService.instance.init();
       LocalNotifyService.instance.ensurePermission();
-      // Floating Surat Jalan + notif WA (disabled per user request)
-      // _startProximityIfDriver();
+      ShiftReminderService.instance.start(context);
       _startLocationTracking();
     });
   }
@@ -79,15 +80,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Future<void> _startLocationTracking() async {
-    // Auto-start location tracking after login (only if consent already given)
+    // Only auto-start if Working Mode is ACTIVE!
+    final isWorking = await UserStorage.isWorkingModeActive();
+    if (!isWorking) {
+      debugPrint('🛑 Working Mode is OFF: Location tracking paused on dashboard init.');
+      return;
+    }
     final hasConsent = await UserStorage.hasLocationTrackingConsent();
     if (hasConsent) {
-      final hasPermission = await LocationTrackingService.instance
-          .hasPermissions();
+      final hasPermission = await LocationTrackingService.instance.hasPermissions();
       if (hasPermission && !LocationTrackingService.instance.isTracking) {
-        await LocationTrackingService.instance
-            .startTrackingWithoutPermissionCheck();
-        print('📍 Auto-started location tracking after login');
+        await LocationTrackingService.instance.startTrackingWithoutPermissionCheck();
+        print('📍 Auto-started location tracking after login (Mode Bekerja Aktif)');
       }
     }
   }
@@ -565,6 +569,7 @@ class _HomeScreenState extends State<_HomeScreen> {
     return Column(
       children: [
         _buildConnectivityBanner(),
+        const WorkingModeHeaderWidget(),
         Expanded(
           child: RefreshIndicator(
             color: AppColors.primaryGreen,

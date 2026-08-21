@@ -172,4 +172,17 @@ class UserStorage {
     final token = await getToken();
     return token != null && token.isNotEmpty;
   }
+
+  // ── Working Mode (Shift Tracking) State ──
+  static const String _keyWorkingMode = 'is_working_mode_active';
+
+  static Future<bool> isWorkingModeActive() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_keyWorkingMode) ?? false; // Default false (Mode Lihat Histori Only)
+  }
+
+  static Future<void> setWorkingModeActive(bool active) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_keyWorkingMode, active);
+  }
 }

@@ -222,6 +222,12 @@ class LocationTrackingService {
 
   /// Handle location updates
   void _handleLocationUpdate(Position position) async {
+    final isWorking = await UserStorage.isWorkingModeActive();
+    if (!isWorking) {
+      debugPrint('🛑 Mode Bekerja OFF: Skipping location update to server.');
+      return;
+    }
+
     // Check if should send based on distance
     bool shouldSend = false;
 
