@@ -10,11 +10,7 @@ import 'supplier_list_screen.dart';
 import '../services/role_management_service.dart';
 import 'notification_screen.dart';
 import 'profile_screen.dart';
-import '../widgets/shared_bottom_navbar.dart';
-import '../widgets/shared_app_bar.dart';
-import '../widgets/supplier_detail_widget.dart';
 import '../widgets/fullscreen_map_screen.dart';
-import '../widgets/location_tracking_widget.dart';
 import '../services/dashboard_stats_service.dart';
 import '../models/dashboard_stats_model.dart';
 import '../models/api_response.dart';
@@ -24,10 +20,10 @@ import '../services/location_service.dart';
 import '../services/update_service.dart';
 import '../services/persistent_auth_service.dart';
 import '../services/user_storage.dart';
+import '../services/impersonation_service.dart';
 import '../models/surat_jalan.dart';
 import '../services/surat_jalan_service.dart';
 import 'pickup_history_screen.dart';
-import 'canvassing/canvassing_home_screen.dart';
 import 'canvassing/visit_plan_screen.dart';
 import 'canvassing/visit_history_screen.dart';
 import 'canvassing/scan_prospect_screen.dart';
@@ -64,6 +60,7 @@ class _SalesDashboardScreenState extends State<SalesDashboardScreen> {
   String _userName = 'CRO';
   bool _isLoading = true;
   String? _errorMessage;
+  bool _canSwitchDashboard = false;
   TodaysMission? _todaysMission;
   AssignmentStats? _myStats;
   GeuUser? _geuUser;
@@ -77,7 +74,6 @@ class _SalesDashboardScreenState extends State<SalesDashboardScreen> {
 
   // Map markers for suppliers
   Set<Marker> _markers = {};
-  GoogleMapController? _mapController;
 
   // Recent activity (real pickup history)
   List<SuratJalan> _recentActivity = [];
@@ -94,6 +90,7 @@ class _SalesDashboardScreenState extends State<SalesDashboardScreen> {
     _loadMissionSummary();
     _loadMyStatistics();
     _loadPermissions();
+    _loadSwitchDashboardPermission();
 
     // CRO/RO can land here directly on app open (not just via Driver
     // dashboard), so the update/maintenance check needs to fire from here
@@ -107,6 +104,25 @@ class _SalesDashboardScreenState extends State<SalesDashboardScreen> {
   Future<void> _loadPermissions() async {
     final user = await GeuAuthService.getCachedUser();
     if (mounted) setState(() => _geuUser = user);
+  }
+
+  Future<void> _loadSwitchDashboardPermission() async {
+    var allowed = RoleManagementService.isAdmin();
+    if (!allowed) {
+      final user = await UserStorage.getUser();
+      final groups = user?['groups'] as List<dynamic>? ?? const [];
+      final roles = user?['roles'] as List<dynamic>? ?? const [];
+      final identity = [
+        ...groups,
+        ...roles,
+      ].map((role) => role.toString().toLowerCase()).join(' ');
+      allowed =
+          identity.contains('admin') ||
+          identity.contains('developer') ||
+          identity.contains('super');
+    }
+    if (!allowed) allowed = await ImpersonationService.canImpersonate();
+    if (mounted) setState(() => _canSwitchDashboard = allowed);
   }
 
   bool _has(String slug) => _geuUser?.hasPermission(slug) ?? false;
@@ -163,13 +179,6 @@ class _SalesDashboardScreenState extends State<SalesDashboardScreen> {
       // The dashboard omits its optional chart when the reporting API has no
       // usable data, rather than displaying a misleading empty visualization.
     }
-  }
-
-  void _openCanvassing() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => const CanvassingHomeScreen()),
-    );
   }
 
   Future<void> _loadUserLocation() async {
@@ -328,39 +337,77 @@ class _SalesDashboardScreenState extends State<SalesDashboardScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       drawer: _buildDrawer(),
-      appBar: _selectedIndex == 0
-          ? SharedAppBar(
-              dashboardType: 'sales',
-              onNotificationTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const NotificationScreen()),
-                );
-              },
-            )
-          : null,
+      appBar: _selectedIndex == 0 ? _buildSalesAppBar() : null,
       body: _selectedIndex == 0
           ? _buildMainDashboard()
           : screens[_selectedIndex],
-      bottomNavigationBar: Container(
-        decoration: const BoxDecoration(
-          color: AppColors.white,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black12,
-              blurRadius: 10,
-              offset: Offset(0, -5),
-            ),
-          ],
-        ),
-        child: SharedBottomNavbar(
-          currentIndex: _selectedIndex,
-          onTap: _onItemTapped,
-          showVisitPlan: hasVisitPlanner,
-          showTasks: showTasksTab,
-          showHistory: hasVisitPlanner,
-        ),
+      bottomNavigationBar: _SalesBottomBar(
+        currentIndex: _selectedIndex,
+        onTap: _onItemTapped,
+        showVisitPlan: hasVisitPlanner,
+        showTasks: showTasksTab,
+        showHistory: hasVisitPlanner,
       ),
+    );
+  }
+
+  PreferredSizeWidget _buildSalesAppBar() {
+    return AppBar(
+      backgroundColor: AppColors.background,
+      surfaceTintColor: Colors.transparent,
+      elevation: 0,
+      toolbarHeight: 72,
+      titleSpacing: 0,
+      title: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'ONE LINK',
+            style: AppTextStyles.overline.copyWith(
+              color: AppColors.accentOrange,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 1.8,
+            ),
+          ),
+          Text(
+            'Sales workspace',
+            style: AppTextStyles.h6.copyWith(
+              color: AppColors.primaryGreen,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        Semantics(
+          label: 'Buka notifikasi',
+          button: true,
+          child: IconButton(
+            constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const NotificationScreen()),
+            ),
+            icon: const Icon(Icons.notifications_none_rounded),
+            color: AppColors.primaryGreen,
+            tooltip: 'Notifikasi',
+          ),
+        ),
+        if (_canSwitchDashboard)
+          Semantics(
+            label: 'Pindah ke dashboard Driver',
+            button: true,
+            child: IconButton(
+              constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+              onPressed: () =>
+                  Navigator.pushReplacementNamed(context, '/driver-dashboard'),
+              icon: const Icon(Icons.swap_horiz_rounded),
+              color: AppColors.primaryGreen,
+              tooltip: 'Pindah ke Dashboard Driver',
+            ),
+          ),
+        const SizedBox(width: 8),
+      ],
     );
   }
 
@@ -427,34 +474,49 @@ class _SalesDashboardScreenState extends State<SalesDashboardScreen> {
   Widget _buildMainDashboard() {
     final hasVisitPlanner = _has('crm-read-visit-planner');
     return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 104),
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 118),
       children: [
         _buildCroGreeting(),
-        const SizedBox(height: 16),
+        const SizedBox(height: 24),
         if (hasVisitPlanner) ...[
           _buildMissionSummary(),
-          const SizedBox(height: 20),
+          const SizedBox(height: 24),
         ],
-        Text(
-          'Ringkasan aktivitas',
-          style: AppTextStyles.h5.copyWith(fontWeight: FontWeight.w700),
+        _sectionHeading(
+          'Ringkasan hari ini',
+          'Pantau pipeline dan prioritas lapangan dalam sekali lihat.',
         ),
-        const SizedBox(height: 4),
-        Text(
-          'Pantau supplier dan lanjutkan aktivitas lapangan.',
-          style: AppTextStyles.bodyMedium.copyWith(
-            color: AppColors.textSecondary,
-          ),
-        ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 14),
         _buildStatisticsSection(),
-        const SizedBox(height: 20),
+        const SizedBox(height: 24),
         _buildMyStatistics(),
-        const SizedBox(height: 20),
+        const SizedBox(height: 28),
         _buildQuickActions(),
+        const SizedBox(height: 28),
+        _buildSupplierMap(),
+        const SizedBox(height: 28),
+        _buildRecentActivity(),
       ],
     );
   }
+
+  Widget _sectionHeading(String title, String subtitle) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(
+        title,
+        style: AppTextStyles.h5.copyWith(
+          color: AppColors.textPrimary,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
+      const SizedBox(height: 4),
+      Text(
+        subtitle,
+        style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary),
+      ),
+    ],
+  );
 
   Widget _buildCroGreeting() {
     final stats = _dashboardStats;
@@ -463,7 +525,7 @@ class _SalesDashboardScreenState extends State<SalesDashboardScreen> {
         '${now.day.toString().padLeft(2, '0')}/${now.month.toString().padLeft(2, '0')}/${now.year}';
 
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.fromLTRB(20, 22, 20, 20),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
@@ -524,10 +586,10 @@ class _SalesDashboardScreenState extends State<SalesDashboardScreen> {
                       _has('crm-self-assign-cro') && _has('crm-self-assign-ro')
                           ? 'CRO / RO'
                           : _has('crm-self-assign-cro')
-                              ? 'CRO'
-                              : _has('crm-self-assign-ro')
-                                  ? 'RO / ROE'
-                                  : 'SALES',
+                          ? 'CRO'
+                          : _has('crm-self-assign-ro')
+                          ? 'RO / ROE'
+                          : 'SALES',
                       style: AppTextStyles.caption.copyWith(
                         color: AppColors.white,
                         fontWeight: FontWeight.bold,
@@ -558,7 +620,7 @@ class _SalesDashboardScreenState extends State<SalesDashboardScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 24),
           Row(
             children: [
               _buildCroStat(
@@ -576,7 +638,7 @@ class _SalesDashboardScreenState extends State<SalesDashboardScreen> {
               _buildCroStat(
                 Icons.add_business_outlined,
                 stats?.newThisMonth ?? 0,
-                'Baru bulan ini',
+                'Baru hari ini',
               ),
             ],
           ),
@@ -803,25 +865,19 @@ class _SalesDashboardScreenState extends State<SalesDashboardScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              'Supplier',
-              style: AppTextStyles.h6.copyWith(
-                fontWeight: FontWeight.bold,
-                color: AppColors.textPrimary,
-              ),
+        Align(
+          alignment: Alignment.centerRight,
+          child: TextButton.icon(
+            onPressed: _loadSalesData,
+            icon: const Icon(Icons.refresh_rounded, size: 18),
+            label: const Text('Perbarui'),
+            style: TextButton.styleFrom(
+              foregroundColor: AppColors.primaryGreen,
+              minimumSize: const Size(48, 44),
             ),
-            if (!_isLoading)
-              IconButton(
-                onPressed: _loadSalesData,
-                icon: const Icon(Icons.refresh, color: AppColors.primaryGreen),
-                tooltip: 'Refresh data',
-              ),
-          ],
+          ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 4),
 
         // Top Row - Main Stats
         Row(
@@ -866,12 +922,12 @@ class _SalesDashboardScreenState extends State<SalesDashboardScreen> {
         // const SizedBox(height: 12),
         const SizedBox(height: 12),
         _buildStatCard(
-          title: 'Supplier baru bulan ini',
+          title: 'Supplier baru hari ini',
           value: _dashboardStats?.newThisMonth.toString() ?? '0',
           subtitle: 'Akuisisi baru',
           icon: Icons.person_add_alt_1_outlined,
           color: Colors.blue,
-          percentage: 'Bulan berjalan',
+          percentage: 'Hari ini',
           isPositive: true,
         ),
       ],
@@ -977,7 +1033,7 @@ class _SalesDashboardScreenState extends State<SalesDashboardScreen> {
         ),
         const SizedBox(height: 12),
         Container(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(18),
           decoration: BoxDecoration(
             color: AppColors.white,
             borderRadius: BorderRadius.circular(16),
@@ -1255,14 +1311,7 @@ class _SalesDashboardScreenState extends State<SalesDashboardScreen> {
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: color.withValues(alpha: .2)),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: .04),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
-            ],
+            border: Border.all(color: color.withValues(alpha: .16)),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1405,9 +1454,6 @@ class _SalesDashboardScreenState extends State<SalesDashboardScreen> {
                           zoom: 15,
                         ),
                         markers: _markers,
-                        onMapCreated: (GoogleMapController controller) {
-                          _mapController = controller;
-                        },
                         zoomControlsEnabled: false,
                         mapToolbarEnabled: false,
                         gestureRecognizers:
@@ -1699,4 +1745,136 @@ class _CroMenuItem {
     this.permission,
     required this.onTap,
   });
+}
+
+class _SalesBottomBar extends StatelessWidget {
+  final int currentIndex;
+  final ValueChanged<int> onTap;
+  final bool showVisitPlan;
+  final bool showTasks;
+  final bool showHistory;
+
+  const _SalesBottomBar({
+    required this.currentIndex,
+    required this.onTap,
+    required this.showVisitPlan,
+    required this.showTasks,
+    required this.showHistory,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final items = <({IconData icon, IconData activeIcon, String label})>[
+      (
+        icon: Icons.grid_view_rounded,
+        activeIcon: Icons.grid_view_rounded,
+        label: 'Beranda',
+      ),
+      if (showVisitPlan)
+        (
+          icon: Icons.map_outlined,
+          activeIcon: Icons.map_rounded,
+          label: 'Visit',
+        ),
+      if (showTasks)
+        (
+          icon: Icons.checklist_outlined,
+          activeIcon: Icons.checklist_rounded,
+          label: 'Tugas',
+        ),
+      if (showHistory)
+        (
+          icon: Icons.history_outlined,
+          activeIcon: Icons.history_rounded,
+          label: 'Riwayat',
+        ),
+      (
+        icon: Icons.person_outline_rounded,
+        activeIcon: Icons.person_rounded,
+        label: 'Profil',
+      ),
+    ];
+
+    return SafeArea(
+      top: false,
+      child: Container(
+        margin: const EdgeInsets.fromLTRB(12, 0, 12, 10),
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+        decoration: BoxDecoration(
+          color: AppColors.white,
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(
+            color: AppColors.primaryGreen.withValues(alpha: .1),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.primaryGreen.withValues(alpha: .12),
+              blurRadius: 24,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        child: Row(
+          children: List.generate(items.length, (index) {
+            final item = items[index];
+            final selected = index == currentIndex;
+            return Expanded(
+              child: Semantics(
+                button: true,
+                selected: selected,
+                label: 'Navigasi ${item.label}',
+                child: Material(
+                  color: Colors.transparent,
+                  borderRadius: BorderRadius.circular(16),
+                  child: InkWell(
+                    onTap: () => onTap(index),
+                    borderRadius: BorderRadius.circular(16),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 180),
+                      curve: Curves.easeOut,
+                      constraints: const BoxConstraints(minHeight: 52),
+                      padding: const EdgeInsets.symmetric(vertical: 6),
+                      decoration: BoxDecoration(
+                        color: selected
+                            ? AppColors.primaryGreen.withValues(alpha: .1)
+                            : Colors.transparent,
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            selected ? item.activeIcon : item.icon,
+                            size: 22,
+                            color: selected
+                                ? AppColors.primaryGreen
+                                : AppColors.textSecondary,
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            item.label,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: AppTextStyles.caption.copyWith(
+                              fontSize: 10,
+                              fontWeight: selected
+                                  ? FontWeight.w800
+                                  : FontWeight.w500,
+                              color: selected
+                                  ? AppColors.primaryGreen
+                                  : AppColors.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            );
+          }),
+        ),
+      ),
+    );
+  }
 }

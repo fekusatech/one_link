@@ -16,8 +16,16 @@ class DashboardStats {
           int.tryParse(json['total_suppliers']?.toString() ?? '0') ?? 0,
       activeSuppliers:
           int.tryParse(json['active_suppliers']?.toString() ?? '0') ?? 0,
+      // The active Go response supplies new_today. Keep the established
+      // property name to avoid breaking consumers, but never fabricate a
+      // monthly number from a daily metric.
       newThisMonth:
-          int.tryParse(json['new_this_month']?.toString() ?? '0') ?? 0,
+          int.tryParse(
+            json['new_today']?.toString() ??
+                json['new_this_month']?.toString() ??
+                '0',
+          ) ??
+          0,
     );
   }
 

@@ -1,13 +1,9 @@
-import 'package:http/http.dart' as http;
-import '../config/app_config.dart';
-import 'dart:convert';
 import '../models/api_response.dart';
 import '../models/supplier_list_model.dart';
 import 'user_storage.dart';
+import 'geu/geu_api_client.dart';
 
 class SupplierListService {
-  static const String baseUrl = AppConfig.serverDomain;
-
   /// Fetch supplier list with filter by pic_id and date
   static Future<ApiResponse<SupplierListResponse>> getSupplierList({
     int page = 1,
@@ -17,56 +13,48 @@ class SupplierListService {
     String? date, // Format: YYYY-MM-DD
   }) async {
     try {
-      final token = await UserStorage.getToken();
-
       // If no picId provided, use current user's ID
       if (picId == null) {
         picId = await UserStorage.getUserId();
       }
 
-      // Build query parameters
-      final queryParams = <String, String>{
-        'page': page.toString(),
-        'limit': limit.toString(),
-      };
-
-      if (picId != null) {
-        queryParams['pic_id'] = picId.toString();
-      }
+      // go-rest-api's current supplier endpoint is cursor based. Keep this
+      // service's page-shaped return type for existing mobile screens.
+      final queryParams = <String, String>{'limit': limit.toString()};
 
       if (search != null && search.isNotEmpty) {
         queryParams['search'] = search;
       }
 
       if (date != null && date.isNotEmpty) {
-        queryParams['date'] = date;
+        queryParams['date_from'] = date;
       }
 
-      final uri = Uri.parse(
-        '$baseUrl/api-supplier/list',
-      ).replace(queryParameters: queryParams);
-
-      final response = await http.get(
-        uri,
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
+      final response = await (await GeuApiClient.instance).get(
+        '/api/suppliers/',
+        queryParameters: queryParams,
       );
 
       print('📋 Supplier List Response Status: ${response.statusCode}');
-      print('📋 Supplier List Response Body: ${response.body}');
+      print('📋 Supplier List Response Body: ${response.data}');
 
       if (response.statusCode == 200) {
-        final responseData = jsonDecode(response.body);
+        final responseData = Map<String, dynamic>.from(response.data as Map);
 
-        // Create SupplierListResponse directly from the API data structure
-        final supplierListResponse = SupplierListResponse.fromJson(
-          responseData,
-        );
+        final payload = responseData['data'];
+        final supplierListResponse = payload is Map<String, dynamic>
+            ? SupplierListResponse.fromJson(payload)
+            : payload is Map
+            ? SupplierListResponse.fromJson(Map<String, dynamic>.from(payload))
+            : SupplierListResponse(
+                data: const [],
+                total: 0,
+                currentPage: page,
+                lastPage: page,
+              );
 
         return ApiResponse<SupplierListResponse>(
-          status: responseData['status'] ?? false,
+          status: responseData['status'] == 'success',
           message: responseData['message'] ?? '',
           data: supplierListResponse,
         );
