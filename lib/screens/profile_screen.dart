@@ -130,15 +130,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
       });
     }
 
-    // Live fetch updated avatar from server
+    // Live fetch updated avatar from Go REST API (/api-auth/me)
     try {
-      final userId = await UserStorage.getUserId();
-      if (userId != null) {
-        final res = await http.get(Uri.parse('${AppConfig.serverDomain}/driver_tracking/get_profile?karyawan_id=$userId'));
+      final token = await UserStorage.getToken();
+      if (token != null && token.isNotEmpty) {
+        final res = await http.get(
+          Uri.parse('${AppConfig.baseUrl}/api-auth/me'),
+          headers: {
+            'Authorization': 'Bearer $token',
+            'Accept': 'application/json',
+          },
+        );
         if (res.statusCode == 200) {
           final data = json.decode(res.body);
-          if (data['status'] == true && data['data'] != null && data['data']['avatar'] != null) {
-            final serverAvatar = data['data']['avatar'].toString();
+          final serverData = data['data'];
+          if (serverData != null && serverData['avatar'] != null) {
+            final serverAvatar = serverData['avatar'].toString();
             if (serverAvatar.isNotEmpty && serverAvatar != _userAvatar) {
               if (mounted) {
                 setState(() {
@@ -156,7 +163,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         }
       }
     } catch (e) {
-      debugPrint('Profile live avatar fetch error: $e');
+      debugPrint('Profile live avatar fetch error from Go API: $e');
     }
   }
 
