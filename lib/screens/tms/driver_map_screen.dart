@@ -600,6 +600,52 @@ class _DriverRouteDetailViewState extends State<DriverRouteDetailView> {
     }
   }
 
+  void _checkRoutePointTap(LatLng tapPoint) {
+    if (_historyPoints.isEmpty) return;
+
+    TrackingHistoryItem? closestPoint;
+    double minDistance = double.infinity;
+
+    for (final p in _historyPoints) {
+      final dist = Geolocator.distanceBetween(
+        tapPoint.latitude,
+        tapPoint.longitude,
+        p.latitude,
+        p.longitude,
+      );
+      if (dist < minDistance) {
+        minDistance = dist;
+        closestPoint = p;
+      }
+    }
+
+    if (closestPoint != null && minDistance <= 300) {
+      final timeStr = closestPoint.createdAt != null
+          ? DateFormat('HH:mm:ss').format(closestPoint.createdAt!)
+          : '-';
+      final speedStr = (closestPoint.speed ?? 0).toStringAsFixed(1);
+
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.access_time_rounded, color: Colors.white, size: 18),
+              const SizedBox(width: 8),
+              Text(
+                'Waktu: $timeStr • Kecepatan: $speedStr km/h',
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+          duration: const Duration(seconds: 4),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: AppColors.primaryGreen,
+        ),
+      );
+    }
+  }
+
   Future<void> _pickDate() async {
     final picked = await showDatePicker(
       context: context,
@@ -645,6 +691,23 @@ class _DriverRouteDetailViewState extends State<DriverRouteDetailView> {
       }
     }
 
+    // Red estimated polyline (PRD 4.5.3: Current position -> pending own stops)
+    List<LatLng> redEstimatedPoints = [];
+    if (blueActualPoints.isNotEmpty) {
+      final currentPos = blueActualPoints.last;
+      for (final item in stops) {
+        final detail = item['detail'] as SuratJalanDetail;
+        final isOwn = item['isOwn'] as bool;
+        final status = detail.status.toLowerCase();
+        if (isOwn && (status == 'progress' || status == 'pickup')) {
+          if (redEstimatedPoints.isEmpty) {
+            redEstimatedPoints.add(currentPos);
+          }
+          redEstimatedPoints.add(item['latLng'] as LatLng);
+        }
+      }
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: Column(
@@ -676,6 +739,9 @@ class _DriverRouteDetailViewState extends State<DriverRouteDetailView> {
             options: MapOptions(
               initialCenter: blueActualPoints.isNotEmpty ? blueActualPoints.last : _defaultCenter,
               initialZoom: 13.0,
+              onTap: (tapPosition, point) {
+                _checkRoutePointTap(point);
+              },
             ),
             children: [
               TileLayer(
@@ -684,10 +750,10 @@ class _DriverRouteDetailViewState extends State<DriverRouteDetailView> {
                 userAgentPackageName: 'com.example.one_link',
               ),
 
-              // Actual GPS Blue Solid Polyline
-              if (blueActualPoints.length >= 2)
-                PolylineLayer(
-                  polylines: [
+              // Actual GPS Blue Solid & Estimated Red Polyline (PRD 4.5.3)
+              PolylineLayer(
+                polylines: [
+                  if (blueActualPoints.length >= 2)
                     Polyline(
                       points: blueActualPoints,
                       color: const Color(0xFF007BFF),
@@ -695,8 +761,14 @@ class _DriverRouteDetailViewState extends State<DriverRouteDetailView> {
                       borderColor: Colors.white,
                       borderStrokeWidth: 1.5,
                     ),
-                  ],
-                ),
+                  if (redEstimatedPoints.length >= 2)
+                    Polyline(
+                      points: redEstimatedPoints,
+                      color: const Color(0xFFDC3545),
+                      strokeWidth: 3.5,
+                    ),
+                ],
+              ),
 
               // Destination Stop Markers
               MarkerLayer(

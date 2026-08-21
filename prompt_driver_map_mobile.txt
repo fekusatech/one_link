@@ -1,0 +1,37 @@
+Kamu bertugas mengimplementasikan fitur "Driver Map & Tracking" di aplikasi Flutter ini (One Link / crm-mobile). Spesifikasi lengkapnya ada di file `prd_driver_map_mobile.md` di root project — BACA SELURUH FILE ITU dulu sebelum mulai apapun, jangan cuma skim judul section.
+
+Kerjakan berurutan, JANGAN loncat ke Langkah 1 sebelum Langkah 0 beres dan dua keputusan di bawah dikonfirmasi ke saya.
+
+=== LANGKAH 0 — Verifikasi backend dulu (WAJIB) ===
+
+PRD ini ditulis dengan asumsi backend-nya SUDAH ADA di Go API (`/api-tms/tracking/live`, `/api-tms/tracking/history`, `/api-tms/tracking/update`, `/api-tms/mapping/data` — lihat section 0 & 4 PRD), tapi itu cuma dari daftar route (`doc.md`), belum diverifikasi request/response body-nya asli.
+
+1. Buka source Go API (handler untuk route-route di atas), baca struct request/response-nya beneran — ATAU hit endpoint live pakai token valid buat lihat shape response asli.
+2. Bandingkan field yang ADA di response asli vs field yang DIBUTUHKAN di PRD section 4.1, 4.2, 4.5 (terutama: nama asli bukan email, speed dibulatkan 1 desimal, `idle_stops`, `dwell_minutes`, `is_own`, `driver_name`, info kendaraan, `address`).
+3. Cek soal keamanan di PRD section 3.2 — apakah `tracking/live` & `tracking/history` sudah membatasi akses sesuai role, atau literally kebuka ke semua user login.
+4. Laporkan balik ke saya sebelum lanjut:
+   - Endpoint mana yang sudah siap pakai apa adanya.
+   - Endpoint/field mana yang perlu ditambah atau dibuat baru (kalau ada gap, PRD section 4.5 punya algoritma & aturan bisnis referensi yang sudah tervalidasi jalan di versi web — port dari situ, jangan reinvent).
+   - Temuan soal keamanan di poin 3.
+
+=== DUA KEPUTUSAN YANG HARUS DITANYA DULU, JANGAN DIASUMSIKAN ===
+
+- PRD section 2: apakah migrasi jalur KIRIM GPS (`LocationTrackingService`, yang sekarang jalan production tanpa auth) ke endpoint baru termasuk scope task ini, atau dibiarkan jalan seperti sekarang dan task ini cuma fitur BARU (lihat peta).
+- PRD section 4.6: apakah fitur monitoring foto dual-camera (nyalain/matiin monitoring + lihat galeri foto) ikut di-port ke mobile, atau cukup badge status read-only saja.
+
+=== LANGKAH 1 — Implementasi Flutter (setelah Langkah 0 clear + 2 keputusan di atas dikonfirmasi) ===
+
+Ikuti PRD section 5 persis:
+- Map: `flutter_map` (BUKAN `google_maps_flutter`), basemap CARTO Positron sama kayak web.
+- HTTP: `GeuApiClient` (dio-based, cookie session) untuk SEMUA call baru — jangan pakai `http` package mentah kayak `driver_tracking_service.dart` yang lama.
+- Role gating: reuse `RoleManagementService` / `DashboardAccessService` yang sudah ada — jangan bikin mekanisme role-check baru.
+- State management: ikuti pola yang sudah dipakai di project ini, jangan introduce library baru.
+- Warna & style (status driver, status surat jalan, live trail, dll — section 4.5.2 & 5.2 PRD) HARUS sama persis dengan web. Ini requirement, bukan preferensi — supaya admin yang biasa pakai web gak bingung pas pindah ke mobile.
+- Pastikan idle stops (titik berhenti umum) TIDAK ketuker sama dwell-time (durasi di titik tujuan surat jalan) — dua konsep beda, lihat PRD section 4.2 vs 4.5.4.
+- Aturan akses gudang (PRD section 4.5.1) — driver role lihat SEMUA surat jalan gudang tempat dia jadi anggota, bukan cuma job dia sendiri. Ini gampang salah kalau di-reimplementasi tanpa paham alasannya.
+
+Setelah selesai, jalankan checklist testing di PRD section 7 satu-satu sebelum lapor selesai.
+
+=== ATURAN UMUM ===
+
+Kalau ada bagian PRD yang ambigu, atau kamu nemuin kenyataan di kode/API yang beda dari yang didokumentasikan (misal field API ternyata namanya beda dari dugaan) — STOP dan tanya ke saya, jangan improvisasi diam-diam. Terutama untuk section 3.2 (keamanan) dan 4.5.1 (aturan akses gudang) — itu dua area yang paling gampang salah dan paling sensitif kalau salah (data lokasi driver ke-expose ke orang yang gak berhak).

@@ -81,12 +81,13 @@ Sama buat `GET /api-tms/tracking/history` — pastikan kalau driver biasa manggi
 | `lat`, `lng` | float | Posisi terkini |
 | `speed` | float | km/h, dibulatkan 1 desimal di server (jangan kirim raw float panjang kayak `5.7757` — ada bug serupa pernah terjadi di web) |
 | `heading` | float\|null | 0-360°, buat rotasi icon arrow kalau lagi gerak |
-| `status` | string | `online` (<5 menit) / `idle` (5-15 menit) / `offline` (>15 menit) — threshold ini dari `v_driver_latest_position` di DB, ikuti yang sama |
+| `status` | string | `online` (≤5 menit) / `idle` (≤15 menit) / `offline` (>15 menit) — threshold persis dari `v_driver_latest_position` di DB (`CASE WHEN minutes_ago<=5 THEN 'online' WHEN minutes_ago<=15 THEN 'idle' ELSE 'offline'`), ikuti yang sama |
 | `battery_level` | int\|null | |
 | `app_version` | string\|null | |
 | `minutes_ago` | int | |
-| `is_monitoring` | bool | Lagi dipantau foto dual-camera atau gak |
+| `is_monitoring` | bool | Lagi dipantau foto dual-camera atau gak (lihat 4.6 soal scope fitur monitoring) |
 | `vehicle_plat`, `vehicle_jenis`, `vehicle_merk` | string\|null | Kendaraan terakhir dipakai (dari `t_pickup.fleet_id` terbaru) |
+| `address` | string\|null | Alamat hasil reverse-geocode posisi terkini — ditampilkan di popup marker web ("Location: ..."), reverse-geocode di-throttle server (cuma dipanggil ulang kalau pindah >100m atau >10 menit sejak terakhir, biar gak boros API), jangan hitung ulang per-request di FE |
 
 ### 4.2 Riwayat rute + estimasi tujuan (Show Route / My Route)
 
@@ -95,6 +96,8 @@ Sama buat `GET /api-tms/tracking/history` — pastikan kalau driver biasa manggi
 Params yang dibutuhkan: `driver_id` (admin only — driver biasa gak kirim ini, backend infer dari token), `date_from`, `date_to`.
 
 **Rute GPS aktual** — per titik butuh: `lat`, `lng`, `timestamp`, `speed`, `heading`, `address`. Dipakai buat garis biru + klik-titik-lihat-jam (lihat 4.5.3).
+
+**Idle stops (titik berhenti umum, TERPISAH dari dwell-time di 4.5.4)** — ini gampang ketuker jadi tegasin: `idle_stops` dihitung dari clustering titik GPS di sepanjang rute yang jaraknya <35 meter dan durasinya ≥3 menit — **di MANAPUN** dia berhenti, bukan cuma di titik tujuan surat jalan (misal berhenti buat isi bensin, istirahat, macet). Beda konsep dari 4.5.4 yang khusus ngecek "berapa lama di titik tujuan yang SUDAH DIKETAHUI". Web nampilin ini sebagai marker oranye ⏱️ terpisah dari pin tujuan (ungu/hijau/dst), plus toast ringkasan pas rute selesai dimuat ("Total Titik Berhenti: N Lokasi, Total Waktu Ngetem: Y"). Per item butuh: `lat`, `lng`, `address`, `start_time`, `end_time`, `duration_minutes`, `formatted_duration`. Referensi algoritma clustering-nya di `DriverMapService::getFormattedRouteData()` (bagian `$cluster`/`haversineMeters` di kode PHP, radius 35m beda dari radius dwell-time yang 150m — jangan disamain).
 
 **Surat jalan / tujuan** — per item butuh:
 
@@ -188,6 +191,16 @@ Sudah divalidasi ke data real: driver `badasexp123@gmail.com` dapat 30 menit di 
 
 **Kalau memilih hitung ini di CLIENT (Flutter) daripada backend**, butuh raw GPS points dikirim ke device (data lebih besar) — pertimbangkan hitung di backend saja dan cuma kirim hasil `dwell_minutes` per stop, lebih hemat bandwidth & battery.
 
+### 4.6 Monitoring foto dual-camera — KEPUTUSAN SCOPE, belum diputuskan
+
+Di web, `driver_map` juga jadi tempat admin **menyalakan/mematikan monitoring foto** (dual-camera + screenshot HP driver, interval bisa diatur) dan **melihat galeri foto** hasil monitoring (`openMonitoringModal`, `saveMonitoringCommand`, `openMonitoringLogs` di `map_tracking.php`). Badge `is_monitoring` di section 4.1 nunjukkin status ini, tapi cuma nunjukkin — gak termasuk kontrolnya.
+
+**Ini fitur terpisah secara konsep** (monitoring privacy-sensitive driver, bukan sekadar lihat posisi) — putuskan dulu ke user apakah:
+- (a) Ikut di-port ke mobile juga (admin bisa nyalain/liat galeri dari HP), atau
+- (b) Di luar scope task ini, cukup tampilkan badge status aja (read-only), kontrolnya tetep cuma via web.
+
+**Jangan asumsikan salah satu** — ini keputusan produk (siapa yang boleh trigger monitoring dari HP, bukan cuma dari komputer kantor), bukan keputusan teknis semata.
+
 ---
 
 ## 5. Flutter Implementation
@@ -218,13 +231,24 @@ TileLayer(
 **`AdminDriverMapView`**:
 - `flutter_map` full-screen, marker per driver (warna status: online `#28a745` / idle `#ffc107` / offline `#dc3545`, sama kayak web).
 - Marker yang `speed > 0` (lagi gerak): ganti icon jadi panah navigasi di-rotate sesuai `heading` (asset sama kayak web: `https://geu.fekusa.com/assets/icon/icon-navigation.png`, arrow default menghadap atas/utara, `heading` derajat searah jarum jam dari utara — di Flutter pakai `Transform.rotate(angle: heading * pi / 180)`).
-- Badge merah kecil berkedip (pulsing) di marker yang `is_monitoring == true`.
-- Bottom sheet / list scrollable: daftar semua driver (nama, jabatan, kendaraan, status, speed, battery). Tap item atau marker → push ke `DriverRouteDetailView(driverId: ...)`.
+- Badge merah kecil berkedip (pulsing) di marker yang `is_monitoring == true` (lihat 4.6 soal scope kontrolnya).
+- **Live breadcrumb trail** — garis biru tipis (`#007bff`, weight 3, opacity 0.6, beda dari garis rute historis yang lebih tebal) yang otomatis nambah ngikutin driver yang lagi gerak, dibangun dari histori posisi tiap kali polling (bukan minta data baru ke server — murni olah data yang udah di-fetch). Reset/hilang kalau driver-nya offline atau ke-filter keluar dari tampilan. Ini fitur web yang sengaja dibuat biar admin gak perlu buka detail rute cuma buat lihat "dia baru aja dari mana" — port juga ke mobile, gratis (gak nambah beban API).
+- **Filter bar** (di atas map atau di list panel): kategori (Driver/Armada, Sales/RO/CRO, Warehouse & Logistik, Admin/Management — dicocokkan dari substring nama jabatan, lihat `getFilteredDrivers()` di web buat aturan persisnya), platform (Mobile App Only / Web Only — beda dari ada-tidaknya `battery`/`app_version`), search text (nama/email/jabatan), toggle "Hide Offline". Semua filter ini murni client-side di atas data yang sudah di-fetch, gak query ulang ke server.
+- **Legend** (collapsible): warna status driver, arti badge monitoring, arti garis biru live trail — biar user baru ngerti tanpa nanya.
+- List/bottom sheet: daftar driver (nama, jabatan, kendaraan, status, speed, battery), ikut ter-filter sesuai filter bar di atas. Tap item atau marker → push ke `DriverRouteDetailView(driverId: ...)`.
+- Kontrol refresh: toggle auto-refresh on/off + tombol refresh manual (jangan cuma auto-polling tanpa kontrol user, samain UX-nya kayak web).
 - Polling: refresh tiap **15-20 detik** (lebih longgar dari web yang 10 detik — pertimbangan baterai/data HP), **pause polling saat screen gak visible** (pakai `WidgetsBindingObserver` / route-aware, jangan polling terus di background).
+- *(Opsional/nice-to-have, bukan prioritas)*: web ada toggle tampilan Peta/Tabel (data table semua driver). Di mobile, layar kecil bikin tabel penuh kolom kurang ergonomis — kalau mau di-port, pertimbangkan versi ringkas (list card yang lebih detail) daripada tabel literal. Boleh di-skip di iterasi pertama.
 
 **`DriverRouteDetailView`** (dipakai admin lihat driver lain, ATAU driver lihat dirinya sendiri):
 - Date range picker (default: hari ini) — kirim `date_from`/`date_to` ke endpoint 4.2.
-- Map: garis biru rute aktual (klik titik → popup jam/speed/address, lihat 4.5.3), garis merah dashed estimasi (cuma stop `is_own && pending`), pin bernomor per tujuan (warna ikut status per 4.5.2).
+- Map, beberapa layer sekaligus (jangan sampai ketuker pas implementasi):
+  - Garis **biru solid** = rute GPS aktual (weight lebih tebal dari live trail di admin view), titik bisa di-tap → popup jam/speed/address (lihat 4.5.3).
+  - Marker **hijau "S"** di titik awal rute, **merah "E"** di titik akhir (start/end hari itu).
+  - Marker **oranye ⏱️** di tiap idle stop (lihat 4.2) — beda dari pin tujuan surat jalan, ini titik berhenti UMUM di sepanjang rute.
+  - Garis **merah dashed** estimasi (cuma stop `is_own && pending`, lihat 4.5.3).
+  - Pin bernomor ungu/berwarna per tujuan surat jalan (warna ikut status per 4.5.2).
+- Toast/banner ringkasan begitu rute selesai dimuat: total idle stop + total waktu berhenti (dari `idle_stops`, section 4.2) — bukan dwell-time per tujuan, ini ringkasan keseluruhan hari itu.
 - List di bawah/sebelah map: tiap surat jalan — nomor urut kalau `is_own`, icon "orang" kalau bukan (job driver lain segudang) + nama drivernya, badge status berwarna, badge dwell time (`⏱️ Terpantau X Menit di lokasi`) kalau ada.
 - Kalau admin: tombol "Keluar" balik ke `AdminDriverMapView`. Kalau driver liat diri sendiri: gak perlu tombol keluar (ini home-nya).
 
@@ -257,6 +281,10 @@ Ikuti pola yang sudah dipakai di project ini (cek screen lain yang mirip komplek
 | 8 | Driver B coba akses riwayat rute Driver A lewat API langsung (bukan lewat UI) | Backend tolak 403 kalau Driver B bukan admin (verifikasi ini bukan cuma dicegah di UI) |
 | 9 | Sinyal HP hilang saat admin lagi lihat live map | Gak crash, tampilkan indikator "gagal update", retry otomatis pas sinyal balik |
 | 10 | Driver tanpa surat jalan hari itu | Empty state jelas, bukan loading nyangkut |
+| 11 | Driver berhenti >3 menit di lokasi yang BUKAN tujuan surat jalan (misal istirahat) | Muncul marker oranye idle stop, beda dari pin tujuan surat jalan |
+| 12 | Terapkan filter kategori/platform/search/hide-offline di Admin Map View | List & marker ke-filter sesuai, gak ada request baru ke server (murni client-side) |
+| 13 | Driver A jalan terus di Admin Map View tanpa buka detail rutenya | Garis biru tipis (live trail) otomatis nambah ngikutin dia, tanpa perlu tap apapun |
+| 14 | Filter/search diterapkan lalu driver yang lagi difokuskan (kalau ada state serupa) ke-exclude oleh filter | Pastikan behavior didefinisikan — jangan sampai state fokus rusak diam-diam gara-gara filter (bug serupa pernah kejadian di versi web, sudah diperbaiki di sana — lihat `onFilterChange()` yang bypass filter biasa saat mode fokus aktif) |
 
 ---
 
