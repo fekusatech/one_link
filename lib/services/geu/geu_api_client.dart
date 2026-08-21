@@ -44,6 +44,15 @@ class GeuApiClient {
     dio.interceptors.add(CookieManager(cookieJar));
     dio.interceptors.add(
       InterceptorsWrapper(
+        onRequest: (options, handler) async {
+          try {
+            final token = await UserStorage.getToken();
+            if (token != null && token.isNotEmpty && !options.headers.containsKey('Authorization')) {
+              options.headers['Authorization'] = 'Bearer $token';
+            }
+          } catch (_) {}
+          return handler.next(options);
+        },
         onError: (error, handler) async {
           final isAuthCall = error.requestOptions.path.contains('/api-auth/');
           if (error.response?.statusCode == 401 && !isAuthCall) {
@@ -63,7 +72,7 @@ class GeuApiClient {
                 data: {
                   'status': 'error',
                   'message':
-                      'Sesi Canvassing berakhir. Silakan logout lalu login ulang.',
+                      'Sesi login telah berakhir. Silakan masuk kembali ke akun Anda.',
                 },
               ),
             );

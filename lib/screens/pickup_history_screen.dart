@@ -63,16 +63,29 @@ class _PickupHistoryScreenState extends State<PickupHistoryScreen> {
         dateToStr = DateFormat('yyyy-MM-dd').format(_endDate!);
       }
 
-      final all = await GeuSuratJalanService.listForDriver(
-        dateFrom: dateFromStr,
-        dateTo: dateToStr,
-        limit: 200,
-      );
-
-      final history = all.where((s) {
-        final st = s.status.toLowerCase();
-        return st == 'done' || st == 'cancel' || st == 'cancelled';
-      }).toList();
+      List<SuratJalan> history = [];
+      try {
+        final all = await GeuSuratJalanService.listForDriver(
+          dateFrom: dateFromStr,
+          dateTo: dateToStr,
+          limit: 200,
+        );
+        history = all.where((s) {
+          final st = s.status.toLowerCase();
+          return st == 'done' || st == 'cancel' || st == 'cancelled';
+        }).toList();
+      } catch (err) {
+        debugPrint('⚠️ GeuSuratJalanService error, falling back to SuratJalanService: $err');
+        final userId = await UserStorage.getUserId();
+        final legacyRes = await SuratJalanService.getSuratJalan(
+          userId: (userId ?? 1).toString(),
+          status: 'all',
+        );
+        history = legacyRes.suratJalan.where((s) {
+          final st = s.status.toLowerCase();
+          return st == 'done' || st == 'cancel' || st == 'cancelled';
+        }).toList();
+      }
 
       if (mounted) {
         setState(() {
@@ -84,7 +97,7 @@ class _PickupHistoryScreenState extends State<PickupHistoryScreen> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          _errorMessage = e.toString().replaceAll('Exception: ', '');
+          _errorMessage = 'Gagal memuat data riwayat. Silakan geser ke bawah untuk memperbarui.';
           _isLoading = false;
         });
       }
