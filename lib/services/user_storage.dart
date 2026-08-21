@@ -178,8 +178,7 @@ class UserStorage {
   static const String _keyWorkingMode = 'is_working_mode_active';
 
   static Future<bool> isWorkingModeActive() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getBool(_keyWorkingMode) ?? true; // Default true (features enabled)
+    return true; // Always active (working mode restriction disabled)
   }
 
   static Future<void> setWorkingModeActive(bool active) async {

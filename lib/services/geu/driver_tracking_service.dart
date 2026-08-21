@@ -110,21 +110,8 @@ class GeuDriverTrackingService {
     try {
       await GeuAuthService.ensureSession();
       final dio = await GeuApiClient.instance;
-      var res = await dio.get('/api-tms/tracking/live');
-      var data = res.data;
-
-      // Auto-heal session if 401 / session expired error occurs
-      if (data is Map && data['status'] == 'error' && data['message'].toString().contains('login telah berakhir')) {
-        debugPrint('🔄 Live tracking session expired. Attempting silent re-authentication...');
-        try {
-          await GeuAuthService.login('santosofebrikukuh@gmail.com', 'putri123');
-          final freshDio = await GeuApiClient.instance;
-          res = await freshDio.get('/api-tms/tracking/live');
-          data = res.data;
-        } catch (authErr) {
-          debugPrint('⚠️ Silent re-auth failed: $authErr');
-        }
-      }
+      final res = await dio.get('/api-tms/tracking/live');
+      final data = res.data;
 
       if (data is Map && data['status'] == 'error') {
         throw Exception(data['message'] ?? 'Gagal memuat live tracking');

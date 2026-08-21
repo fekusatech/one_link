@@ -27,7 +27,7 @@ class SuratJalanDetailScreen extends StatefulWidget {
 
 class _SuratJalanDetailScreenState extends State<SuratJalanDetailScreen> {
   late SuratJalan _current = widget.suratJalan;
-  bool _isWorkingMode = false;
+  bool _isWorkingMode = true;
 
   bool get _headerFinished => _current.status == 'done' || _current.status == 'cancel';
 
@@ -413,17 +413,6 @@ class _SuratJalanDetailScreenState extends State<SuratJalanDetailScreen> {
                   Expanded(
                     child: OutlinedButton.icon(
                       onPressed: () async {
-                        final active = await UserStorage.isWorkingModeActive();
-                        if (!active) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('🛑 Mode Bekerja Belum Aktif! Harap aktifkan "Mulai Bekerja" di Beranda terlebih dahulu.'),
-                              backgroundColor: AppColors.error,
-                              duration: Duration(seconds: 3),
-                            ),
-                          );
-                          return;
-                        }
                         await Navigator.push(
                           context,
                           MaterialPageRoute(
@@ -432,24 +421,23 @@ class _SuratJalanDetailScreenState extends State<SuratJalanDetailScreen> {
                         );
                         _refresh();
                       },
-                      icon: Icon(
+                      icon: const Icon(
                         Icons.arrow_forward,
                         size: 16,
-                        color: _isWorkingMode ? AppColors.primaryGreen : AppColors.grey,
+                        color: AppColors.primaryGreen,
                       ),
-                      label: Text(
+                      label: const Text(
                         'Lanjutkan',
                         style: TextStyle(
-                          color: _isWorkingMode ? AppColors.primaryGreen : AppColors.grey,
+                          color: AppColors.primaryGreen,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
                       style: OutlinedButton.styleFrom(
-                        foregroundColor: _isWorkingMode ? AppColors.primaryGreen : AppColors.grey,
-                        side: BorderSide(
-                          color: _isWorkingMode ? AppColors.primaryGreen : AppColors.lightGrey,
+                        foregroundColor: AppColors.primaryGreen,
+                        side: const BorderSide(
+                          color: AppColors.primaryGreen,
                         ),
-                        backgroundColor: _isWorkingMode ? null : AppColors.backgroundGrey,
                         padding: const EdgeInsets.symmetric(vertical: 10),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                       ),
