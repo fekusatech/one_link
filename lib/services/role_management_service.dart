@@ -96,10 +96,14 @@ class RoleManagementService {
       return RoleType.denied;
     }
 
-    // Priority: driver > sales > admin
-    if (access.driver) {
-      print('✅ API: driver access granted');
-      return RoleType.driver;
+    // Priority: admin > sales > driver. Admin must win even when the same
+    // account also carries driver/sales access (common for dev/QA accounts
+    // granted all three mobile-access-* permissions at once) — otherwise an
+    // admin never sees the role selector and gets auto-routed straight into
+    // whichever dashboard happened to be checked first.
+    if (access.admin) {
+      print('✅ API: admin access granted');
+      return RoleType.admin;
     }
 
     if (access.sales) {
@@ -107,17 +111,33 @@ class RoleManagementService {
       return RoleType.sales;
     }
 
-    if (access.admin) {
-      print('✅ API: admin access granted');
-      return RoleType.admin;
+    if (access.driver) {
+      print('✅ API: driver access granted');
+      return RoleType.driver;
     }
 
     return RoleType.denied;
   }
 
-  /// Tentukan role type berdasarkan prioritas (keyword-based fallback)
+  /// Tentukan role type berdasarkan prioritas (keyword-based fallback).
+  /// Admin dicek PALING DULU — sama alasannya kayak _determineRoleTypeFromAccess,
+  /// akun admin gak boleh ke-skip dari selector cuma karena role list-nya
+  /// juga kebetulan cocok kata kunci driver/sales.
   static RoleType _determineRoleType(List<String> roles) {
-    // 1. Priority: Driver - jika ada kata "driver" atau "drv"
+    // 1. Priority: Admin - jika ada "superadmin", "developer", "super user", atau "admin"
+    for (final role in roles) {
+      final r = role.toLowerCase();
+      if (r.contains('superadmin') ||
+          r.contains('developer') ||
+          r.contains('super user') ||
+          r.contains('superuser') ||
+          r.contains('admin')) {
+        print('✅ Found admin role: $role');
+        return RoleType.admin;
+      }
+    }
+
+    // 2. Priority: Driver - jika ada kata "driver" atau "drv"
     for (final role in roles) {
       final r = role.toLowerCase();
       if (r.contains('driver') || r.contains('drv')) {
@@ -126,7 +146,7 @@ class RoleManagementService {
       }
     }
 
-    // 2. Priority: Sales - jika ada kata "cro", "roe" atau "ro"
+    // 3. Priority: Sales - jika ada kata "cro", "roe" atau "ro"
     for (final role in roles) {
       final r = role.toLowerCase();
       if (r.contains('cro') ||
@@ -137,19 +157,6 @@ class RoleManagementService {
           r.contains('sales')) {
         print('✅ Found sales role: $role');
         return RoleType.sales;
-      }
-    }
-
-    // 3. Priority: Admin - jika ada "superadmin", "developer", "super user", atau "admin"
-    for (final role in roles) {
-      final r = role.toLowerCase();
-      if (r.contains('superadmin') ||
-          r.contains('developer') ||
-          r.contains('super user') ||
-          r.contains('superuser') ||
-          r.contains('admin')) {
-        print('✅ Found admin role: $role');
-        return RoleType.admin;
       }
     }
 
