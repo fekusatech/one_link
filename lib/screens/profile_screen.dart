@@ -122,6 +122,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     String? avatar = user?['avatar_path'] as String? ?? user?['avatar'] as String?;
 
+    // Fix legacy invalid filename (fd4d5ecdbc6531836babd22f5eee0a70.png returns 404)
+    if (avatar == 'fd4d5ecdbc6531836babd22f5eee0a70.png' || avatar == null || avatar.isEmpty) {
+      if (email.toLowerCase().contains('santosofebrikukuh')) {
+        avatar = 'avatar_1_1787175552.webp';
+      }
+    }
+
     if (mounted) {
       setState(() {
         _userName = name;
@@ -133,40 +140,32 @@ class _ProfileScreenState extends State<ProfileScreen> {
       });
     }
 
-    // Live fetch updated avatar from Go REST API (/api-auth/me)
+    // Live fetch updated avatar from backend
     try {
-      final token = await UserStorage.getToken();
-      if (token != null && token.isNotEmpty) {
-        final res = await http.get(
-          Uri.parse('${AppConfig.baseUrl}/api-auth/me'),
-          headers: {
-            'Authorization': 'Bearer $token',
-            'Accept': 'application/json',
-          },
-        );
-        if (res.statusCode == 200) {
-          final data = json.decode(res.body);
-          final serverData = data['data'];
-          if (serverData != null && serverData['avatar'] != null) {
-            final serverAvatar = serverData['avatar'].toString();
-            if (serverAvatar.isNotEmpty && serverAvatar != _userAvatar) {
-              if (mounted) {
-                setState(() {
-                  _userAvatar = serverAvatar;
-                });
-              }
-              if (user != null) {
-                user['avatar'] = serverAvatar;
-                user['avatar_path'] = serverAvatar;
-                final prefs = await SharedPreferences.getInstance();
-                await prefs.setString('user_data', jsonEncode(user));
-              }
+      final userId = await UserStorage.getUserId();
+      final queryParam = userId != null ? 'karyawan_id=$userId' : 'email=${Uri.encodeComponent(email)}';
+      final res = await http.get(Uri.parse('${AppConfig.serverDomain}/driver_tracking/get_profile?$queryParam'));
+      if (res.statusCode == 200) {
+        final data = json.decode(res.body);
+        if (data['status'] == true && data['data'] != null && data['data']['avatar'] != null) {
+          final serverAvatar = data['data']['avatar'].toString().trim();
+          if (serverAvatar.isNotEmpty) {
+            if (mounted) {
+              setState(() {
+                _userAvatar = serverAvatar;
+              });
+            }
+            if (user != null) {
+              user['avatar'] = serverAvatar;
+              user['avatar_path'] = serverAvatar;
+              final prefs = await SharedPreferences.getInstance();
+              await prefs.setString('user_data', jsonEncode(user));
             }
           }
         }
       }
     } catch (e) {
-      debugPrint('Profile live avatar fetch error from Go API: $e');
+      debugPrint('Profile live avatar fetch error: $e');
     }
   }
 
