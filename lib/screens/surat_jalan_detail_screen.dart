@@ -419,7 +419,6 @@ class _SuratJalanDetailScreenState extends State<SuratJalanDetailScreen> {
                       ),
                     ),
                   ),
-                ],
               ],
             ),
           ],

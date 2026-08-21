@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'dart:async';
 import 'user_storage.dart';
-import 'driver_tracking_service.dart';
+import 'geu/driver_tracking_service.dart';
 import 'driver_monitoring_service.dart';
 
 class LocationTrackingService {
@@ -268,7 +268,7 @@ class LocationTrackingService {
 
     // Send location to tracking API
     try {
-      await DriverTrackingService.instance.sendLocationUpdate(position);
+      await GeuDriverTrackingService.updateLocation(position);
     } catch (e) {
       print('Failed to send location to API: $e');
     }
