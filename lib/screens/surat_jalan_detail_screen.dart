@@ -268,74 +268,56 @@ class _SuratJalanDetailScreenState extends State<SuratJalanDetailScreen> {
                         overflow: TextOverflow.ellipsis,
                         style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary),
                       ),
-                      const SizedBox(height: 6),
-                      InkWell(
-                        onTap: () {
-                          final phone = detail.supplierPhone;
-                          if (phone.isEmpty || phone == '-') {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Nomor WhatsApp supplier belum terdaftar.')),
+                      if (detail.supplierPhone.trim().isNotEmpty && detail.supplierPhone.trim() != '-')
+                        InkWell(
+                          onTap: () {
+                            final phone = detail.supplierPhone.trim();
+                            final message =
+                                'Halo ${detail.supplierName}, saya driver GEU One Link terkait Surat Jalan ${_current.kode}.';
+                            WaFormat.launchWhatsApp(
+                              phone: phone,
+                              message: message,
                             );
-                            return;
-                          }
-                          final message =
-                              'Halo ${detail.supplierName}, saya driver GEU One Link terkait Surat Jalan ${_current.kode}.';
-                          WaFormat.launchWhatsApp(
-                            phone: phone,
-                            message: message,
-                          );
-                        },
-                        borderRadius: BorderRadius.circular(6),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: (detail.supplierPhone.isNotEmpty && detail.supplierPhone != '-')
-                                ? AppColors.success.withOpacity(0.12)
-                                : AppColors.grey.withOpacity(0.12),
-                            borderRadius: BorderRadius.circular(6),
-                            border: Border.all(
-                              color: (detail.supplierPhone.isNotEmpty && detail.supplierPhone != '-')
-                                  ? AppColors.success.withOpacity(0.3)
-                                  : AppColors.grey.withOpacity(0.3),
-                            ),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                Icons.chat_rounded,
-                                size: 13,
-                                color: (detail.supplierPhone.isNotEmpty && detail.supplierPhone != '-')
-                                    ? AppColors.success
-                                    : AppColors.grey,
+                          },
+                          borderRadius: BorderRadius.circular(6),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: AppColors.success.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(
+                                color: AppColors.success.withValues(alpha: 0.3),
                               ),
-                              const SizedBox(width: 5),
-                              Flexible(
-                                child: Text(
-                                  (detail.supplierPhone.isNotEmpty && detail.supplierPhone != '-')
-                                      ? detail.supplierPhone
-                                      : 'No. HP belum terdaftar',
-                                  overflow: TextOverflow.ellipsis,
-                                  style: AppTextStyles.caption.copyWith(
-                                    color: (detail.supplierPhone.isNotEmpty && detail.supplierPhone != '-')
-                                        ? AppColors.success
-                                        : AppColors.textSecondary,
-                                    fontWeight: FontWeight.bold,
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(
+                                  Icons.chat_rounded,
+                                  size: 13,
+                                  color: AppColors.success,
+                                ),
+                                const SizedBox(width: 5),
+                                Flexible(
+                                  child: Text(
+                                    detail.supplierPhone.trim(),
+                                    overflow: TextOverflow.ellipsis,
+                                    style: AppTextStyles.caption.copyWith(
+                                      color: AppColors.success,
+                                      fontWeight: FontWeight.bold,
+                                    ),
                                   ),
                                 ),
-                              ),
-                              const SizedBox(width: 4),
-                              Icon(
-                                Icons.open_in_new_rounded,
-                                size: 11,
-                                color: (detail.supplierPhone.isNotEmpty && detail.supplierPhone != '-')
-                                    ? AppColors.success
-                                    : AppColors.grey,
-                              ),
-                            ],
+                                const SizedBox(width: 4),
+                                const Icon(
+                                  Icons.open_in_new_rounded,
+                                  size: 11,
+                                  color: AppColors.success,
+                                ),
+                              ],
+                            ),
                           ),
                         ),
-                      ),
                     ],
                   ),
                 ),
@@ -343,9 +325,9 @@ class _SuratJalanDetailScreenState extends State<SuratJalanDetailScreen> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: statusColor.withOpacity(0.1),
+                    color: statusColor.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: statusColor.withOpacity(0.4)),
+                    border: Border.all(color: statusColor.withValues(alpha: 0.4)),
                   ),
                   child: Text(
                     detail.status.toUpperCase(),
@@ -379,37 +361,31 @@ class _SuratJalanDetailScreenState extends State<SuratJalanDetailScreen> {
             const SizedBox(height: 12),
             Row(
               children: [
-                Expanded(
-                  child: FilledButton.icon(
-                    onPressed: () {
-                      final phone = detail.supplierPhone;
-                      if (phone.isEmpty || phone == '-') {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Nomor WhatsApp supplier belum terdaftar.')),
-                        );
-                        return;
-                      }
-                      final message =
-                          'Halo ${detail.supplierName}, saya driver GEU One Link terkait Surat Jalan ${_current.kode}.';
-                      WaFormat.launchWhatsApp(phone: phone, message: message);
-                    },
-                    style: FilledButton.styleFrom(
-                      backgroundColor: AppColors.success,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 10),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                    ),
-                    icon: const Icon(Icons.chat_rounded, size: 16),
-                    label: Text(
-                      (detail.supplierPhone.isNotEmpty && detail.supplierPhone != '-')
-                          ? 'WA Supplier'
-                          : 'WA Supplier',
-                      style: const TextStyle(fontWeight: FontWeight.bold),
+                if (detail.supplierPhone.trim().isNotEmpty && detail.supplierPhone.trim() != '-')
+                  Expanded(
+                    child: FilledButton.icon(
+                      onPressed: () {
+                        final phone = detail.supplierPhone.trim();
+                        final message =
+                            'Halo ${detail.supplierName}, saya driver GEU One Link terkait Surat Jalan ${_current.kode}.';
+                        WaFormat.launchWhatsApp(phone: phone, message: message);
+                      },
+                      style: FilledButton.styleFrom(
+                        backgroundColor: AppColors.success,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                      icon: const Icon(Icons.chat_rounded, size: 16),
+                      label: const Text(
+                        'WA Supplier',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
                     ),
                   ),
-                ),
-                if (canContinue) ...[
+                if ((detail.supplierPhone.trim().isNotEmpty && detail.supplierPhone.trim() != '-') && canContinue)
                   const SizedBox(width: 8),
+                if (canContinue)
                   Expanded(
                     child: OutlinedButton.icon(
                       onPressed: () async {

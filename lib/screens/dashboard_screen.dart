@@ -375,9 +375,14 @@ class _HomeScreenState extends State<_HomeScreen> {
     double totalKg = 0;
 
     for (final surat in _suratJalanList) {
-      // 1. Hitung total kg dari header (convert dari liter)
+      // 1. Hitung total kg dari header (convert dari liter). totalLiter
+      // dihitung dari qty_real (baru keisi setelah pickup selesai
+      // ditimbang) — sebelum itu nilainya 0. Pakai totalQty (rencana/qty
+      // order) sebagai estimasi selama belum ada realisasi, biar gak
+      // nampilin 0.0 kg buat surat jalan yang masih berjalan hari ini.
       try {
-        final liter = double.parse(surat.totalLiter);
+        final realLiter = double.parse(surat.totalLiter);
+        final liter = realLiter > 0 ? realLiter : double.parse(surat.totalQty);
         totalKg += liter * 0.9;
       } catch (_) {}
 
@@ -1493,12 +1498,24 @@ class _HomeScreenState extends State<_HomeScreen> {
                         children: [
                           Icon(Icons.scale, size: 14, color: AppColors.grey),
                           const SizedBox(width: 4),
-                          Text(
-                            '${SuratJalanService.convertLiterToKg(detail.qtyReal)} kg',
-                            style: AppTextStyles.caption.copyWith(
-                              color: AppColors.grey,
-                            ),
-                          ),
+                          Builder(builder: (context) {
+                            // qty_real is only filled in once the driver
+                            // actually completes the pickup (weighed on
+                            // site) — before that it's legitimately 0, so
+                            // fall back to the planned qty (qty_order) as
+                            // an estimate rather than showing "0.0 kg".
+                            final hasReal = double.tryParse(detail.qtyReal) != null &&
+                                double.parse(detail.qtyReal) > 0;
+                            final kgText = SuratJalanService.convertLiterToKg(
+                              hasReal ? detail.qtyReal : detail.qtyOrder,
+                            );
+                            return Text(
+                              hasReal ? '$kgText kg' : '~$kgText kg (estimasi)',
+                              style: AppTextStyles.caption.copyWith(
+                                color: AppColors.grey,
+                              ),
+                            );
+                          }),
                         ],
                       ),
                       if (distanceLabel != null)
