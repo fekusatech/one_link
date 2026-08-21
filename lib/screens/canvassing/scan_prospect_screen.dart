@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../constants/app_colors.dart';
 import '../../services/geu/crm_permission_service.dart';
@@ -7,7 +8,9 @@ import '../../services/geu/visit_planner_service.dart';
 
 class ScanProspectScreen extends StatefulWidget {
   final bool asSheet;
-  const ScanProspectScreen({super.key, this.asSheet = false});
+  final FutureOr<void> Function(ScanJob job, List<ScannedProspect> prospects)?
+  onScanSaved;
+  const ScanProspectScreen({super.key, this.asSheet = false, this.onScanSaved});
   @override
   State<ScanProspectScreen> createState() => _ScanProspectScreenState();
 }
@@ -114,18 +117,112 @@ class _ScanProspectScreenState extends State<ScanProspectScreen>
         radiusMeters: _radius,
         requirePhone: _requirePhone,
       );
+      final scanJob = ScanJob(
+        id: jobId,
+        keyword: keyword,
+        status: 'done',
+        radius: _radius,
+        found: 0,
+        saved: saved,
+        locationName: '',
+        latitude: fix.latitude,
+        longitude: fix.longitude,
+        createdAt: DateTime.now(),
+      );
+      final prospects = await VisitPlannerService.getScannedProspects(scanJob);
+      final job = ScanJob(
+        id: scanJob.id,
+        keyword: scanJob.keyword,
+        status: scanJob.status,
+        radius: scanJob.radius,
+        found: prospects.length,
+        saved: scanJob.saved,
+        locationName: scanJob.locationName,
+        latitude: scanJob.latitude,
+        longitude: scanJob.longitude,
+        createdAt: scanJob.createdAt,
+      );
+      await widget.onScanSaved?.call(job, prospects);
       if (!mounted) return;
       _keyword.clear();
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('$saved prospek baru tersimpan.')));
+      await _showScanSuccess(saved, prospects.length);
       await _load();
     } catch (error) {
-      if (mounted) setState(() => _error = error.toString());
+      if (!mounted) return;
+      final message = _friendlyScanError(error);
+      setState(() => _error = message);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
     } finally {
       _radarController.stop();
       if (mounted) setState(() => _scanning = false);
     }
+  }
+
+  Future<void> _showScanSuccess(int saved, int total) async {
+    if (!mounted) return;
+    final hasResults = total > 0;
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 64,
+              height: 64,
+              decoration: BoxDecoration(
+                color: AppColors.success.withValues(alpha: .12),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.check_rounded,
+                color: AppColors.success,
+                size: 34,
+              ),
+            ),
+            const SizedBox(height: 14),
+            const Text(
+              'Scan selesai',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              hasResults
+                  ? '$total prospek ditemukan\n$saved prospek baru tersimpan'
+                  : '0 prospek ditemukan di radius ini.\nCoba kata kunci atau radius lain.',
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: AppColors.textSecondary),
+            ),
+            const SizedBox(height: 18),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                onPressed: () => Navigator.of(dialogContext).pop(),
+                child: const Text('Selesai'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _friendlyScanError(Object error) {
+    final raw = error
+        .toString()
+        .replaceFirst('VisitPlannerException: ', '')
+        .trim();
+    if (raw.isEmpty || raw.toLowerCase() == 'success') {
+      return 'Scan belum menghasilkan data. Coba lagi dalam beberapa saat.';
+    }
+    return raw;
   }
 
   @override

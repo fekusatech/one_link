@@ -1,6 +1,4 @@
 import 'dart:convert';
-import 'dart:math' as math;
-import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../models/geu/visit_planner_models.dart';
 import 'geu_api_client.dart';
@@ -249,115 +247,25 @@ class VisitPlannerService {
     required int radiusMeters,
     required bool requirePhone,
   }) async {
-    final escapedKeyword = keyword
-        .replaceAll('\\', '\\\\')
-        .replaceAll('"', '\\"');
-    final degrees = radiusMeters / 111320;
-    final lngDegrees = degrees / math.cos(latitude * math.pi / 180);
-    final bbox =
-        '${latitude - degrees},${longitude - lngDegrees},${latitude + degrees},${longitude + lngDegrees}';
-    final query =
-        '[out:json][timeout:60];(nwr["name"~"$escapedKeyword",i]($bbox););out center;';
-    final overpass = Dio(
-      BaseOptions(
-        connectTimeout: const Duration(seconds: 20),
-        receiveTimeout: const Duration(seconds: 70),
-      ),
-    );
-    try {
-      final response = await overpass.post(
-        'https://overpass-api.de/api/interpreter',
-        data: query,
-        options: Options(contentType: Headers.formUrlEncodedContentType),
-      );
-      final raw = response.data;
-      if (raw is! Map || raw['elements'] is! List)
-        throw VisitPlannerException('Layanan scan sedang sibuk. Coba lagi.');
-      final places = <Map<String, dynamic>>[];
-      for (final element in raw['elements'] as List) {
-        if (element is! Map) continue;
-        final tags = element['tags'];
-        final center = element['center'];
-        final name = tags is Map ? tags['name']?.toString() : null;
-        final lat = _asDouble(
-          element['lat'] ?? (center is Map ? center['lat'] : null),
-        );
-        final lng = _asDouble(
-          element['lon'] ?? (center is Map ? center['lon'] : null),
-        );
-        if (name == null || name.isEmpty || lat == null || lng == null)
-          continue;
-        final phone = tags is Map
-            ? (tags['phone'] ?? tags['contact:phone'])?.toString()
-            : null;
-        if (requirePhone && (phone == null || phone.isEmpty)) continue;
-        if (_distanceKm(latitude, longitude, lat, lng) > radiusMeters / 1000)
-          continue;
-        final address = tags is Map
-            ? [
-                tags['addr:street'],
-                tags['addr:city'],
-              ].whereType<Object>().map((value) => value.toString()).join(', ')
-            : '';
-        places.add({
-          'place_id': 'osm_${element['type']}_${element['id']}',
-          'name': name,
-          'address': address,
-          'lat': lat,
-          'lng': lng,
-          'types': '',
-          'phone': phone,
-          'keyword': keyword,
-          'scan_job_id': jobId,
-        });
-      }
-      final dio = await GeuApiClient.instance;
-      final saveResponse = await dio.post(
-        '/api/visit-planner/scan/save-batch',
-        data: {'places': places},
-      );
-      final body = saveResponse.data;
-      final data = GeuApiClient.unwrapData(body);
-      if (saveResponse.statusCode != 200)
-        throw VisitPlannerException(
-          GeuApiClient.responseMessage(body) ?? 'Prospek gagal disimpan.',
-        );
-      final saved = data is Map
-          ? int.tryParse(data['saved'].toString()) ?? 0
-          : 0;
-      await _updateScanJob(
-        jobId,
-        status: 'done',
-        found: places.length,
-        saved: saved,
-      );
-      return saved;
-    } catch (error) {
-      await _updateScanJob(jobId, status: 'failed');
-      if (error is VisitPlannerException) rethrow;
-      throw VisitPlannerException(
-        'Scan gagal. Periksa koneksi lalu coba lagi.',
-      );
-    } finally {
-      overpass.close();
-    }
-  }
-
-  static Future<void> _updateScanJob(
-    int id, {
-    required String status,
-    int? found,
-    int? saved,
-  }) async {
-    final dio = await GeuApiClient.instance;
-    await dio.patch(
-      '/api/visit-planner/scan/jobs/$id',
+    final response = await (await GeuApiClient.instance).post(
+      '/api/visit-planner/scan/google',
       data: {
-        'status': status,
-        if (found != null) 'found': found,
-        if (saved != null) 'saved': saved,
+        'job_id': jobId,
+        'keyword': keyword,
+        'lat': latitude,
+        'lng': longitude,
+        'radius': radiusMeters,
+        'require_phone': requirePhone,
       },
     );
+    final body = response.data;
+    final data = GeuApiClient.unwrapData(body);
+    if (response.statusCode != 200 || data is! Map) {
+      throw VisitPlannerException(
+        GeuApiClient.responseMessage(body) ?? 'Scan Google Maps gagal.',
+      );
+    }
+    return int.tryParse(data['saved'].toString()) ?? 0;
   }
 
   static Future<List<ScannedProspect>> getScannedProspects(ScanJob job) async {
@@ -590,21 +498,6 @@ class VisitPlannerService {
   static double? _asDouble(dynamic value) => value is num
       ? value.toDouble()
       : double.tryParse(value?.toString() ?? '');
-  static double _distanceKm(
-    double lat1,
-    double lng1,
-    double lat2,
-    double lng2,
-  ) {
-    final dLat = (lat2 - lat1) * math.pi / 180;
-    final dLng = (lng2 - lng1) * math.pi / 180;
-    final a =
-        math.pow(math.sin(dLat / 2), 2) +
-        math.cos(lat1 * math.pi / 180) *
-            math.cos(lat2 * math.pi / 180) *
-            math.pow(math.sin(dLng / 2), 2);
-    return 6371 * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a));
-  }
 }
 
 class WorkOrderStatus {
@@ -682,24 +575,28 @@ class ScanJob {
 class ScannedProspect {
   final int id;
   final String name, address, phone, status;
+  final double? latitude, longitude;
   const ScannedProspect({
     required this.id,
     required this.name,
     required this.address,
     required this.phone,
     required this.status,
+    this.latitude,
+    this.longitude,
   });
-  factory ScannedProspect.fromJson(Map<String, dynamic> json) =>
-      ScannedProspect(
-        id: int.tryParse(json['id'].toString()) ?? 0,
-        name: json['name']?.toString() ?? '',
-        address: json['address']?.toString() ?? '',
-        phone: json['phone']?.toString() ?? '',
-        status:
-            json['visit_status']?.toString() ??
-            json['status']?.toString() ??
-            'NEW',
-      );
+  factory ScannedProspect.fromJson(
+    Map<String, dynamic> json,
+  ) => ScannedProspect(
+    id: int.tryParse(json['id'].toString()) ?? 0,
+    name: json['name']?.toString() ?? '',
+    address: json['address']?.toString() ?? '',
+    phone: json['phone']?.toString() ?? '',
+    status:
+        json['visit_status']?.toString() ?? json['status']?.toString() ?? 'NEW',
+    latitude: VisitPlannerService._asDouble(json['lat'] ?? json['latitude']),
+    longitude: VisitPlannerService._asDouble(json['lng'] ?? json['longitude']),
+  );
 }
 
 class BankOption {

@@ -39,6 +39,7 @@ class _VisitPlanScreenState extends State<VisitPlanScreen> {
   LatLng? _user;
   double _headingDegrees = 0;
   List<NearbySupplier> _databaseSuppliers = const [];
+  List<ScannedProspect> _scannedProspects = const [];
   final MapController _map = MapController();
   bool _loading = true;
   bool _missionActive = false;
@@ -254,6 +255,23 @@ class _VisitPlanScreenState extends State<VisitPlanScreen> {
                             ),
                           ),
                         ),
+                  if (!_missionActive)
+                    for (final prospect in _scannedProspects)
+                      if (prospect.latitude != null &&
+                          prospect.longitude != null)
+                        Marker(
+                          point: LatLng(
+                            prospect.latitude!,
+                            prospect.longitude!,
+                          ),
+                          width: 44,
+                          height: 52,
+                          child: _mapPin(
+                            const Color(0xFFE85D75),
+                            Icons.radar_rounded,
+                            tooltip: '${prospect.name}\nProspek hasil scan',
+                          ),
+                        ),
                   if (_missionActive)
                     for (final item in items)
                       if (item.status.toUpperCase() != 'SKIPPED')
@@ -412,7 +430,20 @@ class _VisitPlanScreenState extends State<VisitPlanScreen> {
                 isScrollControlled: true,
                 backgroundColor: Colors.white,
                 showDragHandle: false,
-                builder: (_) => const ScanProspectScreen(asSheet: true),
+                builder: (_) => ScanProspectScreen(
+                  asSheet: true,
+                  onScanSaved: (job, prospects) async {
+                    if (!mounted) return;
+                    setState(() {
+                      final existing = _scannedProspects
+                          .where(
+                            (item) => !prospects.any((p) => p.id == item.id),
+                          )
+                          .toList();
+                      _scannedProspects = [...existing, ...prospects];
+                    });
+                  },
+                ),
               ),
               backgroundColor: AppColors.primaryGreen,
               foregroundColor: Colors.white,
