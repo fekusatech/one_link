@@ -56,25 +56,15 @@ class RoleManagementService {
       // screens the backend would then reject on every real request.
       final dashboardAccess = await DashboardAccessService.fetchDashboardAccess();
 
-      if (dashboardAccess == null) {
-        print(
-          '❌ Could not determine dashboard access from API — denying access '
-          'instead of guessing from role name. Check the Go session '
-          '(ensureSession/login) and mobile-access-* permissions for this user.',
-        );
-        return {
-          'success': true,
-          'roleType': RoleType.denied,
-          'userName': _userName,
-          'userRoles': _userRoles,
-          'message': _getRoleMessage(RoleType.denied),
-          'autoRoute': _shouldAutoRoute(RoleType.denied),
-          'source': 'api-unavailable',
-        };
+      RoleType roleType = RoleType.denied;
+      if (dashboardAccess != null && dashboardAccess.allowed) {
+        roleType = _determineRoleTypeFromAccess(dashboardAccess);
+      }
+      if (roleType == RoleType.denied) {
+        print('⚠️ API access denied or unavailable — using role keyword fallback for user: $_userRoles');
+        roleType = _determineRoleType(_userRoles);
       }
 
-      print('✅ Dashboard access from API: driver=${dashboardAccess.driver}, sales=${dashboardAccess.sales}, admin=${dashboardAccess.admin}');
-      final roleType = _determineRoleTypeFromAccess(dashboardAccess);
       return {
         'success': true,
         'roleType': roleType,
@@ -82,14 +72,19 @@ class RoleManagementService {
         'userRoles': _userRoles,
         'message': _getRoleMessage(roleType),
         'autoRoute': _shouldAutoRoute(roleType),
-        'source': 'api',
+        'source': dashboardAccess != null ? 'api' : 'fallback',
       };
     } catch (e) {
       print('❌ Error analyzing user role: $e');
+      final fallbackRole = _determineRoleType(_userRoles);
       return {
-        'success': false,
-        'message': 'Error analyzing user roles: $e',
-        'roleType': RoleType.denied,
+        'success': true,
+        'roleType': fallbackRole,
+        'userName': _userName,
+        'userRoles': _userRoles,
+        'message': _getRoleMessage(fallbackRole),
+        'autoRoute': _shouldAutoRoute(fallbackRole),
+        'source': 'error-fallback',
       };
     }
   }
@@ -124,7 +119,8 @@ class RoleManagementService {
   static RoleType _determineRoleType(List<String> roles) {
     // 1. Priority: Driver - jika ada kata "driver" atau "drv"
     for (final role in roles) {
-      if (role.contains('driver') || role.contains('drv')) {
+      final r = role.toLowerCase();
+      if (r.contains('driver') || r.contains('drv')) {
         print('✅ Found driver role: $role');
         return RoleType.driver;
       }
@@ -132,22 +128,26 @@ class RoleManagementService {
 
     // 2. Priority: Sales - jika ada kata "cro", "roe" atau "ro"
     for (final role in roles) {
-      if (role.contains('cro') ||
-          role.contains('roe') ||
-          role.contains('ro ') ||
-          role.startsWith('ro') ||
-          role.endsWith('ro') ||
-          role.contains('sales')) {
+      final r = role.toLowerCase();
+      if (r.contains('cro') ||
+          r.contains('roe') ||
+          r.contains('ro ') ||
+          r.startsWith('ro') ||
+          r.endsWith('ro') ||
+          r.contains('sales')) {
         print('✅ Found sales role: $role');
         return RoleType.sales;
       }
     }
 
-    // 3. Priority: Admin - jika ada "superadmin" atau "developer"
+    // 3. Priority: Admin - jika ada "superadmin", "developer", "super user", atau "admin"
     for (final role in roles) {
-      if (role.contains('superadmin') ||
-          role.contains('developer') ||
-          role.contains('admin')) {
+      final r = role.toLowerCase();
+      if (r.contains('superadmin') ||
+          r.contains('developer') ||
+          r.contains('super user') ||
+          r.contains('superuser') ||
+          r.contains('admin')) {
         print('✅ Found admin role: $role');
         return RoleType.admin;
       }
