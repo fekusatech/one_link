@@ -300,28 +300,16 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         );
       }
 
-      // 3. Cloudflare R2 CDN URL with ERP Web domain fallback
-      final r2Url = path.startsWith('filemanager/')
-          ? 'https://geu.fekusa.com/$path'
-          : 'https://geu.fekusa.com/filemanager/avatar/$path';
-
-      final erpUrl = path.startsWith('filemanager/') || path.startsWith('uploads/')
-          ? '${AppConfig.serverDomain}/$path'
-          : '${AppConfig.serverDomain}/filemanager/avatar/$path';
+      final filename = path.contains('/') ? path.split('/').last : path;
+      final avatarUrl = 'https://geu.fekusa.com/filemanager/avatar/$filename';
 
       return ClipOval(
         child: Image.network(
-          r2Url,
+          avatarUrl,
           fit: BoxFit.cover,
           width: 100,
           height: 100,
-          errorBuilder: (_, _, _) => Image.network(
-            erpUrl,
-            fit: BoxFit.cover,
-            width: 100,
-            height: 100,
-            errorBuilder: (_, _, _) => const Icon(Icons.person, size: 50, color: AppColors.primaryGreen),
-          ),
+          errorBuilder: (_, _, _) => const Icon(Icons.person, size: 50, color: AppColors.primaryGreen),
         ),
       );
     }

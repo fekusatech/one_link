@@ -170,10 +170,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildAvatarWidget(String? path) {
-    if (path != null && path.isNotEmpty) {
-      if (path.startsWith('data:image/')) {
+    if (path != null && path.trim().isNotEmpty) {
+      final cleanPath = path.trim();
+
+      if (cleanPath.startsWith('data:image/')) {
         try {
-          final bytes = base64Decode(path.split(',').last);
+          final bytes = base64Decode(cleanPath.split(',').last);
           return ClipOval(
             child: Image.memory(
               bytes,
@@ -185,10 +187,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
           );
         } catch (_) {}
       }
-      if (path.startsWith('http://') || path.startsWith('https://')) {
+
+      if (cleanPath.startsWith('http://') || cleanPath.startsWith('https://')) {
         return ClipOval(
           child: Image.network(
-            path,
+            cleanPath,
             fit: BoxFit.cover,
             width: 90,
             height: 90,
@@ -197,33 +200,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
         );
       }
 
-      if (File(path).existsSync()) {
+      if (!kIsWeb && cleanPath.contains('/') && File(cleanPath).existsSync()) {
         return ClipOval(
-          child: Image.file(File(path), fit: BoxFit.cover, width: 90, height: 90),
+          child: Image.file(File(cleanPath), fit: BoxFit.cover, width: 90, height: 90),
         );
       }
 
-      final r2Url = path.startsWith('filemanager/')
-          ? 'https://geu.fekusa.com/$path'
-          : 'https://geu.fekusa.com/filemanager/avatar/$path';
-
-      final erpUrl = path.startsWith('filemanager/') || path.startsWith('uploads/')
-          ? '${AppConfig.serverDomain}/$path'
-          : '${AppConfig.serverDomain}/filemanager/avatar/$path';
+      final filename = cleanPath.contains('/') ? cleanPath.split('/').last : cleanPath;
+      final avatarUrl = 'https://geu.fekusa.com/filemanager/avatar/$filename';
 
       return ClipOval(
         child: Image.network(
-          r2Url,
+          avatarUrl,
           fit: BoxFit.cover,
           width: 90,
           height: 90,
-          errorBuilder: (_, _, _) => Image.network(
-            erpUrl,
-            fit: BoxFit.cover,
-            width: 90,
-            height: 90,
-            errorBuilder: (_, _, _) => const Icon(Icons.person, size: 46, color: AppColors.primaryGreen),
-          ),
+          errorBuilder: (ctx, err, stack) {
+            debugPrint('❌ Error loading avatar $avatarUrl: $err');
+            return const Icon(Icons.person, size: 46, color: AppColors.primaryGreen);
+          },
         ),
       );
     }
