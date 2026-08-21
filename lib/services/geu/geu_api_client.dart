@@ -47,7 +47,16 @@ class GeuApiClient {
       InterceptorsWrapper(
         onRequest: (options, handler) async {
           try {
-            final token = await UserStorage.getToken();
+            String? token = await UserStorage.getToken();
+            if (token == null || token.isEmpty) {
+              final cookies = await cookieJar.loadForRequest(Uri.parse(baseUrl));
+              for (var c in cookies) {
+                if (c.name == 'auth_token' && c.value.isNotEmpty) {
+                  token = c.value;
+                  break;
+                }
+              }
+            }
             if (token != null && token.isNotEmpty && !options.headers.containsKey('Authorization')) {
               options.headers['Authorization'] = 'Bearer $token';
             }
