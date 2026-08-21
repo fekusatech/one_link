@@ -6,8 +6,6 @@ import 'package:url_launcher/url_launcher.dart';
 import '../constants/app_colors.dart';
 import '../constants/app_text_styles.dart';
 import '../config/app_config.dart';
-import '../services/auth_service.dart';
-import '../services/user_storage.dart';
 import '../services/persistent_auth_service.dart';
 import '../services/geu/geu_auth_service.dart';
 import '../services/auth_debug_service.dart';
@@ -134,14 +132,6 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  Future<void> _silentGeuLogin(String email, String password) async {
-    try {
-      await GeuAuthService.login(email, password);
-    } catch (_) {
-      // ignored — Canvassing/Visit Planner screens handle a missing session
-    }
-  }
-
   Future<void> _handleLogin() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -153,76 +143,46 @@ class _LoginScreenState extends State<LoginScreen> {
       final email = _emailController.text.trim();
       final password = _passwordController.text;
 
-      final response = await AuthService.loginWithEmail(email, password);
+      // AuthService.loginWithEmail() posted to {serverDomain}/api/login — a
+      // legacy PHP path. apipi.greenenergiutama.co.id now routes to the Go
+      // API only (see refactor(api) commit enforcing that domain for it);
+      // /api/login 404s there. GeuAuthService.login() hits the real,
+      // working POST /api-auth/login and already persists UserStorage
+      // (id/name/email/groups/roles) + the httpOnly session cookie itself
+      // — no need to hand-build a user map from a response shape anymore.
+      final user = await GeuAuthService.login(email, password);
 
       if (!mounted) return;
 
-      if (response['success'] == true) {
-        // Handle successful login
-        if (response['data'] != null) {
-          final data = response['data'];
+      // Remove the obsolete debug file as a further safeguard for older
+      // builds that previously used it to decide roles.
+      await AuthDebugService.clearAuthFile();
 
-          final rawUser = data['user'] ?? data;
-          final userMap = Map<String, dynamic>.from(rawUser as Map);
-          // Some ERP login responses place groups beside `user`; preserve
-          // them in the canonical profile used by RoleSelectionScreen.
-          if (userMap['groups'] == null && data['groups'] is List) {
-            userMap['groups'] = data['groups'];
-          }
-          if (userMap['groups'] == null && data['roles'] is List) {
-            userMap['groups'] = data['roles'];
-          }
-          final authMap = data['auth'] ?? {};
+      // PersistentAuthService only gates the app's local "already logged
+      // in, skip the login screen" check at startup (isLoggedIn() just
+      // checks token != null, not that it's non-empty) — the real session
+      // lives in GeuApiClient's persisted cookie jar, established above.
+      await PersistentAuthService.instance.saveLoginData(
+        token: '',
+        userId: user.id.toString(),
+        userName: user.name,
+        userPhone: '',
+        userEmail: user.email,
+        tokenExpiry: DateTime.now().add(const Duration(days: 30)).toIso8601String(),
+      );
 
-          final token =
-              authMap['token'] ?? data['token'] ?? data['session_token'] ?? '';
-          final expiry =
-              authMap['expires_at'] ??
-              DateTime.now().add(const Duration(days: 30)).toIso8601String();
+      if (!mounted) return;
 
-          await UserStorage.saveUser(user: userMap, token: token);
-          // Remove the obsolete debug file as a further safeguard for older
-          // builds that previously used it to decide roles.
-          await AuthDebugService.clearAuthFile();
-          await PersistentAuthService.instance.saveLoginData(
-            token: token,
-            userId: userMap['id']?.toString() ?? '',
-            userName: userMap['name']?.toString() ?? '',
-            userPhone: userMap['phone']?.toString() ?? '',
-            userEmail: userMap['email']?.toString() ?? '',
-            tokenExpiry: expiry,
-          );
-
-          // Best-effort: same credentials also unlock Canvassing/Visit
-          // Planner (separate backend, see doc.md) — never blocks login,
-          // never surfaces its own error; those screens just won't have
-          // data if this silently fails.
-          // Wait until Canvassing has replaced its persisted cookie/profile;
-          // navigating first could briefly show the prior user's data.
-          await _silentGeuLogin(email, password);
-        }
-
-        if (!mounted) return;
-
-        Navigator.pushNamedAndRemoveUntil(
-          context,
-          '/role-selection',
-          (route) => false,
-        );
-      } else {
-        // Show error
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(response['message'] ?? 'Login gagal'),
-            backgroundColor: AppColors.error,
-          ),
-        );
-      }
+      Navigator.pushNamedAndRemoveUntil(
+        context,
+        '/role-selection',
+        (route) => false,
+      );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Terjadi kesalahan: $e'),
+          content: Text('Login gagal: $e'),
           backgroundColor: AppColors.error,
         ),
       );
