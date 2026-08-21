@@ -106,12 +106,31 @@ class AdminDriverMapView extends StatefulWidget {
 
 class _AdminDriverMapViewState extends State<AdminDriverMapView> with WidgetsBindingObserver {
   final MapController _mapController = MapController();
+  final DraggableScrollableController _sheetController = DraggableScrollableController();
+  final TextEditingController _searchController = TextEditingController();
   List<TrackingLiveItem> _drivers = [];
   bool _loading = true;
   Timer? _pollingTimer;
   TrackingLiveItem? _selectedDriver;
+  String _searchQuery = '';
+  String _statusFilter = 'all'; // all | online | idle | offline
 
+  static const double _sheetMinSize = 0.15;
+  static const double _sheetMaxSize = 0.85;
   static const LatLng _defaultCenter = LatLng(-7.9797, 112.6304); // Default Malang/Java center
+
+  List<TrackingLiveItem> get _filteredDrivers {
+    final query = _searchQuery.trim().toLowerCase();
+    return _drivers.where((d) {
+      if (_statusFilter != 'all' && d.status.toLowerCase() != _statusFilter) {
+        return false;
+      }
+      if (query.isEmpty) return true;
+      return d.name.toLowerCase().contains(query) ||
+          d.jabatanName.toLowerCase().contains(query) ||
+          d.email.toLowerCase().contains(query);
+    }).toList();
+  }
 
   @override
   void initState() {
@@ -126,6 +145,8 @@ class _AdminDriverMapViewState extends State<AdminDriverMapView> with WidgetsBin
     WidgetsBinding.instance.removeObserver(this);
     _stopPolling();
     _mapController.dispose();
+    _sheetController.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -207,7 +228,7 @@ class _AdminDriverMapViewState extends State<AdminDriverMapView> with WidgetsBin
                 userAgentPackageName: 'com.example.one_link',
               ),
               MarkerLayer(
-                markers: _drivers.map((driver) {
+                markers: _filteredDrivers.map((driver) {
                   final isMoving = (driver.speed ?? 0) > 0;
                   final heading = driver.heading ?? 0;
                   final statusColor = _getStatusColor(driver.status);
@@ -307,10 +328,14 @@ class _AdminDriverMapViewState extends State<AdminDriverMapView> with WidgetsBin
 
           // Bottom Draggable Sheet with Driver List
           DraggableScrollableSheet(
+            controller: _sheetController,
             initialChildSize: 0.35,
-            minChildSize: 0.15,
-            maxChildSize: 0.85,
+            minChildSize: _sheetMinSize,
+            maxChildSize: _sheetMaxSize,
+            snap: true,
+            snapSizes: const [_sheetMinSize, 0.35, _sheetMaxSize],
             builder: (context, scrollController) {
+              final filtered = _filteredDrivers;
               return Container(
                 decoration: const BoxDecoration(
                   color: Colors.white,
@@ -319,46 +344,138 @@ class _AdminDriverMapViewState extends State<AdminDriverMapView> with WidgetsBin
                 ),
                 child: Column(
                   children: [
-                    Container(
-                      margin: const EdgeInsets.symmetric(vertical: 8),
-                      width: 40,
-                      height: 4.5,
-                      decoration: BoxDecoration(
-                        color: Colors.grey.shade300,
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                      child: Row(
+                    // Handle + header wrapped in its own drag detector so
+                    // expand/collapse always responds immediately, instead
+                    // of depending on the list below being scrolled to its
+                    // boundary first (the DraggableScrollableSheet/ListView
+                    // gesture-arena quirk that made swipe feel broken).
+                    GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onVerticalDragUpdate: (details) {
+                        final screenHeight = MediaQuery.of(context).size.height;
+                        final newSize = (_sheetController.size - details.delta.dy / screenHeight)
+                            .clamp(_sheetMinSize, _sheetMaxSize);
+                        _sheetController.jumpTo(newSize);
+                      },
+                      onVerticalDragEnd: (details) {
+                        // Snap to nearest stop so it doesn't linger half-open.
+                        final current = _sheetController.size;
+                        const stops = [_sheetMinSize, 0.35, _sheetMaxSize];
+                        var nearest = stops.first;
+                        var bestDiff = (current - nearest).abs();
+                        for (final s in stops.skip(1)) {
+                          final diff = (current - s).abs();
+                          if (diff < bestDiff) {
+                            bestDiff = diff;
+                            nearest = s;
+                          }
+                        }
+                        _sheetController.animateTo(
+                          nearest,
+                          duration: const Duration(milliseconds: 200),
+                          curve: Curves.easeOut,
+                        );
+                      },
+                      child: Column(
                         children: [
-                          Text(
-                            'Daftar Driver (${_drivers.length})',
-                            style: AppTextStyles.h6.copyWith(fontWeight: FontWeight.bold),
+                          Container(
+                            margin: const EdgeInsets.symmetric(vertical: 8),
+                            width: 40,
+                            height: 4.5,
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade300,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
                           ),
-                          const Spacer(),
-                          Text(
-                            '🔄 Auto-refresh 15s',
-                            style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                            child: Row(
+                              children: [
+                                Text(
+                                  'Daftar Driver (${filtered.length}/${_drivers.length})',
+                                  style: AppTextStyles.h6.copyWith(fontWeight: FontWeight.bold),
+                                ),
+                                const Spacer(),
+                                Text(
+                                  '🔄 Auto-refresh 15s',
+                                  style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                                ),
+                              ],
+                            ),
                           ),
                         ],
                       ),
                     ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      child: TextField(
+                        controller: _searchController,
+                        onChanged: (v) => setState(() => _searchQuery = v),
+                        decoration: InputDecoration(
+                          hintText: 'Cari nama / jabatan / email...',
+                          prefixIcon: const Icon(Icons.search_rounded, size: 20),
+                          suffixIcon: _searchQuery.isEmpty
+                              ? null
+                              : IconButton(
+                                  icon: const Icon(Icons.clear_rounded, size: 18),
+                                  onPressed: () {
+                                    _searchController.clear();
+                                    setState(() => _searchQuery = '');
+                                  },
+                                ),
+                          isDense: true,
+                          contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide: BorderSide(color: Colors.grey.shade300),
+                          ),
+                        ),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.only(left: 16, right: 16, bottom: 8),
+                      child: SizedBox(
+                        height: 32,
+                        child: ListView(
+                          scrollDirection: Axis.horizontal,
+                          children: [
+                            _buildStatusFilterChip('all', 'Semua'),
+                            const SizedBox(width: 6),
+                            _buildStatusFilterChip('online', 'Online'),
+                            const SizedBox(width: 6),
+                            _buildStatusFilterChip('idle', 'Idle'),
+                            const SizedBox(width: 6),
+                            _buildStatusFilterChip('offline', 'Offline'),
+                          ],
+                        ),
+                      ),
+                    ),
                     const Divider(height: 12),
                     Expanded(
-                      child: _drivers.isEmpty
+                      child: filtered.isEmpty
                           ? Center(
                               child: Text(
-                                _loading ? 'Memuat data driver...' : 'Tidak ada driver aktif saat ini',
+                                _loading
+                                    ? 'Memuat data driver...'
+                                    : (_drivers.isEmpty
+                                        ? 'Tidak ada driver aktif saat ini'
+                                        : 'Tidak ada driver yang cocok dengan pencarian/filter'),
                                 style: TextStyle(color: Colors.grey.shade600),
+                                textAlign: TextAlign.center,
                               ),
                             )
-                          : ListView.separated(
-                              controller: scrollController,
-                              itemCount: _drivers.length,
-                              separatorBuilder: (_, __) => const Divider(height: 1),
-                              itemBuilder: (context, index) {
-                                final d = _drivers[index];
+                          : RefreshIndicator(
+                              onRefresh: () async {
+                                setState(() => _loading = true);
+                                await _fetchLiveDrivers();
+                              },
+                              child: ListView.separated(
+                                controller: scrollController,
+                                physics: const AlwaysScrollableScrollPhysics(),
+                                itemCount: filtered.length,
+                                separatorBuilder: (_, __) => const Divider(height: 1),
+                                itemBuilder: (context, index) {
+                                final d = filtered[index];
                                 final statusColor = _getStatusColor(d.status);
 
                                 return ListTile(
@@ -410,6 +527,7 @@ class _AdminDriverMapViewState extends State<AdminDriverMapView> with WidgetsBin
                                   },
                                 );
                               },
+                              ),
                             ),
                     ),
                   ],
@@ -419,6 +537,24 @@ class _AdminDriverMapViewState extends State<AdminDriverMapView> with WidgetsBin
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildStatusFilterChip(String value, String label) {
+    final selected = _statusFilter == value;
+    return ChoiceChip(
+      label: Text(label, style: const TextStyle(fontSize: 12)),
+      selected: selected,
+      onSelected: (_) => setState(() => _statusFilter = value),
+      selectedColor: AppColors.primaryGreen.withValues(alpha: 0.18),
+      labelStyle: TextStyle(color: selected ? AppColors.primaryGreen : AppColors.textSecondary),
+      backgroundColor: Colors.grey.shade100,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: selected ? AppColors.primaryGreen : Colors.grey.shade300),
+      ),
+      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      visualDensity: VisualDensity.compact,
     );
   }
 }
