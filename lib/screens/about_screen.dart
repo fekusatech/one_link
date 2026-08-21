@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import '../constants/app_colors.dart';
 import '../constants/app_text_styles.dart';
 import '../config/app_config.dart';
+import '../services/update_service.dart';
 
 class AboutScreen extends StatelessWidget {
   const AboutScreen({super.key});
@@ -97,6 +97,21 @@ class AboutScreen extends StatelessWidget {
                       ),
                     ),
                   ),
+                  const SizedBox(height: 12),
+                  OutlinedButton.icon(
+                    onPressed: () => UpdateService.instance.checkNow(context),
+                    icon: const Icon(Icons.system_update_outlined, size: 18),
+                    label: const Text('Cek Pembaruan'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.primaryGreen,
+                      side: BorderSide(
+                        color: AppColors.primaryGreen.withOpacity(0.45),
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -146,307 +161,7 @@ class AboutScreen extends StatelessWidget {
 
             const SizedBox(height: 16),
 
-            // Developer Section
-            Container(
-              margin: const EdgeInsets.symmetric(horizontal: 16),
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: AppColors.white,
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      const Icon(
-                        Icons.code,
-                        color: AppColors.primaryGreen,
-                        size: 24,
-                      ),
-                      const SizedBox(width: 12),
-                      Text(
-                        'Pengembang',
-                        style: AppTextStyles.h5.copyWith(
-                          color: AppColors.black,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: AppColors.background,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: AppColors.primaryGreen.withOpacity(0.2),
-                      ),
-                    ),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 60,
-                          height: 60,
-                          decoration: BoxDecoration(
-                            color: AppColors.primaryGreen.withOpacity(0.1),
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(
-                            Icons.person,
-                            size: 30,
-                            color: AppColors.primaryGreen,
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                AppConfig.developerName,
-                                style: AppTextStyles.bodyLarge.copyWith(
-                                  color: AppColors.black,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                AppConfig.developerRole,
-                                style: AppTextStyles.bodyMedium.copyWith(
-                                  color: AppColors.grey,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              Row(
-                                children: [
-                                  Icon(
-                                    Icons.flutter_dash,
-                                    size: 16,
-                                    color: AppColors.primaryGreen,
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    'Flutter Developer',
-                                    style: AppTextStyles.bodySmall.copyWith(
-                                      color: AppColors.primaryGreen,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 16),
-
-            // Technical Info Section
-            Container(
-              margin: const EdgeInsets.symmetric(horizontal: 16),
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: AppColors.white,
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      const Icon(
-                        Icons.settings,
-                        color: AppColors.primaryGreen,
-                        size: 24,
-                      ),
-                      const SizedBox(width: 12),
-                      Text(
-                        'Informasi Teknis',
-                        style: AppTextStyles.h5.copyWith(
-                          color: AppColors.black,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  _buildInfoRow('Platform', AppConfig.platform),
-                  _buildInfoRow('Versi', AppConfig.appVersion),
-                  _buildInfoRow('Build', AppConfig.buildDate),
-                  _buildInfoRow('Bahasa', AppConfig.language),
-                  _buildInfoRow('Backend', AppConfig.backend),
-                  _buildInfoRow('Database', AppConfig.database),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 16),
-
-            // Contact Section
-            Container(
-              margin: const EdgeInsets.symmetric(horizontal: 16),
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: AppColors.white,
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      const Icon(
-                        Icons.contact_mail,
-                        color: AppColors.primaryGreen,
-                        size: 24,
-                      ),
-                      const SizedBox(width: 12),
-                      Text(
-                        'Kontak & Dukungan',
-                        style: AppTextStyles.h5.copyWith(
-                          color: AppColors.black,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Untuk pertanyaan, saran, atau dukungan teknis, silakan hubungi tim pengembang melalui kanal yang tersedia.',
-                    style: AppTextStyles.bodyMedium.copyWith(
-                      color: AppColors.grey,
-                      height: 1.5,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _buildContactButton(
-                          icon: Icons.email,
-                          label: 'Email',
-                          onTap: () {
-                            Clipboard.setData(
-                              ClipboardData(text: AppConfig.developerEmail),
-                            );
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: const Text(
-                                  'Email disalin ke clipboard',
-                                ),
-                                backgroundColor: AppColors.primaryGreen,
-                                behavior: SnackBarBehavior.floating,
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: _buildContactButton(
-                          icon: Icons.bug_report,
-                          label: 'Report Bug',
-                          onTap: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: const Text(
-                                  'Fitur akan segera tersedia',
-                                ),
-                                backgroundColor: AppColors.primaryGreen,
-                                behavior: SnackBarBehavior.floating,
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-
             const SizedBox(height: 32),
-
-            // Copyright
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Text(
-                AppConfig.copyright,
-                style: AppTextStyles.bodySmall.copyWith(color: AppColors.grey),
-                textAlign: TextAlign.center,
-              ),
-            ),
-
-            const SizedBox(height: 32),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildInfoRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Row(
-        children: [
-          SizedBox(
-            width: 80,
-            child: Text(
-              label,
-              style: AppTextStyles.bodyMedium.copyWith(color: AppColors.grey),
-            ),
-          ),
-          Text(
-            ': ',
-            style: AppTextStyles.bodyMedium.copyWith(color: AppColors.grey),
-          ),
-          Expanded(
-            child: Text(
-              value,
-              style: AppTextStyles.bodyMedium.copyWith(
-                color: AppColors.black,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildContactButton({
-    required IconData icon,
-    required String label,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-        decoration: BoxDecoration(
-          color: AppColors.background,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppColors.primaryGreen.withOpacity(0.3)),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, size: 18, color: AppColors.primaryGreen),
-            const SizedBox(width: 8),
-            Text(
-              label,
-              style: AppTextStyles.bodyMedium.copyWith(
-                color: AppColors.primaryGreen,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
           ],
         ),
       ),

@@ -10,6 +10,7 @@ import '../constants/app_text_styles.dart';
 import '../models/surat_jalan.dart';
 import 'pickup_process_screen.dart';
 import '../services/direction_service.dart';
+import '../utils/wa_format.dart';
 
 enum NavMapEngine { leafletOsm, googleMaps }
 
@@ -46,7 +47,8 @@ class _NavigationScreenState extends State<NavigationScreen> {
 
     final dLng = endLng - startLng;
     final y = math.sin(dLng) * math.cos(endLat);
-    final x = math.cos(startLat) * math.sin(endLat) -
+    final x =
+        math.cos(startLat) * math.sin(endLat) -
         math.sin(startLat) * math.cos(endLat) * math.cos(dLng);
 
     final bearingRad = math.atan2(y, x);
@@ -127,23 +129,28 @@ class _NavigationScreenState extends State<NavigationScreen> {
       }
 
       // Initial fast location fetch
-      final initialPos = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.high,
-          timeLimit: Duration(seconds: 8),
-        ),
-      ).catchError((_) async => await Geolocator.getLastKnownPosition() ?? Position(
-        latitude: _defaultCenter.latitude,
-        longitude: _defaultCenter.longitude,
-        timestamp: DateTime.now(),
-        accuracy: 0,
-        altitude: 0,
-        heading: 0,
-        speed: 0,
-        speedAccuracy: 0,
-        altitudeAccuracy: 0,
-        headingAccuracy: 0,
-      ));
+      final initialPos =
+          await Geolocator.getCurrentPosition(
+            locationSettings: const LocationSettings(
+              accuracy: LocationAccuracy.high,
+              timeLimit: Duration(seconds: 8),
+            ),
+          ).catchError(
+            (_) async =>
+                await Geolocator.getLastKnownPosition() ??
+                Position(
+                  latitude: _defaultCenter.latitude,
+                  longitude: _defaultCenter.longitude,
+                  timestamp: DateTime.now(),
+                  accuracy: 0,
+                  altitude: 0,
+                  heading: 0,
+                  speed: 0,
+                  speedAccuracy: 0,
+                  altitudeAccuracy: 0,
+                  headingAccuracy: 0,
+                ),
+          );
 
       if (mounted) {
         setState(() {
@@ -162,30 +169,31 @@ class _NavigationScreenState extends State<NavigationScreen> {
         distanceFilter: 3, // Trigger every 3 meters of movement
       );
 
-      _positionSubscription = Geolocator.getPositionStream(
-        locationSettings: locationSettings,
-      ).listen((Position position) {
-        if (!mounted) return;
+      _positionSubscription =
+          Geolocator.getPositionStream(
+            locationSettings: locationSettings,
+          ).listen((Position position) {
+            if (!mounted) return;
 
-        final newPos = LatLng(position.latitude, position.longitude);
-        double heading = position.heading;
+            final newPos = LatLng(position.latitude, position.longitude);
+            double heading = position.heading;
 
-        if ((heading == 0 || heading.isNaN) && _currentPosition != null) {
-          heading = _calculateBearing(_currentPosition!, newPos);
-        }
+            if ((heading == 0 || heading.isNaN) && _currentPosition != null) {
+              heading = _calculateBearing(_currentPosition!, newPos);
+            }
 
-        setState(() {
-          _currentPosition = newPos;
-          if (!heading.isNaN && heading != 0) {
-            _heading = heading;
-          }
-        });
+            setState(() {
+              _currentPosition = newPos;
+              if (!heading.isNaN && heading != 0) {
+                _heading = heading;
+              }
+            });
 
-        // Auto-center map following real driver movement
-        if (_followDriver) {
-          _mapController.move(newPos, _mapController.camera.zoom);
-        }
-      });
+            // Auto-center map following real driver movement
+            if (_followDriver) {
+              _mapController.move(newPos, _mapController.camera.zoom);
+            }
+          });
     } catch (e) {
       print('⚠️ Real-time GPS stream error: $e');
       if (mounted) {
@@ -235,10 +243,7 @@ class _NavigationScreenState extends State<NavigationScreen> {
 
     final bounds = LatLngBounds.fromPoints([origin, dest]);
     _mapController.fitCamera(
-      CameraFit.bounds(
-        bounds: bounds,
-        padding: const EdgeInsets.all(70),
-      ),
+      CameraFit.bounds(bounds: bounds, padding: const EdgeInsets.all(70)),
     );
   }
 
@@ -269,12 +274,14 @@ class _NavigationScreenState extends State<NavigationScreen> {
 
     String url;
     if (_currentPosition != null) {
-      url = 'https://www.google.com/maps/dir/?api=1'
+      url =
+          'https://www.google.com/maps/dir/?api=1'
           '&origin=${_currentPosition!.latitude},${_currentPosition!.longitude}'
           '&destination=${target.latitude},${target.longitude}'
           '&travelmode=driving';
     } else {
-      url = 'https://www.google.com/maps/dir/?api=1'
+      url =
+          'https://www.google.com/maps/dir/?api=1'
           '&destination=${target.latitude},${target.longitude}'
           '&travelmode=driving';
     }
@@ -307,9 +314,151 @@ class _NavigationScreenState extends State<NavigationScreen> {
     });
   }
 
+  SuratJalanDetail? get _selectedDetail {
+    final details = widget.suratJalan?.suratJalanDetail ?? const [];
+    if (_selectedSupplierIndex >= details.length) return null;
+    return details[_selectedSupplierIndex];
+  }
+
+  double get _selectedDistanceKm {
+    if (_currentPosition == null || _destinations.isEmpty) return 0;
+    final destination = _destinations.length > _selectedSupplierIndex
+        ? _destinations[_selectedSupplierIndex]
+        : _destinations.first;
+    return Geolocator.distanceBetween(
+          _currentPosition!.latitude,
+          _currentPosition!.longitude,
+          destination.latitude,
+          destination.longitude,
+        ) /
+        1000;
+  }
+
+  Future<void> _callSupplier() async {
+    final phone = _selectedDetail?.supplierPhone.trim() ?? '';
+    if (phone.isEmpty) return;
+    await launchUrl(Uri.parse('tel:$phone'));
+  }
+
+  Future<void> _messageSupplier() async {
+    final phone = _selectedDetail?.supplierPhone.trim() ?? '';
+    if (phone.isEmpty) return;
+    await launchUrl(
+      Uri.parse(
+        waUrl(phone, text: 'Halo, saya sedang menuju $_primarySupplierName.'),
+      ),
+      mode: LaunchMode.externalApplication,
+    );
+  }
+
+  Widget _buildTripSummary() {
+    final details = widget.suratJalan?.suratJalanDetail ?? const [];
+    final completed = details.where((detail) {
+      final status = detail.status.toLowerCase();
+      return status == 'done' || status == 'completed' || status == 'selesai';
+    }).length;
+    final total = details.isEmpty ? _destinations.length : details.length;
+    final progress = total == 0 ? 0.0 : completed / total;
+    final distance = _selectedDistanceKm;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      decoration: BoxDecoration(
+        color: AppColors.background,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.borderColor),
+      ),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 27,
+            height: 27,
+            child: CircularProgressIndicator(
+              value: progress,
+              strokeWidth: 3,
+              backgroundColor: AppColors.primaryGreen.withOpacity(0.14),
+              valueColor: const AlwaysStoppedAnimation(AppColors.primaryGreen),
+            ),
+          ),
+          const SizedBox(width: 9),
+          Expanded(
+            child: Text(
+              '$completed/$total titik selesai',
+              style: AppTextStyles.label.copyWith(fontWeight: FontWeight.w800),
+            ),
+          ),
+          if (distance > 0)
+            Text(
+              '${distance.toStringAsFixed(1)} km',
+              style: AppTextStyles.caption.copyWith(
+                color: AppColors.primaryGreen,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          const SizedBox(width: 7),
+          Icon(
+            _isLoadingLocation ? Icons.gps_not_fixed : Icons.gps_fixed,
+            size: 16,
+            color: _isLoadingLocation
+                ? AppColors.accentOrange
+                : AppColors.primaryGreen,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSupplierActions() {
+    final hasPhone = (_selectedDetail?.supplierPhone.trim() ?? '').isNotEmpty;
+    if (!hasPhone) return const SizedBox.shrink();
+
+    return Row(
+      children: [
+        Expanded(
+          child: OutlinedButton.icon(
+            onPressed: _callSupplier,
+            icon: const Icon(Icons.phone_outlined, size: 17),
+            label: const Text('Telepon'),
+            style: OutlinedButton.styleFrom(
+              minimumSize: const Size.fromHeight(36),
+              foregroundColor: AppColors.textPrimary,
+              side: const BorderSide(color: AppColors.borderColor),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(11),
+              ),
+              textStyle: AppTextStyles.caption.copyWith(
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: OutlinedButton.icon(
+            onPressed: _messageSupplier,
+            icon: const Icon(Icons.chat_bubble_outline, size: 17),
+            label: const Text('WhatsApp'),
+            style: OutlinedButton.styleFrom(
+              minimumSize: const Size.fromHeight(36),
+              foregroundColor: AppColors.primaryGreen,
+              side: BorderSide(color: AppColors.primaryGreen.withOpacity(0.45)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(11),
+              ),
+              textStyle: AppTextStyles.caption.copyWith(
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final initialCenter = _currentPosition ??
+    final initialCenter =
+        _currentPosition ??
         (_destinations.isNotEmpty ? _destinations.first : _defaultCenter);
 
     final tileUrl = _mapEngine == NavMapEngine.googleMaps
@@ -368,7 +517,10 @@ class _NavigationScreenState extends State<NavigationScreen> {
                             shape: BoxShape.circle,
                             border: Border.all(color: Colors.white, width: 3),
                             boxShadow: const [
-                              BoxShadow(color: Color(0x66000000), blurRadius: 8),
+                              BoxShadow(
+                                color: Color(0x66000000),
+                                blurRadius: 8,
+                              ),
                             ],
                           ),
                           child: const Icon(
@@ -395,11 +547,16 @@ class _NavigationScreenState extends State<NavigationScreen> {
                         child: AnimatedContainer(
                           duration: const Duration(milliseconds: 200),
                           decoration: BoxDecoration(
-                            color: isSelected ? AppColors.error : AppColors.primaryGreen,
+                            color: isSelected
+                                ? AppColors.error
+                                : AppColors.primaryGreen,
                             shape: BoxShape.circle,
                             border: Border.all(color: Colors.white, width: 2.5),
                             boxShadow: const [
-                              BoxShadow(color: Color(0x55000000), blurRadius: 6),
+                              BoxShadow(
+                                color: Color(0x55000000),
+                                blurRadius: 6,
+                              ),
                             ],
                           ),
                           alignment: Alignment.center,
@@ -427,39 +584,80 @@ class _NavigationScreenState extends State<NavigationScreen> {
             right: 0,
             child: SafeArea(
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Row(
                       children: [
-                        _mapBtn(icon: Icons.arrow_back, onTap: () => Navigator.pop(context)),
+                        _mapBtn(
+                          icon: Icons.arrow_back,
+                          onTap: () => Navigator.pop(context),
+                        ),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 9,
+                            ),
                             decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(24),
+                              color: Colors.white.withOpacity(0.94),
+                              borderRadius: BorderRadius.circular(18),
+                              border: Border.all(
+                                color: AppColors.primaryGreen.withOpacity(0.12),
+                              ),
                               boxShadow: [
                                 BoxShadow(
                                   color: Colors.black.withOpacity(0.12),
                                   blurRadius: 8,
-                                )
+                                ),
                               ],
                             ),
                             child: Row(
                               children: [
-                                const Icon(Icons.location_on, color: AppColors.error, size: 18),
-                                const SizedBox(width: 6),
+                                Container(
+                                  padding: const EdgeInsets.all(7),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.error.withOpacity(0.10),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(
+                                    Icons.location_on_rounded,
+                                    color: AppColors.error,
+                                    size: 16,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
                                 Expanded(
-                                  child: Text(
-                                    _primarySupplierName,
-                                    style: AppTextStyles.bodyMedium.copyWith(
-                                      fontWeight: FontWeight.bold,
-                                      color: AppColors.textPrimary,
-                                    ),
-                                    overflow: TextOverflow.ellipsis,
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        'TUJUAN AKTIF',
+                                        style: AppTextStyles.overline.copyWith(
+                                          color: AppColors.textSecondary,
+                                          fontSize: 9,
+                                          fontWeight: FontWeight.w800,
+                                          letterSpacing: 1,
+                                        ),
+                                      ),
+                                      Text(
+                                        _primarySupplierName,
+                                        style: AppTextStyles.bodyMedium
+                                            .copyWith(
+                                              fontWeight: FontWeight.w800,
+                                              color: AppColors.textPrimary,
+                                            ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ],
                                   ),
                                 ),
                               ],
@@ -471,24 +669,45 @@ class _NavigationScreenState extends State<NavigationScreen> {
                         GestureDetector(
                           onTap: _toggleEngine,
                           child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 9,
+                            ),
                             decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(20),
+                              color: Colors.white.withOpacity(0.94),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: AppColors.primaryGreen.withOpacity(0.12),
+                              ),
                               boxShadow: [
                                 BoxShadow(
                                   color: Colors.black.withOpacity(0.12),
                                   blurRadius: 8,
-                                )
+                                ),
                               ],
                             ),
-                            child: Text(
-                              _mapEngine == NavMapEngine.leafletOsm ? '🍃 OSM' : '🗺️ Google',
-                              style: const TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.primaryGreen,
-                              ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  _mapEngine == NavMapEngine.leafletOsm
+                                      ? Icons.layers_outlined
+                                      : Icons.map_outlined,
+                                  size: 15,
+                                  color: AppColors.primaryGreen,
+                                ),
+                                const SizedBox(width: 5),
+                                Text(
+                                  _mapEngine == NavMapEngine.leafletOsm
+                                      ? 'OSM'
+                                      : 'Google',
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w800,
+                                    color: AppColors.primaryGreen,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ),
@@ -508,12 +727,19 @@ class _NavigationScreenState extends State<NavigationScreen> {
               left: 16,
               right: 16,
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
                   color: AppColors.primaryGreen,
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: Colors.white.withOpacity(0.25)),
                   boxShadow: [
-                    BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 6)
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.2),
+                      blurRadius: 6,
+                    ),
                   ],
                 ),
                 child: Row(
@@ -521,12 +747,24 @@ class _NavigationScreenState extends State<NavigationScreen> {
                     const SizedBox(
                       width: 14,
                       height: 14,
-                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2,
+                      ),
                     ),
                     const SizedBox(width: 10),
-                    Text(
-                      _isLoadingRoute ? 'Menghitung rute tercepat...' : _locationStatus,
-                      style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600),
+                    Expanded(
+                      child: Text(
+                        _isLoadingRoute
+                            ? 'Menghitung rute tercepat...'
+                            : _locationStatus,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
                   ],
                 ),
@@ -536,10 +774,12 @@ class _NavigationScreenState extends State<NavigationScreen> {
           // ── Real Movement Follow Driver Button ──────────
           Positioned(
             right: 16,
-            bottom: 140,
+            bottom: 178,
             child: FloatingActionButton.small(
               heroTag: 'follow_driver_btn',
-              backgroundColor: _followDriver ? const Color(0xFF1877F2) : Colors.white,
+              backgroundColor: _followDriver
+                  ? const Color(0xFF1877F2)
+                  : Colors.white,
               onPressed: () async {
                 setState(() => _followDriver = true);
                 if (_currentPosition != null) {
@@ -547,7 +787,9 @@ class _NavigationScreenState extends State<NavigationScreen> {
                 } else {
                   try {
                     final pos = await Geolocator.getCurrentPosition(
-                      locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
+                      locationSettings: const LocationSettings(
+                        accuracy: LocationAccuracy.high,
+                      ),
                     );
                     final latLng = LatLng(pos.latitude, pos.longitude);
                     if (mounted) {
@@ -576,22 +818,34 @@ class _NavigationScreenState extends State<NavigationScreen> {
             left: 0,
             right: 0,
             child: Container(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
               decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.bottomCenter,
-                  end: Alignment.topCenter,
-                  colors: [Colors.black.withOpacity(0.7), Colors.transparent],
+                color: Colors.white,
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(22),
                 ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.18),
+                    blurRadius: 22,
+                    offset: const Offset(0, -7),
+                  ),
+                ],
               ),
               child: SafeArea(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    _buildTripSummary(),
+                    const SizedBox(height: 7),
+                    _buildSupplierActions(),
+                    if ((_selectedDetail?.supplierPhone.trim() ?? '')
+                        .isNotEmpty)
+                      const SizedBox(height: 7),
                     // Start Google Maps External Nav
                     SizedBox(
                       width: double.infinity,
-                      height: 50,
+                      height: 44,
                       child: ElevatedButton.icon(
                         onPressed: _openGoogleMaps,
                         icon: const Icon(Icons.navigation_rounded),
@@ -607,14 +861,14 @@ class _NavigationScreenState extends State<NavigationScreen> {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 6),
 
                     // Process Pickup Button
                     if (widget.suratJalan?.status != 'done' &&
                         widget.suratJalan?.status != 'cancelled')
                       SizedBox(
                         width: double.infinity,
-                        height: 50,
+                        height: 44,
                         child: OutlinedButton.icon(
                           onPressed: () {
                             Navigator.push(
@@ -633,8 +887,11 @@ class _NavigationScreenState extends State<NavigationScreen> {
                             overflow: TextOverflow.ellipsis,
                           ),
                           style: OutlinedButton.styleFrom(
-                            foregroundColor: Colors.white,
-                            side: const BorderSide(color: Colors.white, width: 1.5),
+                            foregroundColor: AppColors.primaryGreen,
+                            side: const BorderSide(
+                              color: AppColors.primaryGreen,
+                              width: 1.5,
+                            ),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(14),
                             ),
@@ -642,7 +899,7 @@ class _NavigationScreenState extends State<NavigationScreen> {
                           ),
                         ),
                       ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 4),
                   ],
                 ),
               ),
@@ -708,11 +965,19 @@ class _NavigationScreenState extends State<NavigationScreen> {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.local_gas_station, size: 14, color: AppColors.accentOrange),
+          const Icon(
+            Icons.local_gas_station,
+            size: 14,
+            color: AppColors.accentOrange,
+          ),
           const SizedBox(width: 6),
           Text(
             'Est. BBM: ${liters.toStringAsFixed(1)} L (~Rp ${cost.toStringAsFixed(0)})',
-            style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 11,
+              fontWeight: FontWeight.bold,
+            ),
           ),
         ],
       ),

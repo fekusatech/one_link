@@ -8,6 +8,8 @@ class SharedBottomNavbar extends StatelessWidget {
   final bool showVisitPlan;
   final bool showTasks;
   final bool showHistory;
+  final bool showDriverTools;
+  final VoidCallback? onMapTap;
 
   const SharedBottomNavbar({
     super.key,
@@ -16,65 +18,142 @@ class SharedBottomNavbar extends StatelessWidget {
     this.showVisitPlan = false,
     this.showTasks = false,
     this.showHistory = true,
+    this.showDriverTools = false,
+    this.onMapTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        color: AppColors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black12,
-            blurRadius: 10,
-            offset: Offset(0, -5),
-          ),
-        ],
-      ),
-      child: BottomNavigationBar(
-        backgroundColor: AppColors.white,
-        type: BottomNavigationBarType.fixed,
-        currentIndex: currentIndex,
-        onTap: onTap,
-        selectedItemColor: AppColors.primaryGreen,
-        unselectedItemColor: AppColors.grey,
-        selectedLabelStyle: AppTextStyles.caption.copyWith(
-          fontWeight: FontWeight.w600,
-          color: AppColors.primaryGreen,
-        ),
-        unselectedLabelStyle: AppTextStyles.caption.copyWith(
-          color: AppColors.grey,
-        ),
-        items: [
-          const BottomNavigationBarItem(
-            icon: Icon(Icons.home_outlined),
-            activeIcon: Icon(Icons.home),
+    final items =
+        <
+          ({
+            IconData icon,
+            IconData activeIcon,
+            String label,
+            VoidCallback? action,
+          })
+        >[
+          (
+            icon: Icons.grid_view_rounded,
+            activeIcon: Icons.grid_view_rounded,
             label: 'Beranda',
+            action: null,
           ),
           if (showVisitPlan)
-            const BottomNavigationBarItem(
-              icon: Icon(Icons.map_outlined),
-              activeIcon: Icon(Icons.map),
-              label: 'Visit Plan',
+            (
+              icon: Icons.map_outlined,
+              activeIcon: Icons.map_rounded,
+              label: 'Visit',
+              action: null,
             ),
           if (showTasks)
-            const BottomNavigationBarItem(
-              icon: Icon(Icons.checklist_outlined),
-              activeIcon: Icon(Icons.checklist),
+            (
+              icon: Icons.checklist_outlined,
+              activeIcon: Icons.checklist_rounded,
               label: 'Tugas',
+              action: null,
             ),
           if (showHistory)
-            const BottomNavigationBarItem(
-              icon: Icon(Icons.history_outlined),
-              activeIcon: Icon(Icons.history),
+            (
+              icon: Icons.history_outlined,
+              activeIcon: Icons.history_rounded,
               label: 'Riwayat',
+              action: null,
             ),
-          const BottomNavigationBarItem(
-            icon: Icon(Icons.person_outline),
-            activeIcon: Icon(Icons.person),
+          if (showDriverTools)
+            (
+              icon: Icons.map_outlined,
+              activeIcon: Icons.map_rounded,
+              label: 'Peta',
+              action: onMapTap,
+            ),
+          (
+            icon: Icons.person_outline_rounded,
+            activeIcon: Icons.person_rounded,
             label: 'Profil',
+            action: null,
           ),
-        ],
+        ];
+
+    return SafeArea(
+      top: false,
+      child: Container(
+        margin: const EdgeInsets.fromLTRB(12, 0, 12, 10),
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+        decoration: BoxDecoration(
+          color: AppColors.white,
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(
+            color: AppColors.primaryGreen.withValues(alpha: .1),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.primaryGreen.withValues(alpha: .12),
+              blurRadius: 24,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        child: Row(
+          children: List.generate(items.length, (index) {
+            final item = items[index];
+            final selected = index == currentIndex;
+            return Expanded(
+              child: Semantics(
+                button: true,
+                selected: selected,
+                label: 'Navigasi ${item.label}',
+                child: Material(
+                  color: Colors.transparent,
+                  borderRadius: BorderRadius.circular(16),
+                  child: InkWell(
+                    onTap: item.action ?? () => onTap(index),
+                    borderRadius: BorderRadius.circular(16),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 180),
+                      curve: Curves.easeOut,
+                      constraints: const BoxConstraints(minHeight: 52),
+                      padding: const EdgeInsets.symmetric(vertical: 6),
+                      decoration: BoxDecoration(
+                        color: selected
+                            ? AppColors.primaryGreen.withValues(alpha: .1)
+                            : Colors.transparent,
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            selected ? item.activeIcon : item.icon,
+                            size: 22,
+                            color: selected
+                                ? AppColors.primaryGreen
+                                : AppColors.textSecondary,
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            item.label,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: AppTextStyles.caption.copyWith(
+                              fontSize: 10,
+                              fontWeight: selected
+                                  ? FontWeight.w800
+                                  : FontWeight.w500,
+                              color: selected
+                                  ? AppColors.primaryGreen
+                                  : AppColors.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            );
+          }),
+        ),
       ),
     );
   }

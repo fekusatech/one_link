@@ -52,7 +52,6 @@ Future<CheckinDraft?> showCheckinDialog(
   );
 }
 
-const _defaultMaxDistanceKm = 0.5;
 const _accuracyWarnThresholdM = 100.0;
 const _privilegedKeywords = ['developer', 'superuser', 'super'];
 
@@ -68,7 +67,7 @@ class _CheckinSheetState extends State<_CheckinSheet> {
   bool _loading = true;
   String? _error;
   GpsFix? _fix;
-  double _maxDistanceKm = _defaultMaxDistanceKm;
+  double? _maxDistanceKm;
   bool _isPrivileged = false;
   bool _confirmFarChecked = false;
   bool _lowAccuracyAcknowledged = false;
@@ -104,14 +103,14 @@ class _CheckinSheetState extends State<_CheckinSheet> {
       }
       final results = await Future.wait([
         GpsService.getCurrentFix(),
-        SettingsService.getDouble(
-          'visit_checkin_max_distance_km',
-          _defaultMaxDistanceKm,
-        ),
+        SettingsService.getDouble('visit_checkin_max_distance_km'),
         GeuAuthService.getCachedUser(),
       ]);
       final fix = results[0] as GpsFix;
-      final maxDistance = results[1] as double;
+      final maxDistance = results[1] as double?;
+      if (maxDistance == null) {
+        throw GpsException('Radius check-in belum tersedia dari server.');
+      }
       final user = results[2] as GeuUser?;
       final privileged = (user?.roles ?? []).any(
         (role) =>
@@ -145,7 +144,8 @@ class _CheckinSheetState extends State<_CheckinSheet> {
     );
   }
 
-  bool get _withinRadius => _distanceKm <= _maxDistanceKm;
+  bool get _withinRadius =>
+      _maxDistanceKm != null && _distanceKm <= _maxDistanceKm!;
   bool get _accuracyOk => _fix!.accuracyMeters <= _accuracyWarnThresholdM;
 
   bool get _canConfirm {
@@ -218,7 +218,7 @@ class _CheckinSheetState extends State<_CheckinSheet> {
     }
 
     final distanceM = (_distanceKm * 1000).round();
-    final maxDistanceM = (_maxDistanceKm * 1000).round();
+    final maxDistanceM = ((_maxDistanceKm ?? 0) * 1000).round();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

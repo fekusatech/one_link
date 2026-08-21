@@ -21,12 +21,15 @@ import 'notification_screen.dart';
 import 'tms/driver_settlement_list_screen.dart';
 import 'tms/driver_movement_screen.dart';
 import 'tms/driver_score_screen.dart';
+import 'tms/driver_map_screen.dart';
+import 'tms/vehicle_issue_report_screen.dart';
 import 'profile_screen.dart';
 import 'pickup_history_screen.dart';
-import '../widgets/shared_bottom_navbar.dart';
-import '../widgets/shared_app_bar.dart';
+import 'pickup_map_screen.dart';
+import 'diagnosis_screen.dart';
 import '../widgets/gps_compliance_widget.dart';
 import '../widgets/impersonation_banner.dart';
+import '../widgets/force_login_dialog.dart';
 import '../widgets/dynamic_pickup_map_widget.dart';
 import '../services/update_service.dart';
 import '../services/location_tracking_service.dart';
@@ -36,7 +39,8 @@ import '../services/proximity_wa_service.dart';
 import '../services/dashboard_access_service.dart';
 import '../services/local_notify_service.dart';
 import '../widgets/working_mode_header_widget.dart';
-import '../services/shift_reminder_service.dart';
+import '../services/role_management_service.dart';
+import '../services/impersonation_service.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -47,6 +51,7 @@ class DashboardScreen extends StatefulWidget {
 
 class _DashboardScreenState extends State<DashboardScreen> {
   int _selectedIndex = 0;
+  bool _showDriverMap = true;
 
   @override
   void initState() {
@@ -57,9 +62,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
       EmergencyShakeService.instance.startListening(context);
       LocalNotifyService.instance.init();
       LocalNotifyService.instance.ensurePermission();
-      ShiftReminderService.instance.start(context);
       _startLocationTracking();
+      _loadDriverAccess();
     });
+  }
+
+  Future<void> _loadDriverAccess() async {
+    final access = await DashboardAccessService.fetchDashboardAccess();
+    if (mounted) {
+      setState(() {
+        if (access != null) _showDriverMap = access.driver || access.admin;
+      });
+    }
   }
 
   /// Mulai ProximityWaService hanya jika user punya akses driver (server-side).
@@ -83,15 +97,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
     // Only auto-start if Working Mode is ACTIVE!
     final isWorking = await UserStorage.isWorkingModeActive();
     if (!isWorking) {
-      debugPrint('🛑 Working Mode is OFF: Location tracking paused on dashboard init.');
+      debugPrint(
+        '🛑 Working Mode is OFF: Location tracking paused on dashboard init.',
+      );
       return;
     }
     final hasConsent = await UserStorage.hasLocationTrackingConsent();
     if (hasConsent) {
-      final hasPermission = await LocationTrackingService.instance.hasPermissions();
+      final hasPermission = await LocationTrackingService.instance
+          .hasPermissions();
       if (hasPermission && !LocationTrackingService.instance.isTracking) {
-        await LocationTrackingService.instance.startTrackingWithoutPermissionCheck();
-        print('📍 Auto-started location tracking after login (Mode Bekerja Aktif)');
+        await LocationTrackingService.instance
+            .startTrackingWithoutPermissionCheck();
+        print(
+          '📍 Auto-started location tracking after login (Mode Bekerja Aktif)',
+        );
       }
     }
   }
@@ -112,10 +132,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
     ];
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: const Color(0xFFF4F7F5),
       appBar: _selectedIndex == 0
-          ? SharedAppBar(
-              dashboardType: 'driver',
+          ? _DriverAppBar(
               onNotificationTap: () {
                 Navigator.push(
                   context,
@@ -127,8 +146,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
       body: Column(
         children: [
           ValueListenableBuilder<String?>(
-            valueListenable: DriverMonitoringService
-                .instance.activeMonitoringStatusNotifier,
+            valueListenable:
+                DriverMonitoringService.instance.activeMonitoringStatusNotifier,
             builder: (context, statusText, child) {
               return const SizedBox.shrink();
             },
@@ -136,12 +155,302 @@ class _DashboardScreenState extends State<DashboardScreen> {
           Expanded(child: screens[_selectedIndex]),
         ],
       ),
-      bottomNavigationBar: SharedBottomNavbar(
+      bottomNavigationBar: _DriverBottomBar(
         currentIndex: _selectedIndex,
         onTap: _onItemTapped,
+        showMap: _showDriverMap,
+        onMapTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const DriverMapScreen()),
+        ),
+      ),
+      floatingActionButton: _selectedIndex == 0
+          ? FloatingActionButton.small(
+              heroTag: 'driver-vehicle-issue',
+              tooltip: 'Laporkan kendala armada',
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const VehicleIssueReportScreen(),
+                ),
+              ),
+              backgroundColor: AppColors.error,
+              foregroundColor: AppColors.white,
+              elevation: 4,
+              child: const Icon(Icons.priority_high_rounded),
+            )
+          : null,
+    );
+  }
+}
+
+class _DriverAppBar extends StatefulWidget implements PreferredSizeWidget {
+  const _DriverAppBar({required this.onNotificationTap});
+
+  final VoidCallback onNotificationTap;
+
+  @override
+  State<_DriverAppBar> createState() => _DriverAppBarState();
+
+  @override
+  Size get preferredSize => const Size.fromHeight(72);
+}
+
+class _DriverAppBarState extends State<_DriverAppBar> {
+  bool _canSwitchDashboard = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSwitchPermission();
+  }
+
+  Future<void> _loadSwitchPermission() async {
+    var allowed = RoleManagementService.isAdmin();
+    if (!allowed) {
+      final user = await UserStorage.getUser();
+      final groups = user?['groups'] as List<dynamic>? ?? const [];
+      final roles = user?['roles'] as List<dynamic>? ?? const [];
+      final identity = [
+        ...groups,
+        ...roles,
+      ].map((role) => role.toString().toLowerCase()).join(' ');
+      allowed =
+          identity.contains('admin') ||
+          identity.contains('developer') ||
+          identity.contains('super');
+    }
+    if (!allowed) allowed = await ImpersonationService.canImpersonate();
+    if (mounted) setState(() => _canSwitchDashboard = allowed);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AppBar(
+      backgroundColor: const Color(0xFFF4F7F5),
+      surfaceTintColor: Colors.transparent,
+      elevation: 0,
+      toolbarHeight: 72,
+      titleSpacing: 20,
+      title: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'ONE LINK',
+            style: AppTextStyles.overline.copyWith(
+              color: AppColors.accentOrange,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 1.8,
+            ),
+          ),
+          Text(
+            'Transport Management System',
+            style: AppTextStyles.h6.copyWith(
+              color: AppColors.primaryGreen,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        Semantics(
+          label: 'Buka notifikasi',
+          button: true,
+          child: IconButton(
+            constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+            onPressed: widget.onNotificationTap,
+            icon: const Icon(Icons.notifications_none_rounded),
+            color: AppColors.primaryGreen,
+            tooltip: 'Notifikasi',
+          ),
+        ),
+        if (_canSwitchDashboard)
+          Semantics(
+            label: 'Pindah ke dashboard Sales',
+            button: true,
+            child: IconButton(
+              constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+              onPressed: () =>
+                  Navigator.pushReplacementNamed(context, '/sales-dashboard'),
+              icon: const Icon(Icons.swap_horiz_rounded),
+              color: AppColors.primaryGreen,
+              tooltip: 'Pindah ke Dashboard Sales',
+            ),
+          ),
+        const SizedBox(width: 8),
+      ],
+    );
+  }
+}
+
+class _DriverBottomBar extends StatelessWidget {
+  const _DriverBottomBar({
+    required this.currentIndex,
+    required this.onTap,
+    required this.onMapTap,
+    required this.showMap,
+  });
+
+  final int currentIndex;
+  final ValueChanged<int> onTap;
+  final VoidCallback onMapTap;
+  final bool showMap;
+
+  @override
+  Widget build(BuildContext context) {
+    final items = <_DriverNavItem>[
+      const _DriverNavItem(
+        icon: Icons.grid_view_rounded,
+        activeIcon: Icons.grid_view_rounded,
+        label: 'Beranda',
+        tabIndex: 0,
+      ),
+      const _DriverNavItem(
+        icon: Icons.history_outlined,
+        activeIcon: Icons.history_rounded,
+        label: 'Riwayat',
+        tabIndex: 1,
+      ),
+      if (showMap)
+        _DriverNavItem(
+          icon: Icons.map_outlined,
+          activeIcon: Icons.map_rounded,
+          label: 'Peta',
+          onPressed: onMapTap,
+        ),
+      const _DriverNavItem(
+        icon: Icons.person_outline_rounded,
+        activeIcon: Icons.person_rounded,
+        label: 'Profil',
+        tabIndex: 2,
+      ),
+    ];
+
+    return SafeArea(
+      top: false,
+      child: Container(
+        margin: const EdgeInsets.fromLTRB(12, 0, 12, 10),
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+        decoration: BoxDecoration(
+          color: AppColors.white,
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(
+            color: AppColors.primaryGreen.withValues(alpha: .10),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.primaryGreen.withValues(alpha: .12),
+              blurRadius: 24,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        child: Row(
+          children: List.generate(items.length, (index) {
+            final item = items[index];
+            final selected = item.tabIndex == currentIndex;
+            final isProfile = index == items.length - 1;
+            final foreground = selected
+                ? AppColors.primaryGreen
+                : AppColors.textSecondary;
+            return Expanded(
+              child: Semantics(
+                button: true,
+                selected: selected,
+                label: 'Navigasi ${item.label}',
+                child: Material(
+                  color: Colors.transparent,
+                  borderRadius: BorderRadius.circular(16),
+                  child: InkWell(
+                    onTap: () {
+                      if (item.tabIndex != null) {
+                        onTap(item.tabIndex!);
+                      } else {
+                        item.onPressed?.call();
+                      }
+                    },
+                    borderRadius: BorderRadius.circular(16),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 180),
+                      curve: Curves.easeOut,
+                      constraints: const BoxConstraints(minHeight: 52),
+                      padding: const EdgeInsets.symmetric(vertical: 6),
+                      decoration: BoxDecoration(
+                        color: selected
+                            ? AppColors.primaryGreen.withValues(alpha: .10)
+                            : Colors.transparent,
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (isProfile)
+                            Container(
+                              width: 26,
+                              height: 26,
+                              decoration: BoxDecoration(
+                                color: selected
+                                    ? AppColors.primaryGreen
+                                    : AppColors.primaryGreen.withValues(
+                                        alpha: .10,
+                                      ),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                selected ? item.activeIcon : item.icon,
+                                size: 17,
+                                color: selected
+                                    ? AppColors.white
+                                    : AppColors.primaryGreen,
+                              ),
+                            )
+                          else
+                            Icon(
+                              selected ? item.activeIcon : item.icon,
+                              size: 22,
+                              color: foreground,
+                            ),
+                          const SizedBox(height: 2),
+                          Text(
+                            item.label,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: AppTextStyles.caption.copyWith(
+                              fontSize: 10,
+                              fontWeight: selected
+                                  ? FontWeight.w800
+                                  : FontWeight.w500,
+                              color: foreground,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            );
+          }),
+        ),
       ),
     );
   }
+}
+
+class _DriverNavItem {
+  const _DriverNavItem({
+    required this.icon,
+    required this.activeIcon,
+    required this.label,
+    this.tabIndex,
+    this.onPressed,
+  });
+
+  final IconData icon;
+  final IconData activeIcon;
+  final String label;
+  final int? tabIndex;
+  final VoidCallback? onPressed;
 }
 
 // Home Screen Widget
@@ -166,6 +475,7 @@ class _HomeScreenState extends State<_HomeScreen> {
   int _totalTasks = 0;
   String _totalMinyak = '0L';
   int _completedTasks = 0;
+  bool _canImpersonate = false;
 
   final MapController _mapController = MapController();
   LatLng? _driverPosition;
@@ -178,6 +488,7 @@ class _HomeScreenState extends State<_HomeScreen> {
   String _sjSearchQuery = '';
   int _sjCurrentPage = 1;
   static const int _sjPageSize = 5;
+  bool _isPaginating = false;
 
   bool _isOnline = true;
   int _pendingSyncCount = 0;
@@ -196,6 +507,12 @@ class _HomeScreenState extends State<_HomeScreen> {
     _initializeAndLoadData();
     _loadDriverPosition();
     _startConnectivityMonitoring();
+    _loadImpersonationAccess();
+  }
+
+  Future<void> _loadImpersonationAccess() async {
+    final allowed = await ImpersonationService.canImpersonate();
+    if (mounted) setState(() => _canImpersonate = allowed);
   }
 
   void _startConnectivityMonitoring() {
@@ -232,7 +549,11 @@ class _HomeScreenState extends State<_HomeScreen> {
                 children: [
                   const Text(
                     'MODE OFFLINE AKTIF (Sinyal Terputus)',
-                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
                   ),
                   Text(
                     _pendingSyncCount > 0
@@ -262,7 +583,11 @@ class _HomeScreenState extends State<_HomeScreen> {
                 const SizedBox(width: 8),
                 Text(
                   '$_pendingSyncCount data offline siap disinkronkan',
-                  style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ],
             ),
@@ -272,14 +597,21 @@ class _HomeScreenState extends State<_HomeScreen> {
                 _checkConnectivityStatus();
               },
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: const Text(
                   'Sync Sekarang',
-                  style: TextStyle(color: AppColors.primaryGreen, fontSize: 11, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    color: AppColors.primaryGreen,
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
             ),
@@ -528,8 +860,14 @@ class _HomeScreenState extends State<_HomeScreen> {
     return _optimizedStops.where((stop) {
       final status = stop.detail.status.toLowerCase();
       if (_statusFilter == 'done') return status == 'done';
-      if (_statusFilter == 'pickup') return status == 'pickup' || status == 'progress';
-      if (_statusFilter == 'pending') return status == 'pending' || (status != 'done' && status != 'pickup' && status != 'progress' && status != 'cancelled');
+      if (_statusFilter == 'pickup')
+        return status == 'pickup' || status == 'progress';
+      if (_statusFilter == 'pending')
+        return status == 'pending' ||
+            (status != 'done' &&
+                status != 'pickup' &&
+                status != 'progress' &&
+                status != 'cancelled');
       return true;
     }).toList();
   }
@@ -567,6 +905,43 @@ class _HomeScreenState extends State<_HomeScreen> {
     );
   }
 
+  List<_RouteStop> get _filteredStopsForList => _optimizedStops.where((stop) {
+    final status = stop.detail.status.toLowerCase();
+    if (_statusFilter == 'proses' &&
+        (status == 'done' || status == 'cancelled')) {
+      return false;
+    }
+    if (_statusFilter == 'selesai' && status != 'done') return false;
+    if (_sjSearchQuery.isEmpty) return true;
+    final query = _sjSearchQuery;
+    return stop.detail.supplierName.toLowerCase().contains(query) ||
+        stop.detail.supplierAlamat.toLowerCase().contains(query) ||
+        stop.surat.kode.toLowerCase().contains(query);
+  }).toList();
+
+  bool _handleDashboardScroll(ScrollNotification notification) {
+    if (notification is! ScrollEndNotification ||
+        notification.metrics.axis != Axis.vertical ||
+        notification.metrics.pixels <
+            notification.metrics.maxScrollExtent - 160) {
+      return false;
+    }
+    final totalPages = (_filteredStopsForList.length / _sjPageSize).ceil();
+    if (totalPages > 0 &&
+        _sjCurrentPage < totalPages &&
+        mounted &&
+        !_isPaginating) {
+      setState(() {
+        _isPaginating = true;
+        _sjCurrentPage++;
+      });
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(() => _isPaginating = false);
+      });
+    }
+    return false;
+  }
+
   @override
   Widget build(BuildContext context) {
     final progress = _totalTasks == 0 ? 0.0 : _completedTasks / _totalTasks;
@@ -579,294 +954,229 @@ class _HomeScreenState extends State<_HomeScreen> {
           child: RefreshIndicator(
             color: AppColors.primaryGreen,
             onRefresh: _loadSuratJalanData,
-            child: SingleChildScrollView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-              // Hero card: greeting + daily progress + stats
-              _buildHeroCard(progress),
+            child: NotificationListener<ScrollNotification>(
+              onNotification: _handleDashboardScroll,
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 20, 16, 32),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // Hero card: greeting + daily progress + stats
+                      _buildHeroCard(progress),
 
-              const SizedBox(height: 16),
+                      const SizedBox(height: 16),
 
-              // TMS Quick Action Menu for Driver
-              _buildTmsQuickActions(),
+                      // TMS Quick Action Menu for Driver
+                      _buildTmsQuickActions(),
 
-              const SizedBox(height: 24),
+                      const SizedBox(height: 24),
 
-              // Loading indicator
-              if (_isLoading) ...[
-                const Center(
-                  child: Padding(
-                    padding: EdgeInsets.all(32.0),
-                    child: CircularProgressIndicator(
-                      valueColor: AlwaysStoppedAnimation<Color>(
-                        AppColors.primaryGreen,
-                      ),
-                    ),
-                  ),
-                ),
-              ] else if (_errorMessage != null) ...[
-                // Error state
-                _buildErrorWidget(),
-              ] else if (_suratJalanList.isNotEmpty) ...[
-                // Map section header
-                _buildSectionHeader(
-                  'Peta Lokasi Pickup',
-                  icon: Icons.map_outlined,
-                ),
-                const SizedBox(height: 12),
-
-                // Map legend filter chips
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    _buildLegendItem('Semua', AppColors.primaryGreen, 'all'),
-                    _buildLegendItem('Selesai', AppColors.success, 'done'),
-                    _buildLegendItem('Pickup', const Color(0xFFFF9500), 'pickup'),
-                    _buildLegendItem('Pending', AppColors.error, 'pending'),
-                  ],
-                ),
-
-                const SizedBox(height: 12),
-
-                // Map view — flutter_map/OpenStreetMap, with a driving-route
-                // polyline chained driver -> nearest -> next-nearest -> ...
-                Container(
-                  height: 280,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(20),
-                    color: AppColors.white,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.08),
-                        blurRadius: 16,
-                        offset: const Offset(0, 6),
-                      ),
-                    ],
-                  ),
-                  child: DynamicPickupMapWidget(
-                    mapController: _mapController,
-                    driverPosition: _driverPosition,
-                    stops: _filteredStopsForMap,
-                    routePolyline: _routePolyline,
-                    onMapReady: _fitMarkersInView,
-                    onStopTap: (stop, order) async {
-                      await Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => NavigationScreen(
-                            suratJalan: stop.surat,
+                      // Loading indicator
+                      if (_isLoading) ...[
+                        const Center(
+                          child: Padding(
+                            padding: EdgeInsets.all(32.0),
+                            child: CircularProgressIndicator(
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                AppColors.primaryGreen,
+                              ),
+                            ),
                           ),
                         ),
-                      );
-                      _loadSuratJalanData();
-                    },
-                  ),
-                ),
+                      ] else if (_errorMessage != null) ...[
+                        // Error state
+                        _buildErrorWidget(),
+                      ] else if (_suratJalanList.isNotEmpty) ...[
+                        const SizedBox(height: 24),
 
-                const SizedBox(height: 24),
+                        // Surat jalan list header
+                        _buildSectionHeader(
+                          'Surat Jalan Hari Ini',
+                          icon: Icons.receipt_long_outlined,
+                          trailing: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColors.primaryGreen.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Text(
+                              '${_optimizedStops.length} titik',
+                              style: AppTextStyles.caption.copyWith(
+                                color: AppColors.primaryGreen,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
 
-                // Surat jalan list header
-                _buildSectionHeader(
-                  'Surat Jalan Hari Ini',
-                  icon: Icons.receipt_long_outlined,
-                  trailing: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.primaryGreen.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      '${_optimizedStops.length} titik',
-                      style: AppTextStyles.caption.copyWith(
-                        color: AppColors.primaryGreen,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-
-                // Search Bar Input
-                TextField(
-                  controller: _sjSearchController,
-                  decoration: InputDecoration(
-                    hintText: 'Cari nama supplier / alamat...',
-                    hintStyle: AppTextStyles.caption.copyWith(color: AppColors.grey),
-                    prefixIcon: const Icon(Icons.search, size: 20, color: AppColors.primaryGreen),
-                    suffixIcon: _sjSearchQuery.isNotEmpty
-                        ? IconButton(
-                            icon: const Icon(Icons.clear, size: 18, color: AppColors.grey),
-                            onPressed: () {
-                              setState(() {
-                                _sjSearchController.clear();
-                                _sjSearchQuery = '';
-                                _sjCurrentPage = 1;
-                              });
-                            },
-                          )
-                        : null,
-                    isDense: true,
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: AppColors.borderColor),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: AppColors.borderColor),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: AppColors.primaryGreen, width: 2),
-                    ),
-                  ),
-                  onChanged: (val) {
-                    setState(() {
-                      _sjSearchQuery = val.trim().toLowerCase();
-                      _sjCurrentPage = 1;
-                    });
-                  },
-                ),
-                const SizedBox(height: 12),
-
-                // Status filter
-                Wrap(
-                  spacing: 8,
-                  children: [
-                    _buildFilterChip('semua', 'Semua'),
-                    _buildFilterChip('proses', 'Proses'),
-                    _buildFilterChip('selesai', 'Selesai'),
-                  ],
-                ),
-                const SizedBox(height: 12),
-
-                // Surat jalan list — flattened per supplier stop with search & pagination
-                Builder(
-                  builder: (context) {
-                    final filtered = _optimizedStops.where((stop) {
-                      final status = stop.detail.status.toLowerCase();
-                      bool matchStatus = true;
-                      if (_statusFilter == 'proses') {
-                        matchStatus = status != 'done' && status != 'cancelled';
-                      } else if (_statusFilter == 'selesai') {
-                        matchStatus = status == 'done';
-                      }
-
-                      if (!matchStatus) return false;
-
-                      if (_sjSearchQuery.isNotEmpty) {
-                        final name = stop.detail.supplierName.toLowerCase();
-                        final address = stop.detail.supplierAlamat.toLowerCase();
-                        final kode = stop.surat.kode.toLowerCase();
-                        return name.contains(_sjSearchQuery) ||
-                            address.contains(_sjSearchQuery) ||
-                            kode.contains(_sjSearchQuery);
-                      }
-                      return true;
-                    }).toList();
-
-                    if (filtered.isEmpty) {
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 24),
-                        child: Center(
-                          child: Text(
-                            _sjSearchQuery.isNotEmpty
-                                ? 'Tidak ada titik yang cocok dengan pencarian "$_sjSearchQuery".'
-                                : 'Tidak ada titik pada filter ini.',
-                            style: AppTextStyles.bodyMedium.copyWith(
+                        // Search Bar Input
+                        TextField(
+                          controller: _sjSearchController,
+                          decoration: InputDecoration(
+                            hintText: 'Cari nama supplier / alamat...',
+                            hintStyle: AppTextStyles.caption.copyWith(
                               color: AppColors.grey,
                             ),
+                            prefixIcon: const Icon(
+                              Icons.search,
+                              size: 20,
+                              color: AppColors.primaryGreen,
+                            ),
+                            suffixIcon: _sjSearchQuery.isNotEmpty
+                                ? IconButton(
+                                    icon: const Icon(
+                                      Icons.clear,
+                                      size: 18,
+                                      color: AppColors.grey,
+                                    ),
+                                    onPressed: () {
+                                      setState(() {
+                                        _sjSearchController.clear();
+                                        _sjSearchQuery = '';
+                                        _sjCurrentPage = 1;
+                                      });
+                                    },
+                                  )
+                                : null,
+                            isDense: true,
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 10,
+                            ),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(16),
+                              borderSide: const BorderSide(
+                                color: AppColors.borderColor,
+                              ),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(16),
+                              borderSide: const BorderSide(
+                                color: AppColors.borderColor,
+                              ),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(16),
+                              borderSide: const BorderSide(
+                                color: AppColors.primaryGreen,
+                                width: 2,
+                              ),
+                            ),
                           ),
-                        ),
-                      );
-                    }
-
-                    // Pagination Math
-                    final totalItems = filtered.length;
-                    final totalPages = (totalItems / _sjPageSize).ceil();
-                    final safePage = _sjCurrentPage.clamp(1, totalPages);
-                    final startIndex = (safePage - 1) * _sjPageSize;
-                    final endIndex = (startIndex + _sjPageSize > totalItems)
-                        ? totalItems
-                        : startIndex + _sjPageSize;
-                    final paginatedList = filtered.sublist(startIndex, endIndex);
-
-                    return Column(
-                      children: [
-                        ListView.builder(
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          itemCount: paginatedList.length,
-                          itemBuilder: (context, index) {
-                            final stop = paginatedList[index];
-                            return _buildStopCard(stop, _routeOrderNumber(stop));
+                          onChanged: (val) {
+                            setState(() {
+                              _sjSearchQuery = val.trim().toLowerCase();
+                              _sjCurrentPage = 1;
+                            });
                           },
                         ),
-                        if (totalPages > 1) ...[
-                          const SizedBox(height: 12),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                            decoration: BoxDecoration(
-                              color: AppColors.white,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: AppColors.borderColor),
-                            ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(
-                                  'Item ${startIndex + 1}-$endIndex dari $totalItems',
-                                  style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary),
+                        const SizedBox(height: 12),
+
+                        // Status filter
+                        Wrap(
+                          spacing: 8,
+                          children: [
+                            _buildFilterChip('semua', 'Semua'),
+                            _buildFilterChip('proses', 'Proses'),
+                            _buildFilterChip('selesai', 'Selesai'),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+
+                        // Surat jalan list — flattened per supplier stop with search & pagination
+                        Builder(
+                          builder: (context) {
+                            final filtered = _filteredStopsForList;
+
+                            if (filtered.isEmpty) {
+                              return Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 24,
                                 ),
-                                Row(
-                                  children: [
-                                    IconButton(
-                                      icon: const Icon(Icons.chevron_left, size: 20),
-                                      onPressed: safePage > 1
-                                          ? () => setState(() => _sjCurrentPage = safePage - 1)
-                                          : null,
+                                child: Center(
+                                  child: Text(
+                                    _sjSearchQuery.isNotEmpty
+                                        ? 'Tidak ada titik yang cocok dengan pencarian "$_sjSearchQuery".'
+                                        : 'Tidak ada titik pada filter ini.',
+                                    style: AppTextStyles.bodyMedium.copyWith(
+                                      color: AppColors.grey,
                                     ),
-                                    Text(
-                                      'Halaman $safePage / $totalPages',
-                                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                                  ),
+                                ),
+                              );
+                            }
+
+                            // Pagination Math
+                            final totalItems = filtered.length;
+                            final totalPages = (totalItems / _sjPageSize)
+                                .ceil();
+                            final safePage = _sjCurrentPage.clamp(
+                              1,
+                              totalPages,
+                            );
+                            const startIndex = 0;
+                            final endIndex =
+                                (safePage * _sjPageSize > totalItems)
+                                ? totalItems
+                                : safePage * _sjPageSize;
+                            final paginatedList = filtered.sublist(
+                              startIndex,
+                              endIndex,
+                            );
+
+                            return Column(
+                              children: [
+                                ListView.builder(
+                                  shrinkWrap: true,
+                                  physics: const NeverScrollableScrollPhysics(),
+                                  itemCount: paginatedList.length,
+                                  itemBuilder: (context, index) {
+                                    final stop = paginatedList[index];
+                                    return _buildStopCard(
+                                      stop,
+                                      _routeOrderNumber(stop),
+                                    );
+                                  },
+                                ),
+                                Padding(
+                                  padding: const EdgeInsets.only(
+                                    top: 4,
+                                    bottom: 8,
+                                  ),
+                                  child: Text(
+                                    safePage < totalPages
+                                        ? 'Geser ke bawah untuk memuat titik berikutnya'
+                                        : 'Semua titik sudah ditampilkan',
+                                    textAlign: TextAlign.center,
+                                    style: AppTextStyles.caption.copyWith(
+                                      color: AppColors.textSecondary,
                                     ),
-                                    IconButton(
-                                      icon: const Icon(Icons.chevron_right, size: 20),
-                                      onPressed: safePage < totalPages
-                                          ? () => setState(() => _sjCurrentPage = safePage + 1)
-                                          : null,
-                                    ),
-                                  ],
+                                  ),
                                 ),
                               ],
-                            ),
-                          ),
-                        ],
+                            );
+                          },
+                        ),
+                      ] else ...[
+                        // No tasks today - show empty state
+                        _buildEmptyTasksWidget(),
                       ],
-                    );
-                  },
+                    ],
+                  ),
                 ),
-              ] else ...[
-                // No tasks today - show empty state
-                _buildEmptyTasksWidget(),
-              ],
-            ],
+              ),
+            ),
           ),
         ),
-      ),
-    ),
-    ),
-    const ImpersonationFloatingBanner(),
-  ],
-);
+        const ImpersonationFloatingBanner(),
+      ],
+    );
   }
 
   Widget _buildHeroCard(double progress) {
@@ -875,137 +1185,189 @@ class _HomeScreenState extends State<_HomeScreen> {
         '${now.day.toString().padLeft(2, '0')} ${_getMonthName(now.month)} ${now.year}';
 
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 18),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFF1B4D3E), Color(0xFF2E7D5B)],
-        ),
-        borderRadius: BorderRadius.circular(20),
+        color: AppColors.primaryGreen,
+        borderRadius: BorderRadius.circular(28),
         boxShadow: [
           BoxShadow(
-            color: AppColors.primaryGreen.withOpacity(0.25),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
+            color: AppColors.primaryGreen.withOpacity(0.22),
+            blurRadius: 24,
+            offset: const Offset(0, 12),
           ),
         ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Stack(
         children: [
-          // Greeting + date
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      _greeting(),
-                      style: AppTextStyles.bodySmall.copyWith(
-                        color: AppColors.white.withOpacity(0.75),
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      _userName,
-                      style: AppTextStyles.h4.copyWith(
-                        color: AppColors.white,
-                        fontWeight: FontWeight.bold,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 6,
-                ),
-                decoration: BoxDecoration(
-                  color: AppColors.white.withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.calendar_today,
-                      size: 12,
-                      color: AppColors.white.withOpacity(0.9),
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      dateLabel,
-                      style: AppTextStyles.caption.copyWith(
-                        color: AppColors.white,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 20),
-
-          // Daily progress
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Progress Hari Ini',
-                style: AppTextStyles.bodySmall.copyWith(
-                  color: AppColors.white.withOpacity(0.75),
-                ),
-              ),
-              Text(
-                '$_completedTasks / $_totalTasks selesai',
-                style: AppTextStyles.caption.copyWith(
-                  color: AppColors.white,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: LinearProgressIndicator(
-              value: progress,
-              minHeight: 8,
-              backgroundColor: AppColors.white.withOpacity(0.2),
-              valueColor: const AlwaysStoppedAnimation<Color>(
-                AppColors.accentOrange,
+          Positioned(
+            right: -42,
+            top: -58,
+            child: Container(
+              width: 164,
+              height: 164,
+              decoration: BoxDecoration(
+                color: AppColors.white.withOpacity(0.06),
+                shape: BoxShape.circle,
               ),
             ),
           ),
-
-          const SizedBox(height: 20),
-
-          // Stat tiles
-          Row(
+          Positioned(
+            right: 28,
+            bottom: -62,
+            child: Container(
+              width: 124,
+              height: 124,
+              decoration: BoxDecoration(
+                color: AppColors.accentOrange.withOpacity(0.24),
+                shape: BoxShape.circle,
+              ),
+            ),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildHeroStat(
-                Icons.assignment_outlined,
-                _totalTasks.toString(),
-                'Tugas',
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: AppColors.white.withOpacity(0.13),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: const Icon(
+                      Icons.local_shipping_outlined,
+                      color: AppColors.white,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _greeting(),
+                          style: AppTextStyles.caption.copyWith(
+                            color: AppColors.white.withOpacity(0.72),
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          _userName,
+                          style: AppTextStyles.h5.copyWith(
+                            color: AppColors.white,
+                            fontWeight: FontWeight.w800,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 7,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.white.withOpacity(0.12),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.today_outlined,
+                          size: 14,
+                          color: AppColors.white,
+                        ),
+                        const SizedBox(width: 5),
+                        Text(
+                          dateLabel,
+                          style: AppTextStyles.caption.copyWith(
+                            color: AppColors.white,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-              _heroDivider(),
-              _buildHeroStat(
-                Icons.local_gas_station_outlined,
-                _totalMinyak,
-                'Total Minyak',
+              const SizedBox(height: 28),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    '${(progress * 100).round()}%',
+                    style: AppTextStyles.h3.copyWith(
+                      color: AppColors.white,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 5),
+                    child: Text(
+                      'rute selesai hari ini',
+                      style: AppTextStyles.caption.copyWith(
+                        color: AppColors.white.withOpacity(0.72),
+                      ),
+                    ),
+                  ),
+                ],
               ),
-              _heroDivider(),
-              _buildHeroStat(
-                Icons.check_circle_outline,
-                _completedTasks.toString(),
-                'Selesai',
+              const SizedBox(height: 10),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: LinearProgressIndicator(
+                  value: progress,
+                  minHeight: 8,
+                  backgroundColor: AppColors.white.withOpacity(0.14),
+                  valueColor: const AlwaysStoppedAnimation<Color>(
+                    AppColors.accentOrange,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 9),
+              Text(
+                '$_completedTasks dari $_totalTasks titik telah diselesaikan',
+                style: AppTextStyles.caption.copyWith(
+                  color: AppColors.white.withOpacity(0.72),
+                ),
+              ),
+              const SizedBox(height: 22),
+              Container(
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                decoration: BoxDecoration(
+                  color: AppColors.white.withOpacity(0.10),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: AppColors.white.withOpacity(0.08)),
+                ),
+                child: Row(
+                  children: [
+                    _buildHeroStat(
+                      Icons.route_outlined,
+                      _totalTasks.toString(),
+                      'Titik',
+                    ),
+                    _heroDivider(),
+                    _buildHeroStat(
+                      Icons.water_drop_outlined,
+                      _compactLoadLabel,
+                      'Muatan',
+                      tooltip: _totalMinyak,
+                    ),
+                    _heroDivider(),
+                    _buildHeroStat(
+                      Icons.task_alt_outlined,
+                      _completedTasks.toString(),
+                      'Selesai',
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
@@ -1016,125 +1378,168 @@ class _HomeScreenState extends State<_HomeScreen> {
 
   Widget _heroDivider() {
     return Container(
-      height: 44,
+      height: 38,
       width: 1,
       color: AppColors.white.withOpacity(0.2),
     );
   }
 
-  Widget _buildHeroStat(IconData icon, String value, String label) {
+  String get _compactLoadLabel {
+    final raw = double.tryParse(_totalMinyak.replaceAll(' kg', '').trim());
+    if (raw == null) return _totalMinyak;
+    if (raw >= 1000) {
+      final value = (raw / 1000).toStringAsFixed(1).replaceFirst('.0', '');
+      return '${value}K kg';
+    }
+    return '${raw.toStringAsFixed(0)} kg';
+  }
+
+  Widget _buildHeroStat(
+    IconData icon,
+    String value,
+    String label, {
+    String? tooltip,
+  }) {
     return Expanded(
-      child: Column(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: AppColors.white.withOpacity(0.15),
-              shape: BoxShape.circle,
+      child: Tooltip(
+        message: tooltip ?? value,
+        child: Column(
+          children: [
+            Icon(icon, color: AppColors.white.withOpacity(0.78), size: 18),
+            const SizedBox(height: 8),
+            Text(
+              value,
+              style: AppTextStyles.h6.copyWith(
+                color: AppColors.white,
+                fontWeight: FontWeight.w800,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
-            child: Icon(icon, color: AppColors.white, size: 18),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            value,
-            style: AppTextStyles.h6.copyWith(
-              color: AppColors.white,
-              fontWeight: FontWeight.bold,
+            const SizedBox(height: 2),
+            Text(
+              label,
+              style: AppTextStyles.caption.copyWith(
+                color: AppColors.white.withOpacity(0.75),
+                fontSize: 10,
+              ),
             ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          const SizedBox(height: 2),
-          Text(
-            label,
-            style: AppTextStyles.caption.copyWith(
-              color: AppColors.white.withOpacity(0.75),
-              fontSize: 11,
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildTmsQuickActions() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Layanan Operasional Driver (TMS)',
-            style: AppTextStyles.bodyMedium.copyWith(
-              fontWeight: FontWeight.bold,
-              color: AppColors.primaryGreen,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Text(
+              'Pusat Operasional',
+              style: AppTextStyles.h5.copyWith(fontWeight: FontWeight.w800),
             ),
-          ),
-          const SizedBox(height: 12),
-          Row(
+            const Spacer(),
+            Text(
+              'TMS',
+              style: AppTextStyles.caption.copyWith(
+                color: AppColors.primaryGreen,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          height: 82,
+          child: ListView(
+            scrollDirection: Axis.horizontal,
+            physics: const BouncingScrollPhysics(),
+            clipBehavior: Clip.none,
             children: [
-              Expanded(
-                child: _buildQuickActionButton(
-                  icon: Icons.receipt_long,
-                  color: AppColors.primaryGreen,
-                  label: 'Uang Jalan &\nSettlement',
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const DriverSettlementListScreen(),
-                      ),
-                    );
-                  },
-                ),
+              _buildQuickActionButton(
+                icon: Icons.receipt_long,
+                color: AppColors.primaryGreen,
+                label: 'Uang Jalan\n& Settlement',
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const DriverSettlementListScreen(),
+                    ),
+                  );
+                },
               ),
               const SizedBox(width: 8),
-              Expanded(
-                child: _buildQuickActionButton(
-                  icon: Icons.local_shipping,
-                  color: AppColors.accentOrange,
-                  label: 'Milestone\nPergerakan Truk',
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const DriverMovementScreen(),
-                      ),
-                    );
-                  },
-                ),
+              _buildQuickActionButton(
+                icon: Icons.local_shipping,
+                color: AppColors.accentOrange,
+                label: 'Pergerakan\nTruk',
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const DriverMovementScreen(),
+                    ),
+                  );
+                },
               ),
               const SizedBox(width: 8),
-              Expanded(
-                child: _buildQuickActionButton(
-                  icon: Icons.verified_user_rounded,
-                  color: const Color(0xFF1877F2),
-                  label: 'Nilai &\nRating Driver',
+              _buildQuickActionButton(
+                icon: Icons.verified_user_rounded,
+                color: const Color(0xFF1877F2),
+                label: 'Nilai &\nRating',
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const DriverScoreScreen(),
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(width: 8),
+              _buildQuickActionButton(
+                icon: Icons.on_device_training_outlined,
+                color: const Color(0xFF7C4DFF),
+                label: 'Diagnosa Koneksi & Sistem',
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const DiagnosisScreen()),
+                  );
+                },
+              ),
+              const SizedBox(width: 8),
+              _buildQuickActionButton(
+                icon: Icons.system_update_outlined,
+                color: const Color(0xFF00897B),
+                label: 'Cek Pembaruan Aplikasi',
+                onTap: () {
+                  UpdateService.instance.checkNow(context);
+                },
+              ),
+              if (_canImpersonate) ...[
+                const SizedBox(width: 8),
+                _buildQuickActionButton(
+                  icon: Icons.admin_panel_settings_outlined,
+                  color: const Color(0xFFE65100),
+                  label: 'Force Login / Pindah Akun',
                   onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const DriverScoreScreen(),
-                      ),
+                    showDialog(
+                      context: context,
+                      builder: (_) => const ForceLoginDialog(),
                     );
                   },
                 ),
-              ),
+              ],
+              const SizedBox(width: 8),
+              _buildPickupMapButton(),
             ],
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -1144,31 +1549,27 @@ class _HomeScreenState extends State<_HomeScreen> {
     required String label,
     required VoidCallback onTap,
   }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-        decoration: BoxDecoration(
-          color: color.withOpacity(0.08),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: color.withOpacity(0.2)),
-        ),
-        child: Column(
-          children: [
-            Icon(icon, color: color, size: 28),
-            const SizedBox(height: 8),
-            Text(
-              label,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                color: AppColors.textPrimary,
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-                height: 1.2,
+    return Tooltip(
+      message: label.replaceAll('\n', ' '),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(40),
+        child: Container(
+          width: 68,
+          height: 68,
+          decoration: BoxDecoration(
+            color: AppColors.white,
+            shape: BoxShape.circle,
+            border: Border.all(color: color.withOpacity(0.16)),
+            boxShadow: [
+              BoxShadow(
+                color: color.withOpacity(0.07),
+                blurRadius: 14,
+                offset: const Offset(0, 5),
               ),
-            ),
-          ],
+            ],
+          ),
+          child: Icon(icon, color: color, size: 26),
         ),
       ),
     );
@@ -1176,10 +1577,40 @@ class _HomeScreenState extends State<_HomeScreen> {
 
   String _greeting() {
     final hour = DateTime.now().hour;
-    if (hour < 11) return 'Selamat pagi 👋';
-    if (hour < 15) return 'Selamat siang 👋';
-    if (hour < 19) return 'Selamat sore 👋';
-    return 'Selamat malam 👋';
+    if (hour < 11) return 'Selamat pagi';
+    if (hour < 15) return 'Selamat siang';
+    if (hour < 19) return 'Selamat sore';
+    return 'Selamat malam';
+  }
+
+  Widget _buildPickupMapButton() {
+    return _buildQuickActionButton(
+      icon: Icons.map_outlined,
+      color: AppColors.primaryGreen,
+      label: 'Peta Lokasi Pickup',
+      onTap: () async {
+        await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => PickupMapScreen(
+              driverPosition: _driverPosition,
+              stops: _filteredStopsForMap,
+              routePolyline: _routePolyline,
+              onStopTap: (stop) async {
+                await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => NavigationScreen(suratJalan: stop.surat),
+                  ),
+                );
+                if (mounted) _loadSuratJalanData();
+              },
+            ),
+          ),
+        );
+        if (mounted) _loadSuratJalanData();
+      },
+    );
   }
 
   Widget _buildSectionHeader(
@@ -1190,10 +1621,10 @@ class _HomeScreenState extends State<_HomeScreen> {
     return Row(
       children: [
         Container(
-          padding: const EdgeInsets.all(6),
+          padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
             color: AppColors.primaryGreen.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(10),
           ),
           child: Icon(icon, size: 16, color: AppColors.primaryGreen),
         ),
@@ -1202,8 +1633,8 @@ class _HomeScreenState extends State<_HomeScreen> {
           child: Text(
             title,
             style: AppTextStyles.h5.copyWith(
-              color: AppColors.primaryGreen,
-              fontWeight: FontWeight.bold,
+              color: AppColors.textPrimary,
+              fontWeight: FontWeight.w800,
             ),
           ),
         ),
@@ -1401,19 +1832,19 @@ class _HomeScreenState extends State<_HomeScreen> {
         );
         _loadSuratJalanData();
       },
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(20),
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
           color: AppColors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.borderColor.withOpacity(0.6)),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: statusColor.withOpacity(0.14)),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
+              color: AppColors.primaryGreen.withOpacity(0.06),
+              blurRadius: 14,
+              offset: const Offset(0, 6),
             ),
           ],
         ),
@@ -1421,12 +1852,12 @@ class _HomeScreenState extends State<_HomeScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
-              width: 30,
-              height: 30,
+              width: 36,
+              height: 36,
               margin: const EdgeInsets.only(top: 2),
               decoration: BoxDecoration(
                 color: statusColor,
-                shape: BoxShape.circle,
+                borderRadius: BorderRadius.circular(12),
               ),
               alignment: Alignment.center,
               child: orderNumber != null
@@ -1469,7 +1900,7 @@ class _HomeScreenState extends State<_HomeScreen> {
                         ),
                         decoration: BoxDecoration(
                           color: statusColor.withOpacity(0.12),
-                          borderRadius: BorderRadius.circular(20),
+                          borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
                           statusText,
@@ -1498,24 +1929,27 @@ class _HomeScreenState extends State<_HomeScreen> {
                         children: [
                           Icon(Icons.scale, size: 14, color: AppColors.grey),
                           const SizedBox(width: 4),
-                          Builder(builder: (context) {
-                            // qty_real is only filled in once the driver
-                            // actually completes the pickup (weighed on
-                            // site) — before that it's legitimately 0, so
-                            // fall back to the planned qty (qty_order) as
-                            // an estimate rather than showing "0.0 kg".
-                            final hasReal = double.tryParse(detail.qtyReal) != null &&
-                                double.parse(detail.qtyReal) > 0;
-                            final kgText = SuratJalanService.convertLiterToKg(
-                              hasReal ? detail.qtyReal : detail.qtyOrder,
-                            );
-                            return Text(
-                              hasReal ? '$kgText kg' : 'Estimasi $kgText kg',
-                              style: AppTextStyles.caption.copyWith(
-                                color: AppColors.grey,
-                              ),
-                            );
-                          }),
+                          Builder(
+                            builder: (context) {
+                              // qty_real is only filled in once the driver
+                              // actually completes the pickup (weighed on
+                              // site) — before that it's legitimately 0, so
+                              // fall back to the planned qty (qty_order) as
+                              // an estimate rather than showing "0.0 kg".
+                              final hasReal =
+                                  double.tryParse(detail.qtyReal) != null &&
+                                  double.parse(detail.qtyReal) > 0;
+                              final kgText = SuratJalanService.convertLiterToKg(
+                                hasReal ? detail.qtyReal : detail.qtyOrder,
+                              );
+                              return Text(
+                                hasReal ? '$kgText kg' : 'Estimasi $kgText kg',
+                                style: AppTextStyles.caption.copyWith(
+                                  color: AppColors.grey,
+                                ),
+                              );
+                            },
+                          ),
                         ],
                       ),
                       if (distanceLabel != null)
@@ -1701,7 +2135,7 @@ class _HomeScreenState extends State<_HomeScreen> {
                     color: color.withValues(alpha: 0.3),
                     blurRadius: 6,
                     offset: const Offset(0, 2),
-                  )
+                  ),
                 ]
               : null,
         ),

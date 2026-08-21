@@ -4,6 +4,8 @@ import '../../models/geu/visit_planner_models.dart';
 import '../../services/geu/checkin_photo_service.dart';
 import '../../services/geu/crm_permission_service.dart';
 import '../../services/geu/gps_service.dart';
+import '../../services/geu/haversine.dart';
+import '../../services/geu/settings_service.dart';
 
 class CheckoutDraft {
   final GpsFix fix;
@@ -39,6 +41,7 @@ class _CheckoutSheetState extends State<_CheckoutSheet> {
   CapturedVisitPhoto? _photo;
   String? _error;
   bool _loading = true, _capturing = false;
+  double? _maxDistanceKm;
   @override
   void initState() {
     super.initState();
@@ -59,10 +62,19 @@ class _CheckoutSheetState extends State<_CheckoutSheet> {
     try {
       if (!await CrmPermissionService.ensureLocation(context))
         throw GpsException('Izin lokasi diperlukan untuk check-out.');
-      final fix = await GpsService.getCurrentFix();
+      final results = await Future.wait([
+        GpsService.getCurrentFix(),
+        SettingsService.getDouble('visit_checkin_max_distance_km'),
+      ]);
+      final fix = results[0] as GpsFix;
+      final maxDistance = results[1] as double?;
+      if (maxDistance == null) {
+        throw GpsException('Radius checkout belum tersedia dari server.');
+      }
       if (mounted)
         setState(() {
           _fix = fix;
+          _maxDistanceKm = maxDistance;
           _loading = false;
         });
     } catch (error) {
@@ -73,6 +85,22 @@ class _CheckoutSheetState extends State<_CheckoutSheet> {
         });
     }
   }
+
+  double? get _distanceKm {
+    if (_fix == null || widget.item.lat == null || widget.item.lng == null) {
+      return null;
+    }
+    return haversineDistanceKm(
+      _fix!.latitude,
+      _fix!.longitude,
+      widget.item.lat!,
+      widget.item.lng!,
+    );
+  }
+
+  bool get _withinRadius =>
+      _distanceKm == null ||
+      (_maxDistanceKm != null && _distanceKm! <= _maxDistanceKm!);
 
   Future<void> _capture() async {
     setState(() => _capturing = true);
@@ -133,6 +161,23 @@ class _CheckoutSheetState extends State<_CheckoutSheet> {
               'GPS: ±${_fix!.accuracyMeters.round()} m',
               style: const TextStyle(color: AppColors.textSecondary),
             ),
+            if (_distanceKm != null) ...[
+              const SizedBox(height: 4),
+              Text(
+                'Jarak dari supplier: ${(_distanceKm! * 1000).round()} m (maks. ${((_maxDistanceKm ?? 0) * 1000).round()} m)',
+                style: TextStyle(
+                  color: _withinRadius ? AppColors.success : AppColors.error,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+            if (!_withinRadius) ...[
+              const SizedBox(height: 8),
+              const Text(
+                'Anda berada di luar radius checkout. Mendekatlah ke lokasi supplier.',
+                style: TextStyle(color: AppColors.error),
+              ),
+            ],
             const SizedBox(height: 12),
             TextField(
               controller: _notes,
@@ -167,7 +212,7 @@ class _CheckoutSheetState extends State<_CheckoutSheet> {
               width: double.infinity,
               height: 48,
               child: FilledButton(
-                onPressed: _photo == null
+                onPressed: _photo == null || !_withinRadius
                     ? null
                     : () => Navigator.pop(
                         context,

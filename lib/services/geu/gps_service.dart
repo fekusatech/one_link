@@ -15,6 +15,7 @@ class GpsException implements Exception {
 class GpsFix {
   final double latitude;
   final double longitude;
+  final double headingDegrees;
   final double accuracyMeters;
   final bool isMocked;
   final DateTime timestamp;
@@ -22,6 +23,7 @@ class GpsFix {
   GpsFix({
     required this.latitude,
     required this.longitude,
+    required this.headingDegrees,
     required this.accuracyMeters,
     required this.isMocked,
     required this.timestamp,
@@ -47,7 +49,9 @@ class GpsService {
         ),
       );
     } on TimeoutException catch (_) {
-      throw GpsException('Gagal mendapat lokasi dalam ${timeout.inSeconds} detik. Coba lagi.');
+      throw GpsException(
+        'Gagal mendapat lokasi dalam ${timeout.inSeconds} detik. Coba lagi.',
+      );
     } catch (e) {
       throw GpsException('Gagal mengambil lokasi: $e');
     }
@@ -69,7 +73,9 @@ class GpsService {
 
   static Future<void> _ensureLocationAccess() async {
     if (!await Geolocator.isLocationServiceEnabled()) {
-      throw GpsException('GPS tidak aktif. Aktifkan lokasi di pengaturan perangkat.');
+      throw GpsException(
+        'GPS tidak aktif. Aktifkan lokasi di pengaturan perangkat.',
+      );
     }
 
     var permission = await Geolocator.checkPermission();
@@ -84,13 +90,13 @@ class GpsService {
         'Izin lokasi ditolak permanen. Aktifkan lewat pengaturan aplikasi.',
       );
     }
-
   }
 
   static GpsFix _fromPosition(Position position) {
     return GpsFix(
       latitude: position.latitude,
       longitude: position.longitude,
+      headingDegrees: position.heading,
       accuracyMeters: position.accuracy,
       isMocked: position.isMocked,
       timestamp: position.timestamp,

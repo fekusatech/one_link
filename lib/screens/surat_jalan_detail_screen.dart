@@ -7,6 +7,7 @@ import '../widgets/shared_bottom_navbar.dart';
 import '../utils/wa_format.dart';
 import 'navigation_screen.dart';
 import 'pickup_process_screen.dart';
+import 'tms/driver_map_screen.dart';
 import '../constants/app_colors.dart';
 import '../constants/app_text_styles.dart';
 
@@ -29,7 +30,8 @@ class _SuratJalanDetailScreenState extends State<SuratJalanDetailScreen> {
   late SuratJalan _current = widget.suratJalan;
   bool _isWorkingMode = true;
 
-  bool get _headerFinished => _current.status == 'done' || _current.status == 'cancel';
+  bool get _headerFinished =>
+      _current.status == 'done' || _current.status == 'cancel';
 
   @override
   void initState() {
@@ -48,7 +50,9 @@ class _SuratJalanDetailScreenState extends State<SuratJalanDetailScreen> {
   Future<void> _refresh() async {
     await _checkWorkingMode();
     try {
-      final fresh = await GeuSuratJalanService.getById(int.parse(_current.suratJalanId));
+      final fresh = await GeuSuratJalanService.getById(
+        int.parse(_current.suratJalanId),
+      );
       if (mounted) setState(() => _current = fresh);
     } catch (_) {
       // keep showing what we already have rather than blanking the screen
@@ -64,7 +68,10 @@ class _SuratJalanDetailScreenState extends State<SuratJalanDetailScreen> {
         elevation: 0,
         title: Text(
           _current.kode,
-          style: AppTextStyles.h5.copyWith(color: AppColors.primaryGreen, fontWeight: FontWeight.bold),
+          style: AppTextStyles.h5.copyWith(
+            color: AppColors.primaryGreen,
+            fontWeight: FontWeight.bold,
+          ),
         ),
         iconTheme: const IconThemeData(color: AppColors.primaryGreen),
         actions: [
@@ -76,9 +83,14 @@ class _SuratJalanDetailScreenState extends State<SuratJalanDetailScreen> {
             IconButton(
               onPressed: () => Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => NavigationScreen(suratJalan: _current)),
+                MaterialPageRoute(
+                  builder: (context) => NavigationScreen(suratJalan: _current),
+                ),
               ),
-              icon: const Icon(Icons.map_outlined, color: AppColors.primaryGreen),
+              icon: const Icon(
+                Icons.map_outlined,
+                color: AppColors.primaryGreen,
+              ),
               tooltip: 'Buka Navigasi',
             ),
         ],
@@ -94,14 +106,28 @@ class _SuratJalanDetailScreenState extends State<SuratJalanDetailScreen> {
             const SizedBox(height: 20),
             Row(
               children: [
-                Text('Detail Supplier', style: AppTextStyles.bodyLarge.copyWith(fontWeight: FontWeight.bold)),
+                Text(
+                  'Detail Supplier',
+                  style: AppTextStyles.bodyLarge.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
                 const SizedBox(width: 8),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                  decoration: BoxDecoration(color: AppColors.primaryGreen.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.primaryGreen.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
                   child: Text(
                     '${_current.suratJalanDetail.length}',
-                    style: AppTextStyles.caption.copyWith(color: AppColors.primaryGreen, fontWeight: FontWeight.bold),
+                    style: AppTextStyles.caption.copyWith(
+                      color: AppColors.primaryGreen,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
               ],
@@ -111,21 +137,34 @@ class _SuratJalanDetailScreenState extends State<SuratJalanDetailScreen> {
               Container(
                 padding: const EdgeInsets.all(24),
                 alignment: Alignment.center,
-                decoration: BoxDecoration(color: AppColors.white, borderRadius: BorderRadius.circular(12)),
-                child: Text('Tidak ada detail supplier', style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary)),
+                decoration: BoxDecoration(
+                  color: AppColors.white,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  'Tidak ada detail supplier',
+                  style: AppTextStyles.bodyMedium.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
+                ),
               )
             else
               ..._current.suratJalanDetail.asMap().entries.map(
-                    (e) => Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: _buildSupplierCard(context, e.value, e.key),
-                    ),
-                  ),
+                (e) => Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: _buildSupplierCard(context, e.value, e.key),
+                ),
+              ),
           ],
         ),
       ),
       bottomNavigationBar: SharedBottomNavbar(
         currentIndex: 0,
+        showDriverTools: true,
+        onMapTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const DriverMapScreen()),
+        ),
         onTap: (index) {
           Navigator.of(context).pop();
         },
@@ -144,7 +183,13 @@ class _SuratJalanDetailScreenState extends State<SuratJalanDetailScreen> {
           colors: [Color(0xFF1B4D3E), Color(0xFF2E7D5B)],
         ),
         borderRadius: BorderRadius.circular(18),
-        boxShadow: [BoxShadow(color: AppColors.primaryGreen.withOpacity(0.25), blurRadius: 18, offset: const Offset(0, 8))],
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primaryGreen.withOpacity(0.25),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -158,12 +203,17 @@ class _SuratJalanDetailScreenState extends State<SuratJalanDetailScreen> {
                   children: [
                     Text(
                       _current.kode,
-                      style: AppTextStyles.h5.copyWith(color: Colors.white, fontWeight: FontWeight.bold),
+                      style: AppTextStyles.h5.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       'Pickup: ${_current.kodePickup}',
-                      style: AppTextStyles.caption.copyWith(color: Colors.white.withOpacity(0.75)),
+                      style: AppTextStyles.caption.copyWith(
+                        color: Colors.white.withOpacity(0.75),
+                      ),
                     ),
                   ],
                 ),
@@ -178,21 +228,36 @@ class _SuratJalanDetailScreenState extends State<SuratJalanDetailScreen> {
             children: [
               _heroMeta(
                 Icons.calendar_today,
-                formatIndoDate(_current.tanggalFormatted.isNotEmpty ? _current.tanggalFormatted : _current.tanggal),
+                formatIndoDate(
+                  _current.tanggalFormatted.isNotEmpty
+                      ? _current.tanggalFormatted
+                      : _current.tanggal,
+                ),
               ),
-              if (_current.driverName != '-' && _current.driverName.isNotEmpty) _heroMeta(Icons.person_outline, _current.driverName),
-              if (_current.plat != '-' && _current.plat.isNotEmpty) _heroMeta(Icons.local_shipping_outlined, _current.plat),
-              if (_current.gudangName != '-' && _current.gudangName.isNotEmpty) _heroMeta(Icons.warehouse_outlined, _current.gudangName),
+              if (_current.driverName != '-' && _current.driverName.isNotEmpty)
+                _heroMeta(Icons.person_outline, _current.driverName),
+              if (_current.plat != '-' && _current.plat.isNotEmpty)
+                _heroMeta(Icons.local_shipping_outlined, _current.plat),
+              if (_current.gudangName != '-' && _current.gudangName.isNotEmpty)
+                _heroMeta(Icons.warehouse_outlined, _current.gudangName),
             ],
           ),
           const SizedBox(height: 16),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('Progress', style: AppTextStyles.caption.copyWith(color: Colors.white.withOpacity(0.75))),
+              Text(
+                'Progress',
+                style: AppTextStyles.caption.copyWith(
+                  color: Colors.white.withOpacity(0.75),
+                ),
+              ),
               Text(
                 '${_current.progress.completedItems}/${_current.progress.totalItems} selesai (${_current.progress.percentage}%)',
-                style: AppTextStyles.caption.copyWith(color: Colors.white, fontWeight: FontWeight.bold),
+                style: AppTextStyles.caption.copyWith(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ],
           ),
@@ -203,7 +268,9 @@ class _SuratJalanDetailScreenState extends State<SuratJalanDetailScreen> {
               value: _current.progress.percentage / 100,
               minHeight: 8,
               backgroundColor: Colors.white.withOpacity(0.2),
-              valueColor: const AlwaysStoppedAnimation<Color>(AppColors.accentOrange),
+              valueColor: const AlwaysStoppedAnimation<Color>(
+                AppColors.accentOrange,
+              ),
             ),
           ),
         ],
@@ -217,7 +284,12 @@ class _SuratJalanDetailScreenState extends State<SuratJalanDetailScreen> {
       children: [
         Icon(icon, size: 14, color: Colors.white.withOpacity(0.85)),
         const SizedBox(width: 5),
-        Text(text, style: AppTextStyles.caption.copyWith(color: Colors.white.withOpacity(0.95))),
+        Text(
+          text,
+          style: AppTextStyles.caption.copyWith(
+            color: Colors.white.withOpacity(0.95),
+          ),
+        ),
       ],
     );
   }
@@ -225,24 +297,40 @@ class _SuratJalanDetailScreenState extends State<SuratJalanDetailScreen> {
   Widget _statusBadge() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(color: Colors.white.withOpacity(0.18), borderRadius: BorderRadius.circular(20)),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.18),
+        borderRadius: BorderRadius.circular(20),
+      ),
       child: Text(
         _getStatusText(),
-        style: AppTextStyles.caption.copyWith(color: Colors.white, fontWeight: FontWeight.bold),
+        style: AppTextStyles.caption.copyWith(
+          color: Colors.white,
+          fontWeight: FontWeight.bold,
+        ),
       ),
     );
   }
 
   // ── Per-supplier card ──────────────────────────────────────
-  Widget _buildSupplierCard(BuildContext context, SuratJalanDetail detail, int index) {
+  Widget _buildSupplierCard(
+    BuildContext context,
+    SuratJalanDetail detail,
+    int index,
+  ) {
     final statusColor = _getDetailStatusColor(detail.status);
     final photos = detail.photoUrls.isNotEmpty
         ? detail.photoUrls
-        : (detail.fotoUrl != null && detail.fotoUrl!.isNotEmpty ? [detail.fotoUrl!] : const <String>[]);
-    final canContinue = detail.status != 'done' && detail.status != 'cancel' && !_headerFinished;
+        : (detail.fotoUrl != null && detail.fotoUrl!.isNotEmpty
+              ? [detail.fotoUrl!]
+              : const <String>[]);
+    final canContinue =
+        detail.status != 'done' &&
+        detail.status != 'cancel' &&
+        !_headerFinished;
     final rawPhone = detail.supplierPhone.trim();
     final cleanDigits = rawPhone.replaceAll(RegExp(r'\D'), '');
-    final hasValidPhone = rawPhone.isNotEmpty &&
+    final hasValidPhone =
+        rawPhone.isNotEmpty &&
         rawPhone != '-' &&
         rawPhone != '0' &&
         rawPhone.toLowerCase() != 'null' &&
@@ -254,7 +342,13 @@ class _SuratJalanDetailScreenState extends State<SuratJalanDetailScreen> {
         color: AppColors.white,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: AppColors.borderColor.withOpacity(0.6)),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10, offset: const Offset(0, 3))],
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
       ),
       child: Padding(
         padding: const EdgeInsets.all(14),
@@ -268,13 +362,20 @@ class _SuratJalanDetailScreenState extends State<SuratJalanDetailScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(detail.supplierName, style: AppTextStyles.bodyMedium.copyWith(fontWeight: FontWeight.bold)),
+                      Text(
+                        detail.supplierName,
+                        style: AppTextStyles.bodyMedium.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                       const SizedBox(height: 2),
                       Text(
                         detail.supplierAlamat,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary),
+                        style: AppTextStyles.caption.copyWith(
+                          color: AppColors.textSecondary,
+                        ),
                       ),
                       if (hasValidPhone)
                         InkWell(
@@ -288,7 +389,10 @@ class _SuratJalanDetailScreenState extends State<SuratJalanDetailScreen> {
                           },
                           borderRadius: BorderRadius.circular(6),
                           child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
                             decoration: BoxDecoration(
                               color: AppColors.success.withValues(alpha: 0.12),
                               borderRadius: BorderRadius.circular(6),
@@ -330,15 +434,24 @@ class _SuratJalanDetailScreenState extends State<SuratJalanDetailScreen> {
                 ),
                 const SizedBox(width: 8),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: statusColor.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: statusColor.withValues(alpha: 0.4)),
+                    border: Border.all(
+                      color: statusColor.withValues(alpha: 0.4),
+                    ),
                   ),
                   child: Text(
                     detail.status.toUpperCase(),
-                    style: AppTextStyles.caption.copyWith(color: statusColor, fontWeight: FontWeight.bold, fontSize: 10),
+                    style: AppTextStyles.caption.copyWith(
+                      color: statusColor,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 10,
+                    ),
                   ),
                 ),
               ],
@@ -346,8 +459,18 @@ class _SuratJalanDetailScreenState extends State<SuratJalanDetailScreen> {
             const SizedBox(height: 10),
             Row(
               children: [
-                Expanded(child: _miniStat('Order', '${detail.qtyOrder} ${detail.satuan}')),
-                Expanded(child: _miniStat('Real', '${detail.qtyReal} ${detail.satuan}')),
+                Expanded(
+                  child: _miniStat(
+                    'Order',
+                    '${detail.qtyOrder} ${detail.satuan}',
+                  ),
+                ),
+                Expanded(
+                  child: _miniStat(
+                    'Real',
+                    '${detail.qtyReal} ${detail.satuan}',
+                  ),
+                ),
                 Expanded(child: _miniStat('WO', detail.workOrderKode)),
               ],
             ),
@@ -360,7 +483,12 @@ class _SuratJalanDetailScreenState extends State<SuratJalanDetailScreen> {
                   children: [
                     ...photos.map((url) => _thumb(context, url, Icons.image)),
                     if (detail.ttdUrl != null && detail.ttdUrl!.isNotEmpty)
-                      _thumb(context, detail.ttdUrl!, Icons.draw, isSignature: true),
+                      _thumb(
+                        context,
+                        detail.ttdUrl!,
+                        Icons.draw,
+                        isSignature: true,
+                      ),
                   ],
                 ),
               ),
@@ -374,13 +502,18 @@ class _SuratJalanDetailScreenState extends State<SuratJalanDetailScreen> {
                       onPressed: () {
                         final message =
                             'Halo ${detail.supplierName}, saya driver GEU One Link terkait Surat Jalan ${_current.kode}.';
-                        WaFormat.launchWhatsApp(phone: rawPhone, message: message);
+                        WaFormat.launchWhatsApp(
+                          phone: rawPhone,
+                          message: message,
+                        );
                       },
                       style: FilledButton.styleFrom(
                         backgroundColor: AppColors.success,
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 10),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
                       ),
                       icon: const Icon(Icons.chat_rounded, size: 16),
                       label: const Text(
@@ -389,8 +522,7 @@ class _SuratJalanDetailScreenState extends State<SuratJalanDetailScreen> {
                       ),
                     ),
                   ),
-                if (hasValidPhone && canContinue)
-                  const SizedBox(width: 8),
+                if (hasValidPhone && canContinue) const SizedBox(width: 8),
                 if (canContinue)
                   Expanded(
                     child: OutlinedButton.icon(
@@ -398,7 +530,10 @@ class _SuratJalanDetailScreenState extends State<SuratJalanDetailScreen> {
                         await Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (_) => PickupProcessScreen(suratJalan: _current, supplierIndex: index),
+                            builder: (_) => PickupProcessScreen(
+                              suratJalan: _current,
+                              supplierIndex: index,
+                            ),
                           ),
                         );
                         _refresh();
@@ -417,11 +552,11 @@ class _SuratJalanDetailScreenState extends State<SuratJalanDetailScreen> {
                       ),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: AppColors.primaryGreen,
-                        side: const BorderSide(
-                          color: AppColors.primaryGreen,
-                        ),
+                        side: const BorderSide(color: AppColors.primaryGreen),
                         padding: const EdgeInsets.symmetric(vertical: 10),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
                       ),
                     ),
                   ),
@@ -437,7 +572,13 @@ class _SuratJalanDetailScreenState extends State<SuratJalanDetailScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary, fontSize: 10)),
+        Text(
+          label,
+          style: AppTextStyles.caption.copyWith(
+            color: AppColors.textSecondary,
+            fontSize: 10,
+          ),
+        ),
         const SizedBox(height: 2),
         Text(
           value,
@@ -449,7 +590,12 @@ class _SuratJalanDetailScreenState extends State<SuratJalanDetailScreen> {
     );
   }
 
-  Widget _thumb(BuildContext context, String url, IconData fallbackIcon, {bool isSignature = false}) {
+  Widget _thumb(
+    BuildContext context,
+    String url,
+    IconData fallbackIcon, {
+    bool isSignature = false,
+  }) {
     return GestureDetector(
       onTap: () => _previewImage(context, url),
       child: Container(
@@ -472,7 +618,11 @@ class _SuratJalanDetailScreenState extends State<SuratJalanDetailScreen> {
                   loadingBuilder: (context, child, progress) {
                     if (progress == null) return child;
                     return const Center(
-                      child: SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
+                      child: SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
                     );
                   },
                   errorBuilder: (context, error, stackTrace) => Container(
@@ -486,7 +636,11 @@ class _SuratJalanDetailScreenState extends State<SuratJalanDetailScreen> {
                 Positioned(
                   left: 2,
                   top: 2,
-                  child: Icon(Icons.draw, size: 12, color: AppColors.primaryGreen.withOpacity(0.7)),
+                  child: Icon(
+                    Icons.draw,
+                    size: 12,
+                    color: AppColors.primaryGreen.withOpacity(0.7),
+                  ),
                 ),
             ],
           ),

@@ -1,7 +1,7 @@
 import 'geu_api_client.dart';
 
-/// GET /api/settings/{key} (go-rest-api). Read-only, best-effort — callers
-/// supply a sensible default since these are tuning knobs, not required data.
+/// GET /api/settings/{key} (go-rest-api). Read-only. Tuning values must come
+/// from the API; callers handle a missing/invalid value explicitly.
 class SettingsService {
   static Future<String?> getByKey(String key) async {
     try {
@@ -17,9 +17,10 @@ class SettingsService {
     }
   }
 
-  static Future<double> getDouble(String key, double fallback) async {
+  static Future<double?> getDouble(String key) async {
     final raw = await getByKey(key);
-    if (raw == null) return fallback;
-    return double.tryParse(raw) ?? fallback;
+    if (raw == null) return null;
+    final value = double.tryParse(raw);
+    return value != null && value > 0 ? value : null;
   }
 }

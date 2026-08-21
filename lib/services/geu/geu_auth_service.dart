@@ -155,10 +155,7 @@ class GeuAuthService {
   /// (Surat Jalan, etc).
   static Future<void> requestDriverOtp(String phone) async {
     final dio = await GeuApiClient.instance;
-    final res = await dio.post(
-      '/api-auth/otp/request',
-      data: {'phone': phone},
-    );
+    final res = await dio.post('/api-auth/otp/request', data: {'phone': phone});
     final body = res.data as Map<String, dynamic>;
     if (body['status'] != 'success') {
       throw Exception(body['message'] ?? 'Gagal mengirim kode OTP');
@@ -178,7 +175,9 @@ class GeuAuthService {
 
     final body = res.data as Map<String, dynamic>;
     if (body['status'] != 'success') {
-      throw Exception(body['message'] ?? 'Kode OTP salah atau sudah kedaluwarsa');
+      throw Exception(
+        body['message'] ?? 'Kode OTP salah atau sudah kedaluwarsa',
+      );
     }
 
     final data = body['data'] as Map<String, dynamic>;
@@ -214,20 +213,26 @@ class GeuAuthService {
 
     final body = res.data as Map<String, dynamic>;
     if (body['status'] != 'success' || body['data'] is! Map) {
-      throw Exception(body['message'] ?? 'Login Google tidak dapat diselesaikan.');
+      throw Exception(
+        body['message'] ?? 'Login Google tidak dapat diselesaikan.',
+      );
     }
 
     final data = Map<String, dynamic>.from(body['data'] as Map);
     final user = GeuUser.fromJson(data);
     final tokenData = data['tokens'];
     final accessData = tokenData is Map ? tokenData['access'] : null;
-    final token = accessData is Map ? accessData['token']?.toString() ?? '' : '';
+    final token = accessData is Map
+        ? accessData['token']?.toString() ?? ''
+        : '';
     final expiresAt = accessData is Map
         ? accessData['expires']?.toString() ?? ''
         : '';
 
     if (token.isEmpty || expiresAt.isEmpty) {
-      throw Exception('Sesi login belum tersedia. Perbarui layanan dan coba lagi.');
+      throw Exception(
+        'Sesi login belum tersedia. Perbarui layanan dan coba lagi.',
+      );
     }
 
     await _saveProfile(user);
@@ -274,6 +279,36 @@ class GeuAuthService {
       return true;
     } catch (_) {
       // stay logged out of Canvassing; its screens show a clear error
+      return false;
+    }
+  }
+
+  /// Re-open the current developer session using credentials stored in the
+  /// secure vault. This deliberately skips the valid-session shortcut used by
+  /// [ensureSession], so it behaves like a fresh login without a form.
+  static Future<bool> reloginWithStoredCredentials() async {
+    try {
+      final dio = await GeuApiClient.instance;
+      final refreshed = await dio.post('/api-auth/refresh');
+      if (refreshed.statusCode == 200) {
+        final user = await checkAuth();
+        if (user != null) return true;
+      }
+    } catch (_) {
+      // Fall through to the secure credential path below.
+    }
+    final email = await _storage.read(key: _secureKeyEmail);
+    final password = await _storage.read(key: _secureKeyPassword);
+    if (email == null ||
+        password == null ||
+        email.isEmpty ||
+        password.isEmpty) {
+      return false;
+    }
+    try {
+      await login(email, password, rememberCredentials: true);
+      return true;
+    } catch (_) {
       return false;
     }
   }

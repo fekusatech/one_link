@@ -1,8 +1,10 @@
 import 'dart:async';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'dart:ui' as ui;
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:sensors_plus/sensors_plus.dart';
 
 import '../../constants/app_colors.dart';
 import '../../models/geu/visit_planner_models.dart';
@@ -14,11 +16,13 @@ import '../../services/geu/active_visit_service.dart';
 import '../../services/geu/visit_navigation_service.dart';
 import '../../services/geu/mission_navigation_state.dart';
 import '../../services/geu/visit_planner_service.dart';
+import '../../services/geu/settings_service.dart';
 import '../../services/geu/visit_sync_service.dart';
 import 'add_work_order_sheet.dart';
 import 'checkin_dialog.dart';
 import 'checkout_dialog.dart';
 import 'mission_today_screen.dart';
+import 'scan_prospect_screen.dart';
 import 'skip_mission_sheet.dart';
 
 /// Mobile-first entry point mirroring CRM web's Visit Planner: map first,
@@ -30,9 +34,10 @@ class VisitPlanScreen extends StatefulWidget {
 }
 
 class _VisitPlanScreenState extends State<VisitPlanScreen> {
-  static const _supplierRadiusMeters = 5000;
+  late int _supplierRadiusMeters;
   TodaysMission? _mission;
   LatLng? _user;
+  double _headingDegrees = 0;
   List<NearbySupplier> _databaseSuppliers = const [];
   final MapController _map = MapController();
   bool _loading = true;
@@ -41,6 +46,7 @@ class _VisitPlanScreenState extends State<VisitPlanScreen> {
   List<LatLng> _drivingRoute = const [];
   LatLng? _routeOrigin;
   StreamSubscription<GpsFix>? _navigationLocationSubscription;
+  StreamSubscription<MagnetometerEvent>? _compassSubscription;
   int? _addingSupplierId;
   LatLng? _searchCenter;
   bool _isAdmin = false;
@@ -50,7 +56,23 @@ class _VisitPlanScreenState extends State<VisitPlanScreen> {
   void initState() {
     super.initState();
     _loadAdminAccess();
+    _startCompassUpdates();
     _load();
+  }
+
+  void _startCompassUpdates() {
+    _compassSubscription =
+        magnetometerEventStream(
+          samplingPeriod: const Duration(milliseconds: 200),
+        ).listen((event) {
+          final magnitude = math.sqrt(event.x * event.x + event.y * event.y);
+          if (!mounted || magnitude < 1) return;
+          // Flat-phone compass heading. GPS heading remains the source while
+          // moving; the compass keeps the arrow responsive while standing still.
+          var heading = math.atan2(event.y, event.x) * 180 / math.pi;
+          if (heading < 0) heading += 360;
+          setState(() => _headingDegrees = heading);
+        });
   }
 
   Future<void> _loadAdminAccess() async {
@@ -68,6 +90,11 @@ class _VisitPlanScreenState extends State<VisitPlanScreen> {
   Future<void> _load() async {
     setState(() => _loading = true);
     try {
+      final radiusKm = await SettingsService.getDouble('distance_radius_map');
+      if (radiusKm == null) {
+        throw StateError('Radius scanner belum tersedia dari server.');
+      }
+      _supplierRadiusMeters = (radiusKm * 1000).round();
       final mission = await VisitPlannerService.getTodaysMission();
       GpsFix? fix;
       try {
@@ -94,6 +121,7 @@ class _VisitPlanScreenState extends State<VisitPlanScreen> {
       setState(() {
         _mission = mission;
         _user = queryCenter;
+        _headingDegrees = fix?.headingDegrees ?? 0;
         _databaseSuppliers = suppliers;
       });
       MissionNavigationStateService.refresh(mission.items);
@@ -106,7 +134,7 @@ class _VisitPlanScreenState extends State<VisitPlanScreen> {
                 )
               : const LatLng(-7.9666, 112.6326));
       WidgetsBinding.instance.addPostFrameCallback(
-        (_) => _map.move(center, 12),
+        (_) => _map.move(center, 15),
       );
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -116,6 +144,7 @@ class _VisitPlanScreenState extends State<VisitPlanScreen> {
   @override
   void dispose() {
     _navigationLocationSubscription?.cancel();
+    _compassSubscription?.cancel();
     super.dispose();
   }
 
@@ -157,7 +186,7 @@ class _VisitPlanScreenState extends State<VisitPlanScreen> {
             mapController: _map,
             options: MapOptions(
               initialCenter: center,
-              initialZoom: 13,
+              initialZoom: 15,
               onPositionChanged: (_, hasGesture) {
                 if (hasGesture && !_showRecenter) {
                   WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -245,23 +274,29 @@ class _VisitPlanScreenState extends State<VisitPlanScreen> {
                       point: _user!,
                       width: 34,
                       height: 34,
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 300),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF4CAF50),
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white, width: 4),
-                          boxShadow: const [
-                            BoxShadow(color: Color(0x55000000), blurRadius: 8),
-                          ],
+                      child: Transform.rotate(
+                        angle: _headingDegrees * math.pi / 180,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: AppColors.primaryGreen,
+                              width: 2,
+                            ),
+                            boxShadow: const [
+                              BoxShadow(
+                                color: Color(0x55000000),
+                                blurRadius: 8,
+                              ),
+                            ],
+                          ),
+                          child: const Icon(
+                            Icons.navigation,
+                            size: 20,
+                            color: AppColors.primaryGreen,
+                          ),
                         ),
-                        child: _missionActive
-                            ? const Icon(
-                                Icons.navigation,
-                                size: 17,
-                                color: Colors.white,
-                              )
-                            : null,
                       ),
                     ),
                 ],
@@ -367,6 +402,24 @@ class _VisitPlanScreenState extends State<VisitPlanScreen> {
             ),
           ),
           Positioned(
+            top: 92,
+            right: 20,
+            child: FloatingActionButton.small(
+              heroTag: 'scan-prospect-map',
+              tooltip: 'Scan prospek di sekitar',
+              onPressed: () => showModalBottomSheet<void>(
+                context: context,
+                isScrollControlled: true,
+                backgroundColor: Colors.white,
+                showDragHandle: false,
+                builder: (_) => const ScanProspectScreen(asSheet: true),
+              ),
+              backgroundColor: AppColors.primaryGreen,
+              foregroundColor: Colors.white,
+              child: const Icon(Icons.qr_code_scanner_rounded),
+            ),
+          ),
+          Positioned(
             right: 20,
             bottom: 126,
             child: FloatingActionButton(
@@ -386,7 +439,7 @@ class _VisitPlanScreenState extends State<VisitPlanScreen> {
                 heroTag: 'recenter-user-location',
                 tooltip: 'Kembali ke posisi saya',
                 onPressed: () {
-                  _map.move(_user!, _missionActive ? 16 : 14);
+                  _map.move(_user!, _missionActive ? 17 : 15);
                   setState(() => _showRecenter = false);
                 },
                 backgroundColor: Colors.white,
@@ -457,7 +510,7 @@ class _VisitPlanScreenState extends State<VisitPlanScreen> {
     final point =
         target ?? (missionMarkers.isEmpty ? null : missionMarkers.first);
     if (point != null && point.hasCoordinates) {
-      _map.move(LatLng(point.lat!, point.lng!), 13);
+      _map.move(LatLng(point.lat!, point.lng!), 15);
     }
   }
 
@@ -496,8 +549,11 @@ class _VisitPlanScreenState extends State<VisitPlanScreen> {
       _navigationLocationSubscription = positions.listen((fix) {
         if (!mounted || !_missionActive) return;
         final point = LatLng(fix.latitude, fix.longitude);
-        setState(() => _user = point);
-        _map.move(point, 16);
+        setState(() {
+          _user = point;
+          _headingDegrees = fix.headingDegrees;
+        });
+        _map.move(point, 17);
         final previousRouteOrigin = _routeOrigin;
         if (previousRouteOrigin == null ||
             haversineDistanceKm(
@@ -588,7 +644,7 @@ class _VisitPlanScreenState extends State<VisitPlanScreen> {
 
   Future<void> _setSearchCenter(LatLng point) async {
     setState(() => _searchCenter = point);
-    _map.move(point, 13);
+    _map.move(point, 15);
     await _load();
   }
 
@@ -728,16 +784,59 @@ class _VisitPlanScreenState extends State<VisitPlanScreen> {
           }
 
           return AlertDialog(
-            title: const Row(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(28),
+            ),
+            insetPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 24,
+            ),
+            titlePadding: const EdgeInsets.fromLTRB(24, 22, 24, 4),
+            contentPadding: const EdgeInsets.fromLTRB(24, 8, 24, 0),
+            actionsPadding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+            title: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(Icons.person_add_alt_1, color: Colors.deepPurple),
-                SizedBox(width: 8),
-                Text('Register Supplier'),
+                Container(
+                  width: 42,
+                  height: 42,
+                  decoration: BoxDecoration(
+                    color: Colors.deepPurple.withOpacity(0.10),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: const Icon(
+                    Icons.person_add_alt_1,
+                    color: Colors.deepPurple,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Register Supplier',
+                        style: TextStyle(
+                          fontSize: 21,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      SizedBox(height: 3),
+                      Text(
+                        'Tambahkan supplier baru ke mission',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ],
             ),
             content: SingleChildScrollView(
               child: SizedBox(
-                width: 420,
+                width: MediaQuery.sizeOf(context).width - 80,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -748,17 +847,13 @@ class _VisitPlanScreenState extends State<VisitPlanScreen> {
                         color: AppColors.textSecondary,
                       ),
                     ),
-                    const SizedBox(height: 14),
+                    const SizedBox(height: 8),
                     _field(name, 'Nama Supplier *'),
                     _field(address, 'Alamat', maxLines: 2),
-                    const Divider(height: 28),
-                    const Text(
-                      'KONTAK',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.textSecondary,
-                      ),
+                    const SizedBox(height: 18),
+                    _dialogSectionHeader(
+                      Icons.contact_phone_outlined,
+                      'Kontak PIC',
                     ),
                     _field(employee, 'Nama Karyawan *'),
                     _field(position, 'Jabatan *'),
@@ -767,14 +862,10 @@ class _VisitPlanScreenState extends State<VisitPlanScreen> {
                       'Nomor Telepon',
                       keyboard: TextInputType.phone,
                     ),
-                    const Divider(height: 28),
-                    const Text(
-                      'REKENING (OPSIONAL)',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.textSecondary,
-                      ),
+                    const SizedBox(height: 18),
+                    _dialogSectionHeader(
+                      Icons.account_balance_outlined,
+                      'Rekening opsional',
                     ),
                     _field(accountName, 'Nama Pemilik Rekening'),
                     _field(
@@ -806,70 +897,97 @@ class _VisitPlanScreenState extends State<VisitPlanScreen> {
                             }),
                     ),
                     const SizedBox(height: 10),
-                    OutlinedButton.icon(
-                      onPressed: validatingAccount
-                          ? null
-                          : () async {
-                              if (accountNumber.text.trim().isEmpty ||
-                                  selectedBank == null) {
-                                setDialogState(
-                                  () => accountValidationMessage =
-                                      'Isi nomor rekening dan pilih bank terlebih dahulu.',
-                                );
-                                return;
-                              }
-                              setDialogState(() {
-                                validatingAccount = true;
-                                accountValidationMessage = null;
-                              });
-                              try {
-                                final result =
-                                    await VisitPlannerService.validateBankAccount(
-                                      accountNumber: accountNumber.text.trim(),
-                                      bankCode: selectedBank!.code,
-                                      accountName: accountName.text.trim(),
-                                    );
-                                if (!dialogContext.mounted) return;
-                                setDialogState(
-                                  () => accountValidationMessage = result.valid
-                                      ? '✓ ${result.accountName}'
-                                      : '✗ Rekening tidak valid.',
-                                );
-                              } catch (error) {
-                                if (dialogContext.mounted) {
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: validatingAccount
+                            ? null
+                            : () async {
+                                if (accountNumber.text.trim().isEmpty ||
+                                    selectedBank == null) {
                                   setDialogState(
                                     () => accountValidationMessage =
-                                        '✗ ${error.toString()}',
+                                        'Isi nomor rekening dan pilih bank terlebih dahulu.',
                                   );
+                                  return;
                                 }
-                              } finally {
-                                if (dialogContext.mounted) {
+                                setDialogState(() {
+                                  validatingAccount = true;
+                                  accountValidationMessage = null;
+                                });
+                                try {
+                                  final result =
+                                      await VisitPlannerService.validateBankAccount(
+                                        accountNumber: accountNumber.text
+                                            .trim(),
+                                        bankCode: selectedBank!.code,
+                                        accountName: accountName.text.trim(),
+                                      );
+                                  if (!dialogContext.mounted) return;
                                   setDialogState(
-                                    () => validatingAccount = false,
+                                    () =>
+                                        accountValidationMessage = result.valid
+                                        ? '✓ ${result.accountName}'
+                                        : '✗ Rekening tidak valid.',
                                   );
+                                } catch (error) {
+                                  if (dialogContext.mounted) {
+                                    setDialogState(
+                                      () => accountValidationMessage =
+                                          '✗ ${error.toString()}',
+                                    );
+                                  }
+                                } finally {
+                                  if (dialogContext.mounted) {
+                                    setDialogState(
+                                      () => validatingAccount = false,
+                                    );
+                                  }
                                 }
-                              }
-                            },
-                      icon: validatingAccount
-                          ? const SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Icon(Icons.verified_outlined),
-                      label: Text(
-                        validatingAccount
-                            ? 'Memvalidasi...'
-                            : 'Validate Account',
+                              },
+                        icon: validatingAccount
+                            ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Icon(Icons.verified_outlined),
+                        label: Text(
+                          validatingAccount
+                              ? 'Memvalidasi...'
+                              : 'Validasi rekening',
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          minimumSize: const Size.fromHeight(46),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
                       ),
                     ),
                     if (accountValidationMessage != null)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 8),
+                      Container(
+                        width: double.infinity,
+                        margin: const EdgeInsets.only(top: 10),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 10,
+                        ),
+                        decoration: BoxDecoration(
+                          color:
+                              (accountValidationMessage!.startsWith('✓')
+                                      ? AppColors.success
+                                      : AppColors.error)
+                                  .withOpacity(0.08),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                         child: Text(
                           accountValidationMessage!,
                           style: TextStyle(
                             fontSize: 12,
+                            fontWeight: FontWeight.w700,
                             color: accountValidationMessage!.startsWith('✓')
                                 ? AppColors.success
                                 : AppColors.error,
@@ -881,15 +999,40 @@ class _VisitPlanScreenState extends State<VisitPlanScreen> {
               ),
             ),
             actions: [
-              TextButton(
-                onPressed: submitting
-                    ? null
-                    : () => Navigator.pop(dialogContext),
-                child: const Text('Batal'),
-              ),
-              FilledButton(
-                onPressed: submitting ? null : submit,
-                child: Text(submitting ? 'Menyimpan...' : 'Tambah ke Mission'),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: submitting
+                          ? null
+                          : () => Navigator.pop(dialogContext),
+                      style: OutlinedButton.styleFrom(
+                        minimumSize: const Size.fromHeight(48),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                      child: const Text('Batal'),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    flex: 2,
+                    child: FilledButton(
+                      onPressed: submitting ? null : submit,
+                      style: FilledButton.styleFrom(
+                        minimumSize: const Size.fromHeight(48),
+                        backgroundColor: AppColors.primaryGreen,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                      child: Text(
+                        submitting ? 'Menyimpan...' : 'Tambah ke Mission',
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ],
           );
@@ -918,10 +1061,55 @@ class _VisitPlanScreenState extends State<VisitPlanScreen> {
       keyboardType: keyboard,
       decoration: InputDecoration(
         labelText: label,
-        border: const OutlineInputBorder(),
+        filled: true,
+        fillColor: AppColors.background,
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 15,
+          vertical: 14,
+        ),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(
+            color: AppColors.primaryGreen.withOpacity(0.18),
+          ),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(
+            color: AppColors.primaryGreen.withOpacity(0.18),
+          ),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(
+            color: AppColors.primaryGreen,
+            width: 1.5,
+          ),
+        ),
       ),
     ),
   );
+
+  Widget _dialogSectionHeader(IconData icon, String title) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 2),
+      child: Row(
+        children: [
+          Icon(icon, size: 17, color: AppColors.primaryGreen),
+          const SizedBox(width: 7),
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
+              color: AppColors.textPrimary,
+              letterSpacing: .3,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   Future<void> _showSupplierDetails(NearbySupplier supplier) async {
     await showModalBottomSheet<void>(

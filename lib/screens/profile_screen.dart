@@ -8,9 +8,6 @@ import '../services/user_storage.dart';
 import '../services/persistent_auth_service.dart';
 import '../services/geu/geu_auth_service.dart';
 import '../services/geu/visit_sync_service.dart';
-import '../services/geu/surat_jalan_service.dart';
-import '../services/surat_jalan_service.dart';
-import '../services/tms/tms_settlement_service.dart';
 import 'edit_profile_screen.dart';
 import 'about_screen.dart';
 import 'diagnosis_screen.dart';
@@ -46,14 +43,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
   String _userCompany = '';
   bool _checkingUpdate = false;
   bool _canImpersonate = false;
+  bool _canDeveloperRelogin = false;
+  bool _reloggingDeveloper = false;
 
   // CRO Performance Stats
   AssignmentStats? _croPerformance;
-
-  // Driver Performance Stats (Loaded from existing APIs)
-  int _driverCompletedPickups = 0;
-  double _driverTotalKg = 0.0;
-  double _driverApprovedSettlement = 0.0;
 
   @override
   void initState() {
@@ -61,8 +55,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _loadUserData();
     if (widget.role == ProfileRole.cro) {
       _loadCroPerformance();
-    } else {
-      _loadDriverPerformance();
     }
   }
 
@@ -77,37 +69,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     } catch (_) {}
   }
 
-  Future<void> _loadDriverPerformance() async {
-    try {
-      // 1. Fetch completed pickups count and weight from existing API
-      final pickups = await GeuSuratJalanService.listForDriver(limit: 100);
-      final completed = pickups.where((s) => s.status.toLowerCase() == 'done').toList();
-
-      double totalKgSum = 0.0;
-      for (var p in completed) {
-        final kgStr = SuratJalanService.convertLiterToKg(p.totalLiter);
-        totalKgSum += double.tryParse(kgStr) ?? 0.0;
-      }
-
-      // 2. Fetch approved settlements sum from existing API
-      double settlementSum = 0.0;
-      try {
-        final settlements = await TmsSettlementService.getSettlements(status: 'approved');
-        for (var st in settlements) {
-          settlementSum += st.totalCostActual ?? st.totalCostPlanned ?? 0.0;
-        }
-      } catch (_) {}
-
-      if (mounted) {
-        setState(() {
-          _driverCompletedPickups = completed.length;
-          _driverTotalKg = totalKgSum;
-          _driverApprovedSettlement = settlementSum;
-        });
-      }
-    } catch (_) {}
-  }
-
   String? _userAvatar;
 
   Future<void> _loadUserData() async {
@@ -117,11 +78,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final email = await UserStorage.getUserEmail();
     final company = await UserStorage.getUserCompany();
     final canImp = await ImpersonationService.canImpersonate();
+    final roles =
+        [
+          ...(user?['roles'] as List? ?? const []),
+          ...(user?['groups'] as List? ?? const []),
+        ].map((role) {
+          if (role is Map) return role['name']?.toString().toLowerCase() ?? '';
+          return role.toString().toLowerCase();
+        }).toList();
+    final canDeveloperRelogin =
+        kDebugMode ||
+        roles.any(
+          (role) => role.contains('developer') || role.contains('superuser'),
+        );
 
-    String? avatar = user?['avatar_path'] as String? ?? user?['avatar'] as String?;
+    String? avatar =
+        user?['avatar_path'] as String? ?? user?['avatar'] as String?;
 
     // Fix legacy invalid filename (fd4d5ecdbc6531836babd22f5eee0a70.png returns 404)
-    if (avatar == 'fd4d5ecdbc6531836babd22f5eee0a70.png' || avatar == null || avatar.isEmpty) {
+    if (avatar == 'fd4d5ecdbc6531836babd22f5eee0a70.png' ||
+        avatar == null ||
+        avatar.isEmpty) {
       if (email.toLowerCase().contains('santosofebrikukuh')) {
         avatar = 'avatar_1_1787175552.webp';
       }
@@ -130,11 +107,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (mounted) {
       setState(() {
         _userName = name;
-        _userPhone = phone.isNotEmpty ? phone : (email.contains('santosofebrikukuh') ? '082140647578' : '');
+        _userPhone = phone.isNotEmpty
+            ? phone
+            : (email.contains('santosofebrikukuh') ? '082140647578' : '');
         _userEmail = email;
         _userCompany = company;
         _userAvatar = avatar;
         _canImpersonate = canImp;
+        _canDeveloperRelogin = canDeveloperRelogin;
       });
     }
 
@@ -151,7 +131,45 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  Widget _buildAvatarWidget(String? path) {
+  Future<void> _reloginDeveloper() async {
+    setState(() => _reloggingDeveloper = true);
+    final success = await GeuAuthService.reloginWithStoredCredentials();
+    if (!mounted) return;
+    setState(() => _reloggingDeveloper = false);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          success
+              ? 'Relogin developer berhasil.'
+              : 'Credential aman tidak tersedia atau relogin gagal. Silakan login manual.',
+        ),
+        backgroundColor: success ? AppColors.success : AppColors.error,
+      ),
+    );
+    if (success) await _loadUserData();
+  }
+
+  void _showAvatarPreview() {
+    if ((_userAvatar ?? '').trim().isEmpty) return;
+    showDialog<void>(
+      context: context,
+      barrierColor: Colors.black.withOpacity(0.78),
+      builder: (_) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.all(24),
+        child: GestureDetector(
+          onTap: () => Navigator.pop(context),
+          child: InteractiveViewer(
+            minScale: 1,
+            maxScale: 3,
+            child: _buildAvatarWidget(_userAvatar, size: 280),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAvatarWidget(String? path, {double size = 90}) {
     if (path != null && path.trim().isNotEmpty) {
       final cleanPath = path.trim();
 
@@ -162,9 +180,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
             child: Image.memory(
               bytes,
               fit: BoxFit.cover,
-              width: 90,
-              height: 90,
-              errorBuilder: (_, _, _) => const Icon(Icons.person, size: 46, color: AppColors.primaryGreen),
+              width: size,
+              height: size,
+              errorBuilder: (_, _, _) => Icon(
+                Icons.person,
+                size: size * .5,
+                color: AppColors.primaryGreen,
+              ),
             ),
           );
         } catch (_) {}
@@ -175,37 +197,52 @@ class _ProfileScreenState extends State<ProfileScreen> {
           child: Image.network(
             cleanPath,
             fit: BoxFit.cover,
-            width: 90,
-            height: 90,
-            errorBuilder: (_, _, _) => const Icon(Icons.person, size: 46, color: AppColors.primaryGreen),
+            width: size,
+            height: size,
+            errorBuilder: (_, _, _) => Icon(
+              Icons.person,
+              size: size * .5,
+              color: AppColors.primaryGreen,
+            ),
           ),
         );
       }
 
       if (!kIsWeb && cleanPath.contains('/') && File(cleanPath).existsSync()) {
         return ClipOval(
-          child: Image.file(File(cleanPath), fit: BoxFit.cover, width: 90, height: 90),
+          child: Image.file(
+            File(cleanPath),
+            fit: BoxFit.cover,
+            width: size,
+            height: size,
+          ),
         );
       }
 
-      final filename = cleanPath.contains('/') ? cleanPath.split('/').last : cleanPath;
+      final filename = cleanPath.contains('/')
+          ? cleanPath.split('/').last
+          : cleanPath;
       final avatarUrl = 'https://geu.fekusa.com/filemanager/avatar/$filename';
 
       return ClipOval(
         child: Image.network(
           avatarUrl,
           fit: BoxFit.cover,
-          width: 90,
-          height: 90,
+          width: size,
+          height: size,
           errorBuilder: (ctx, err, stack) {
             debugPrint('❌ Error loading avatar $avatarUrl: $err');
-            return const Icon(Icons.person, size: 46, color: AppColors.primaryGreen);
+            return Icon(
+              Icons.person,
+              size: size * .5,
+              color: AppColors.primaryGreen,
+            );
           },
         ),
       );
     }
 
-    return const Icon(Icons.person, size: 46, color: AppColors.primaryGreen);
+    return Icon(Icons.person, size: size * .5, color: AppColors.primaryGreen);
   }
 
   Future<void> _checkForUpdate() async {
@@ -227,7 +264,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
           children: [
             Icon(Icons.local_shipping, color: AppColors.primaryGreen),
             SizedBox(width: 8),
-            Text('Informasi Kendaraan & SIM', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            Text(
+              'Informasi Kendaraan & SIM',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            ),
           ],
         ),
         content: Column(
@@ -242,14 +282,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
             const Divider(height: 16),
             const Text(
               'Perubahan data armada dan lisensi driver dilakukan oleh Admin Gudang / HRD.',
-              style: TextStyle(fontSize: 11, color: AppColors.grey, fontStyle: FontStyle.italic),
+              style: TextStyle(
+                fontSize: 11,
+                color: AppColors.grey,
+                fontStyle: FontStyle.italic,
+              ),
             ),
           ],
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Tutup', style: TextStyle(color: AppColors.primaryGreen, fontWeight: FontWeight.bold)),
+            child: const Text(
+              'Tutup',
+              style: TextStyle(
+                color: AppColors.primaryGreen,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           ),
         ],
       ),
@@ -262,8 +312,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: const TextStyle(fontSize: 12, color: AppColors.grey)),
-          Text(val, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+          Text(
+            label,
+            style: const TextStyle(fontSize: 12, color: AppColors.grey),
+          ),
+          Text(
+            val,
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+              color: AppColors.textPrimary,
+            ),
+          ),
         ],
       ),
     );
@@ -300,15 +360,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     children: [
                       Stack(
                         children: [
-                          Container(
-                            width: 90,
-                            height: 90,
-                            decoration: BoxDecoration(
-                              color: AppColors.primaryGreen.withOpacity(0.1),
-                              shape: BoxShape.circle,
-                              border: Border.all(color: AppColors.primaryGreen, width: 2),
+                          GestureDetector(
+                            onTap: _showAvatarPreview,
+                            child: Container(
+                              width: 90,
+                              height: 90,
+                              decoration: BoxDecoration(
+                                color: AppColors.primaryGreen.withOpacity(0.1),
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: AppColors.primaryGreen,
+                                  width: 2,
+                                ),
+                              ),
+                              child: _buildAvatarWidget(_userAvatar),
                             ),
-                            child: _buildAvatarWidget(_userAvatar),
                           ),
                           Positioned(
                             bottom: 0,
@@ -317,12 +383,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               radius: 14,
                               backgroundColor: AppColors.primaryGreen,
                               child: IconButton(
-                                icon: const Icon(Icons.edit, size: 14, color: Colors.white),
+                                icon: const Icon(
+                                  Icons.edit,
+                                  size: 14,
+                                  color: Colors.white,
+                                ),
                                 padding: EdgeInsets.zero,
                                 onPressed: () async {
                                   final res = await Navigator.push(
                                     context,
-                                    MaterialPageRoute(builder: (_) => const EditProfileScreen()),
+                                    MaterialPageRoute(
+                                      builder: (_) => const EditProfileScreen(),
+                                    ),
                                   );
                                   if (res == true) _loadUserData();
                                 },
@@ -343,17 +415,28 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
                       // Role Badge (Driver vs CRO / Sales)
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 4,
+                        ),
                         decoration: BoxDecoration(
-                          color: (isCro ? AppColors.accentOrange : AppColors.primaryGreen).withOpacity(0.12),
+                          color:
+                              (isCro
+                                      ? AppColors.accentOrange
+                                      : AppColors.primaryGreen)
+                                  .withOpacity(0.12),
                           borderRadius: BorderRadius.circular(16),
                         ),
                         child: Text(
-                          isCro ? '💼 Sales / Sourcing CRO' : '🚛 Pengemudi Armada TMS',
+                          isCro
+                              ? '💼 Sales / Sourcing CRO'
+                              : '🚛 Pengemudi Armada TMS',
                           style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.bold,
-                            color: isCro ? AppColors.accentOrange : AppColors.primaryGreen,
+                            color: isCro
+                                ? AppColors.accentOrange
+                                : AppColors.primaryGreen,
                           ),
                         ),
                       ),
@@ -361,12 +444,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
                       Text(
                         _userPhone,
-                        style: AppTextStyles.bodyMedium.copyWith(color: AppColors.grey),
+                        style: AppTextStyles.bodyMedium.copyWith(
+                          color: AppColors.grey,
+                        ),
                       ),
                       if (_userEmail.isNotEmpty)
                         Text(
                           _userEmail,
-                          style: AppTextStyles.bodySmall.copyWith(color: AppColors.grey),
+                          style: AppTextStyles.bodySmall.copyWith(
+                            color: AppColors.grey,
+                          ),
                         ),
                       if (_userCompany.isNotEmpty) ...[
                         const SizedBox(height: 2),
@@ -385,23 +472,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                           children: [
-                            _buildStatCard('Tugas', '${_croPerformance?.total ?? 0}', Icons.assignment_outlined),
-                            _buildStatCard('Selesai', '${_croPerformance?.completed ?? 0}', Icons.check_circle),
-                            _buildStatCard('Pencapaian', '${(_croPerformance?.rate ?? 0).toStringAsFixed(0)}%', Icons.trending_up),
-                          ],
-                        ),
-                      ] else ...[
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                          children: [
-                            _buildStatCard('SJ Selesai', '$_driverCompletedPickups', Icons.local_shipping),
-                            _buildStatCard('Muatan', '${_driverTotalKg.toStringAsFixed(0)} Kg', Icons.scale),
                             _buildStatCard(
-                              'Uang Jalan',
-                              _driverApprovedSettlement >= 1000000
-                                  ? 'Rp ${(_driverApprovedSettlement / 1000000).toStringAsFixed(1)}M'
-                                  : 'Rp ${(_driverApprovedSettlement / 1000).toStringAsFixed(0)}k',
-                              Icons.payments_outlined,
+                              'Tugas',
+                              '${_croPerformance?.total ?? 0}',
+                              Icons.assignment_outlined,
+                            ),
+                            _buildStatCard(
+                              'Selesai',
+                              '${_croPerformance?.completed ?? 0}',
+                              Icons.check_circle,
+                            ),
+                            _buildStatCard(
+                              'Pencapaian',
+                              '${(_croPerformance?.rate ?? 0).toStringAsFixed(0)}%',
+                              Icons.trending_up,
                             ),
                           ],
                         ),
@@ -426,7 +510,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         onTap: () async {
                           final result = await Navigator.push(
                             context,
-                            MaterialPageRoute(builder: (context) => const EditProfileScreen()),
+                            MaterialPageRoute(
+                              builder: (context) => const EditProfileScreen(),
+                            ),
                           );
                           if (result == true) _loadUserData();
                         },
@@ -438,19 +524,34 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         _buildMenuItem(
                           icon: Icons.bar_chart_outlined,
                           title: 'Statistik Saya',
-                          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MyStatisticScreen())),
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const MyStatisticScreen(),
+                            ),
+                          ),
                         ),
                         _buildDivider(),
                         _buildMenuItem(
                           icon: Icons.map_outlined,
                           title: 'Riwayat Kunjungan',
-                          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const VisitHistoryScreen())),
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const VisitHistoryScreen(),
+                            ),
+                          ),
                         ),
                         _buildDivider(),
                         _buildMenuItem(
                           icon: Icons.assignment_turned_in_outlined,
                           title: 'Klaim & Komisi Saya',
-                          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MyClaimsScreen())),
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const MyClaimsScreen(),
+                            ),
+                          ),
                         ),
                       ] else ...[
                         _buildMenuItem(
@@ -462,27 +563,48 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         _buildMenuItem(
                           icon: Icons.history,
                           title: 'Riwayat Penjemputan',
-                          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const PickupHistoryScreen())),
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const PickupHistoryScreen(),
+                            ),
+                          ),
                         ),
                         _buildDivider(),
                         _buildMenuItem(
                           icon: Icons.payments_outlined,
                           title: 'Laporan Uang Jalan & Settlement',
-                          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DriverSettlementListScreen())),
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) =>
+                                  const DriverSettlementListScreen(),
+                            ),
+                          ),
                         ),
                         _buildDivider(),
                         _buildMenuItem(
                           icon: Icons.verified_user_rounded,
                           title: 'Penilaian & Rating Berkendara Driver',
                           iconColor: const Color(0xFF1877F2),
-                          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DriverScoreScreen())),
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const DriverScoreScreen(),
+                            ),
+                          ),
                         ),
                         _buildDivider(),
                         _buildMenuItem(
                           icon: Icons.warning_amber_rounded,
                           title: 'Laporkan Kendala Armada (Mogok/Emergency)',
                           iconColor: AppColors.error,
-                          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const VehicleIssueReportScreen())),
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const VehicleIssueReportScreen(),
+                            ),
+                          ),
                         ),
                       ],
                     ],
@@ -499,48 +621,107 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                   child: Column(
                     children: [
-                      _buildMenuItem(
-                        icon: Icons.map_outlined,
-                        title: 'Peta Driver & Monitoring',
-                        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DriverMapScreen())),
-                      ),
-                      _buildDivider(),
-                      _buildMenuItem(
-                        icon: Icons.my_location_outlined,
-                        title: 'Pengaturan Peta & Alamat GPS',
-                        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const LocationTrackingSettingsScreen())),
-                      ),
+                      if (!isCro) ...[
+                        _buildMenuItem(
+                          icon: Icons.map_outlined,
+                          title: 'Peta Driver & Monitoring',
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const DriverMapScreen(),
+                            ),
+                          ),
+                        ),
+                        _buildDivider(),
+                        _buildMenuItem(
+                          icon: Icons.my_location_outlined,
+                          title: 'Pengaturan Peta & Alamat GPS',
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) =>
+                                  const LocationTrackingSettingsScreen(),
+                            ),
+                          ),
+                        ),
+                      ],
                       _buildDivider(),
                       if (_canImpersonate) ...[
                         _buildMenuItem(
                           icon: Icons.admin_panel_settings_outlined,
                           title: 'Force Login / Pindah Akun (Admin)',
-                          onTap: () => showDialog(context: context, builder: (_) => const ForceLoginDialog()),
+                          onTap: () => showDialog(
+                            context: context,
+                            builder: (_) => const ForceLoginDialog(),
+                          ),
+                        ),
+                        _buildDivider(),
+                      ],
+                      if (_canDeveloperRelogin) ...[
+                        _buildMenuItem(
+                          icon: Icons.refresh_rounded,
+                          title: 'Relogin Developer',
+                          subtitle: 'Login ulang tanpa input password',
+                          trailing: _reloggingDeveloper
+                              ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : null,
+                          onTap: _reloggingDeveloper ? null : _reloginDeveloper,
                         ),
                         _buildDivider(),
                       ],
                       ListTile(
-                        leading: const Icon(Icons.system_update_outlined, color: AppColors.primaryGreen),
+                        leading: const Icon(
+                          Icons.system_update_outlined,
+                          color: AppColors.primaryGreen,
+                        ),
                         title: Text(
                           'Cek Pembaruan Aplikasi',
-                          style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textPrimary, fontWeight: FontWeight.w500),
+                          style: AppTextStyles.bodyMedium.copyWith(
+                            color: AppColors.textPrimary,
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
                         trailing: _checkingUpdate
-                            ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
-                            : const Icon(Icons.chevron_right, color: AppColors.grey),
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Icon(
+                                Icons.chevron_right,
+                                color: AppColors.grey,
+                              ),
                         onTap: _checkingUpdate ? null : _checkForUpdate,
                       ),
                       _buildDivider(),
                       _buildMenuItem(
                         icon: Icons.info_outline,
                         title: 'Tentang Aplikasi',
-                        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AboutScreen())),
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const AboutScreen(),
+                          ),
+                        ),
                       ),
                       _buildDivider(),
                       _buildMenuItem(
                         icon: Icons.on_device_training_outlined,
                         title: 'Diagnosa Koneksi & Sistem',
-                        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DiagnosisScreen())),
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const DiagnosisScreen(),
+                          ),
+                        ),
                       ),
                     ],
                   ),
@@ -561,14 +742,29 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           final choice = await showDialog<String>(
                             context: context,
                             builder: (dialogContext) => AlertDialog(
-                              title: const Text('Data kunjungan belum terkirim'),
-                              content: Text('${pending.length} data menunggu dikirim. Pilih Kirim dulu untuk mempertahankan data.'),
+                              title: const Text(
+                                'Data kunjungan belum terkirim',
+                              ),
+                              content: Text(
+                                '${pending.length} data menunggu dikirim. Pilih Kirim dulu untuk mempertahankan data.',
+                              ),
                               actions: [
-                                TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Batal')),
-                                TextButton(onPressed: () => Navigator.pop(dialogContext, 'send'), child: const Text('Kirim dulu')),
                                 TextButton(
-                                  onPressed: () => Navigator.pop(dialogContext, 'discard'),
-                                  child: const Text('Logout & buang data', style: TextStyle(color: AppColors.error)),
+                                  onPressed: () => Navigator.pop(dialogContext),
+                                  child: const Text('Batal'),
+                                ),
+                                TextButton(
+                                  onPressed: () =>
+                                      Navigator.pop(dialogContext, 'send'),
+                                  child: const Text('Kirim dulu'),
+                                ),
+                                TextButton(
+                                  onPressed: () =>
+                                      Navigator.pop(dialogContext, 'discard'),
+                                  child: const Text(
+                                    'Logout & buang data',
+                                    style: TextStyle(color: AppColors.error),
+                                  ),
                                 ),
                               ],
                             ),
@@ -586,11 +782,37 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         final confirm = await showDialog<bool>(
                           context: context,
                           builder: (context) => AlertDialog(
-                            title: Text('Konfirmasi Keluar', style: AppTextStyles.h5.copyWith(color: AppColors.primaryGreen, fontWeight: FontWeight.bold)),
-                            content: Text('Apakah Anda yakin ingin keluar?', style: AppTextStyles.bodyMedium),
+                            title: Text(
+                              'Konfirmasi Keluar',
+                              style: AppTextStyles.h5.copyWith(
+                                color: AppColors.primaryGreen,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            content: Text(
+                              'Apakah Anda yakin ingin keluar?',
+                              style: AppTextStyles.bodyMedium,
+                            ),
                             actions: [
-                              TextButton(onPressed: () => Navigator.pop(context, false), child: Text('Batal', style: AppTextStyles.bodyMedium.copyWith(color: AppColors.grey))),
-                              TextButton(onPressed: () => Navigator.pop(context, true), child: Text('Keluar', style: AppTextStyles.bodyMedium.copyWith(color: AppColors.error, fontWeight: FontWeight.w600))),
+                              TextButton(
+                                onPressed: () => Navigator.pop(context, false),
+                                child: Text(
+                                  'Batal',
+                                  style: AppTextStyles.bodyMedium.copyWith(
+                                    color: AppColors.grey,
+                                  ),
+                                ),
+                              ),
+                              TextButton(
+                                onPressed: () => Navigator.pop(context, true),
+                                child: Text(
+                                  'Keluar',
+                                  style: AppTextStyles.bodyMedium.copyWith(
+                                    color: AppColors.error,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
                             ],
                           ),
                         );
@@ -600,14 +822,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           await PersistentAuthService.instance.clearAuthData();
                           GeuAuthService.logout();
                           if (mounted) {
-                            Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
+                            Navigator.pushNamedAndRemoveUntil(
+                              context,
+                              '/',
+                              (route) => false,
+                            );
                           }
                         }
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.error,
                         foregroundColor: AppColors.white,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
                         elevation: 0,
                       ),
                       child: Row(
@@ -657,7 +885,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
           const SizedBox(height: 2),
           Text(
             label,
-            style: AppTextStyles.caption.copyWith(color: AppColors.grey, fontSize: 10),
+            style: AppTextStyles.caption.copyWith(
+              color: AppColors.grey,
+              fontSize: 10,
+            ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
@@ -669,20 +900,46 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget _buildMenuItem({
     required IconData icon,
     required String title,
-    required VoidCallback onTap,
+    required VoidCallback? onTap,
     Color? iconColor,
+    String? subtitle,
+    Widget? trailing,
   }) {
     return ListTile(
       leading: Icon(icon, color: iconColor ?? AppColors.primaryGreen),
-      title: Text(
-        title,
-        style: AppTextStyles.bodyMedium.copyWith(
-          color: AppColors.textPrimary,
-          fontWeight: FontWeight.w500,
-          fontSize: 13,
-        ),
-      ),
-      trailing: const Icon(Icons.chevron_right, color: AppColors.grey, size: 20),
+      title: subtitle == null
+          ? Text(
+              title,
+              style: AppTextStyles.bodyMedium.copyWith(
+                color: AppColors.textPrimary,
+                fontWeight: FontWeight.w500,
+                fontSize: 13,
+              ),
+            )
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  title,
+                  style: AppTextStyles.bodyMedium.copyWith(
+                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.w500,
+                    fontSize: 13,
+                  ),
+                ),
+                Text(
+                  subtitle,
+                  style: AppTextStyles.bodySmall.copyWith(
+                    color: AppColors.textSecondary,
+                    fontSize: 11,
+                  ),
+                ),
+              ],
+            ),
+      trailing:
+          trailing ??
+          const Icon(Icons.chevron_right, color: AppColors.grey, size: 20),
       onTap: onTap,
     );
   }

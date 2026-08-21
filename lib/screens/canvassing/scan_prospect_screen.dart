@@ -2,15 +2,18 @@ import 'package:flutter/material.dart';
 import '../../constants/app_colors.dart';
 import '../../services/geu/crm_permission_service.dart';
 import '../../services/geu/gps_service.dart';
+import '../../services/geu/geu_auth_service.dart';
 import '../../services/geu/visit_planner_service.dart';
 
 class ScanProspectScreen extends StatefulWidget {
-  const ScanProspectScreen({super.key});
+  final bool asSheet;
+  const ScanProspectScreen({super.key, this.asSheet = false});
   @override
   State<ScanProspectScreen> createState() => _ScanProspectScreenState();
 }
 
-class _ScanProspectScreenState extends State<ScanProspectScreen> {
+class _ScanProspectScreenState extends State<ScanProspectScreen>
+    with SingleTickerProviderStateMixin {
   final _keyword = TextEditingController();
   List<ScanJob> _jobs = const [];
   List<String> _topKeywords = const [];
@@ -18,15 +21,21 @@ class _ScanProspectScreenState extends State<ScanProspectScreen> {
   int _radius = 1000;
   bool _requirePhone = false, _loading = true, _scanning = false;
   String? _error;
+  late final AnimationController _radarController;
 
   @override
   void initState() {
     super.initState();
+    _radarController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    );
     _load();
   }
 
   @override
   void dispose() {
+    _radarController.dispose();
     _keyword.dispose();
     super.dispose();
   }
@@ -37,6 +46,11 @@ class _ScanProspectScreenState extends State<ScanProspectScreen> {
       _error = null;
     });
     try {
+      if (!await GeuAuthService.ensureSession()) {
+        throw VisitPlannerException(
+          'Sesi login tidak tersedia. Silakan login kembali lalu coba scan.',
+        );
+      }
       final result = await Future.wait([
         VisitPlannerService.getScanJobs(),
         VisitPlannerService.getTopScanKeywords(),
@@ -69,7 +83,13 @@ class _ScanProspectScreenState extends State<ScanProspectScreen> {
       _scanning = true;
       _error = null;
     });
+    _radarController.repeat();
     try {
+      if (!await GeuAuthService.ensureSession()) {
+        throw VisitPlannerException(
+          'Sesi login tidak tersedia. Silakan login kembali lalu coba scan.',
+        );
+      }
       if ((_quota?.remaining ?? 1) <= 0) {
         throw VisitPlannerException(
           'Kuota scan habis. Selesaikan mission yang masih pending terlebih dahulu.',
@@ -103,164 +123,317 @@ class _ScanProspectScreenState extends State<ScanProspectScreen> {
     } catch (error) {
       if (mounted) setState(() => _error = error.toString());
     } finally {
+      _radarController.stop();
       if (mounted) setState(() => _scanning = false);
     }
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    backgroundColor: AppColors.background,
-    appBar: AppBar(
-      title: const Text('Scan Prospek'),
-      backgroundColor: AppColors.primaryGreen,
-      foregroundColor: Colors.white,
-    ),
-    body: RefreshIndicator(
-      onRefresh: _load,
-      child: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          const Text(
-            'Riset area',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
-          ),
-          const SizedBox(height: 4),
-          const Text(
-            'Cari calon supplier di sekitar lokasi Anda. Hasil tersimpan sebagai prospek untuk dimasukkan ke Mission.',
-          ),
-          const SizedBox(height: 16),
-          if (_quota != null)
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: AppColors.info.withValues(alpha: .08),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.radar_outlined, color: AppColors.info),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'Kuota scan tersedia: ${_quota!.remaining} dari ${_quota!.quota}',
-                    ),
-                  ),
-                  Text(
-                    '${_quota!.pending} pending',
-                    style: const TextStyle(fontSize: 12),
-                  ),
-                ],
-              ),
-            ),
-          if (_topKeywords.isNotEmpty) ...[
-            const SizedBox(height: 12),
+  Widget build(BuildContext context) {
+    if (widget.asSheet) return _buildSheet(context);
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        title: const Text('Scan Prospek'),
+        backgroundColor: AppColors.primaryGreen,
+        foregroundColor: Colors.white,
+      ),
+      body: RefreshIndicator(
+        onRefresh: _load,
+        child: ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
             const Text(
-              'Pencarian populer',
-              style: TextStyle(fontWeight: FontWeight.w600),
+              'Riset area',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
             ),
-            const SizedBox(height: 6),
-            Wrap(
-              spacing: 8,
-              runSpacing: 6,
-              children: _topKeywords
-                  .take(6)
+            const SizedBox(height: 4),
+            const Text(
+              'Cari calon supplier di sekitar lokasi Anda. Hasil tersimpan sebagai prospek untuk dimasukkan ke Mission.',
+            ),
+            const SizedBox(height: 16),
+            if (_quota != null)
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.info.withValues(alpha: .08),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.radar_outlined, color: AppColors.info),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Kuota scan tersedia: ${_quota!.remaining} dari ${_quota!.quota}',
+                      ),
+                    ),
+                    Text(
+                      '${_quota!.pending} pending',
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                  ],
+                ),
+              ),
+            if (_topKeywords.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              const Text(
+                'Pencarian populer',
+                style: TextStyle(fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 6),
+              Wrap(
+                spacing: 8,
+                runSpacing: 6,
+                children: _topKeywords
+                    .take(6)
+                    .map(
+                      (keyword) => ActionChip(
+                        label: Text(keyword),
+                        onPressed: _scanning
+                            ? null
+                            : () => setState(() => _keyword.text = keyword),
+                      ),
+                    )
+                    .toList(),
+              ),
+            ],
+            const SizedBox(height: 16),
+            TextField(
+              controller: _keyword,
+              textInputAction: TextInputAction.done,
+              onSubmitted: (_) => _scanning ? null : _scan(),
+              decoration: const InputDecoration(
+                labelText: 'Kata kunci *',
+                hintText: 'Contoh: restoran, hotel, katering',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 12),
+            DropdownButtonFormField<int>(
+              value: _radius,
+              decoration: const InputDecoration(
+                labelText: 'Radius pencarian',
+                border: OutlineInputBorder(),
+              ),
+              items: const [500, 1000, 2000, 5000]
                   .map(
-                    (keyword) => ActionChip(
-                      label: Text(keyword),
-                      onPressed: _scanning
-                          ? null
-                          : () => setState(() => _keyword.text = keyword),
+                    (value) => DropdownMenuItem(
+                      value: value,
+                      child: Text('$value meter'),
                     ),
                   )
                   .toList(),
+              onChanged: _scanning
+                  ? null
+                  : (value) => setState(() => _radius = value ?? 1000),
+            ),
+            const SizedBox(height: 4),
+            SwitchListTile.adaptive(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Wajib ada nomor telepon'),
+              subtitle: const Text('Hanya simpan prospek yang memiliki kontak'),
+              value: _requirePhone,
+              onChanged: _scanning
+                  ? null
+                  : (value) => setState(() => _requirePhone = value),
+            ),
+            if (_error != null)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: Text(
+                  _error!,
+                  style: const TextStyle(color: AppColors.error),
+                ),
+              ),
+            SizedBox(
+              height: 52,
+              child: FilledButton.icon(
+                onPressed: _scanning ? null : _scan,
+                icon: _scanning
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Icon(Icons.radar_outlined),
+                label: Text(_scanning ? 'Memindai area…' : 'Mulai scan'),
+              ),
+            ),
+            const SizedBox(height: 28),
+            const Text(
+              'Riwayat scan',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 8),
+            if (_loading)
+              const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(28),
+                  child: CircularProgressIndicator(),
+                ),
+              )
+            else if (_jobs.isEmpty)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 28),
+                child: Center(child: Text('Belum ada scan.')),
+              )
+            else
+              ..._jobs.map(_jobCard),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSheet(BuildContext context) => SafeArea(
+    top: false,
+    child: AnimatedPadding(
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeOut,
+      padding: EdgeInsets.fromLTRB(
+        20,
+        8,
+        20,
+        20 + MediaQuery.viewInsetsOf(context).bottom,
+      ),
+      child: SingleChildScrollView(
+        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 38,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.black12,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: AppColors.primaryGreen.withValues(alpha: .10),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.radar_rounded,
+                    color: AppColors.primaryGreen,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Scan Prospek',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      Text(
+                        'Cari supplier di sekitar lokasi Anda',
+                        style: TextStyle(color: AppColors.textSecondary),
+                      ),
+                    ],
+                  ),
+                ),
+                if (_quota != null)
+                  Text(
+                    '${_quota!.remaining}/${_quota!.quota}',
+                    style: const TextStyle(fontWeight: FontWeight.w800),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 18),
+            TextField(
+              controller: _keyword,
+              autofocus: true,
+              textInputAction: TextInputAction.done,
+              onSubmitted: (_) => _scanning ? null : _scan(),
+              decoration: InputDecoration(
+                labelText: 'Cari jenis supplier',
+                hintText: 'Contoh: restoran, hotel, katering',
+                prefixIcon: const Icon(Icons.search_rounded),
+                filled: true,
+                fillColor: AppColors.background,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide.none,
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: DropdownButtonFormField<int>(
+                    value: _radius,
+                    decoration: InputDecoration(
+                      labelText: 'Radius',
+                      filled: true,
+                      fillColor: AppColors.background,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                    items: const [500, 1000, 2000, 5000]
+                        .map(
+                          (value) => DropdownMenuItem(
+                            value: value,
+                            child: Text('$value m'),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: _scanning
+                        ? null
+                        : (value) => setState(() => _radius = value ?? 1000),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                IconButton.filledTonal(
+                  tooltip: 'Wajib ada nomor telepon',
+                  onPressed: _scanning
+                      ? null
+                      : () => setState(() => _requirePhone = !_requirePhone),
+                  icon: Icon(
+                    _requirePhone
+                        ? Icons.phone_enabled_rounded
+                        : Icons.phone_disabled_rounded,
+                  ),
+                ),
+              ],
+            ),
+            if (_error != null) ...[
+              const SizedBox(height: 10),
+              Text(_error!, style: const TextStyle(color: AppColors.error)),
+            ],
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              height: 52,
+              child: FilledButton.icon(
+                onPressed: _scanning ? null : _scan,
+                icon: _scanning
+                    ? _RadarAnimation(controller: _radarController)
+                    : const Icon(Icons.radar_rounded),
+                label: Text(_scanning ? 'Memindai area…' : 'Mulai scan'),
+              ),
             ),
           ],
-          const SizedBox(height: 16),
-          TextField(
-            controller: _keyword,
-            textInputAction: TextInputAction.done,
-            onSubmitted: (_) => _scanning ? null : _scan(),
-            decoration: const InputDecoration(
-              labelText: 'Kata kunci *',
-              hintText: 'Contoh: restoran, hotel, katering',
-              border: OutlineInputBorder(),
-            ),
-          ),
-          const SizedBox(height: 12),
-          DropdownButtonFormField<int>(
-            value: _radius,
-            decoration: const InputDecoration(
-              labelText: 'Radius pencarian',
-              border: OutlineInputBorder(),
-            ),
-            items: const [500, 1000, 2000, 5000]
-                .map(
-                  (value) => DropdownMenuItem(
-                    value: value,
-                    child: Text('$value meter'),
-                  ),
-                )
-                .toList(),
-            onChanged: _scanning
-                ? null
-                : (value) => setState(() => _radius = value ?? 1000),
-          ),
-          const SizedBox(height: 4),
-          SwitchListTile.adaptive(
-            contentPadding: EdgeInsets.zero,
-            title: const Text('Wajib ada nomor telepon'),
-            subtitle: const Text('Hanya simpan prospek yang memiliki kontak'),
-            value: _requirePhone,
-            onChanged: _scanning
-                ? null
-                : (value) => setState(() => _requirePhone = value),
-          ),
-          if (_error != null)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: Text(
-                _error!,
-                style: const TextStyle(color: AppColors.error),
-              ),
-            ),
-          SizedBox(
-            height: 52,
-            child: FilledButton.icon(
-              onPressed: _scanning ? null : _scan,
-              icon: _scanning
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
-                      ),
-                    )
-                  : const Icon(Icons.radar_outlined),
-              label: Text(_scanning ? 'Memindai area…' : 'Mulai scan'),
-            ),
-          ),
-          const SizedBox(height: 28),
-          const Text(
-            'Riwayat scan',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
-          ),
-          const SizedBox(height: 8),
-          if (_loading)
-            const Center(
-              child: Padding(
-                padding: EdgeInsets.all(28),
-                child: CircularProgressIndicator(),
-              ),
-            )
-          else if (_jobs.isEmpty)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 28),
-              child: Center(child: Text('Belum ada scan.')),
-            )
-          else
-            ..._jobs.map(_jobCard),
-        ],
+        ),
       ),
     ),
   );
@@ -348,6 +521,17 @@ class _ScanProspectScreenState extends State<ScanProspectScreen> {
     isScrollControlled: true,
     showDragHandle: true,
     builder: (_) => _ProspectListSheet(job: job),
+  );
+}
+
+class _RadarAnimation extends StatelessWidget {
+  final Animation<double> controller;
+  const _RadarAnimation({required this.controller});
+
+  @override
+  Widget build(BuildContext context) => RotationTransition(
+    turns: controller,
+    child: const Icon(Icons.radar_rounded, color: Colors.white),
   );
 }
 
