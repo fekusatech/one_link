@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
 import '../../models/surat_jalan.dart';
+import '../../models/geu/surat_jalan_models.dart';
 import 'geu_api_client.dart';
 import 'surat_jalan_service.dart';
 
@@ -186,22 +187,10 @@ class GeuDriverTrackingService {
           .toList();
 
       // Hydrate per-surat-jalan detail to get full stops & GPS
-      final hydrated = await Future.wait(
+      final List<SuratJalan> hydrated = await Future.wait<SuratJalan>(
         listItems.map((s) async {
           try {
-            final full = await GeuSuratJalanService.getById(int.parse(s.suratJalanId));
-            return SuratJalan(
-              suratJalanId: full.suratJalanId,
-              kode: s.kode,
-              tanggal: s.tanggal,
-              tanggalFormatted: s.tanggalFormatted,
-              status: s.status,
-              kodePickup: s.kodePickup,
-              driverName: s.driverName.isNotEmpty ? s.driverName : full.driverName,
-              fleetPlat: s.fleetPlat.isNotEmpty ? s.fleetPlat : full.fleetPlat,
-              gudangName: s.gudangName.isNotEmpty ? s.gudangName : full.gudangName,
-              suratJalanDetail: full.suratJalanDetail,
-            );
+            return await GeuSuratJalanService.getById(int.parse(s.suratJalanId));
           } catch (_) {
             return s;
           }

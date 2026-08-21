@@ -285,7 +285,7 @@ class _AdminDriverMapViewState extends State<AdminDriverMapView> with WidgetsBin
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                 decoration: BoxDecoration(
-                  color: Colors.black75,
+                  color: Colors.black.withValues(alpha: 0.75),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: const Row(
