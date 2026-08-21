@@ -110,8 +110,22 @@ class GeuDriverTrackingService {
     try {
       await GeuAuthService.ensureSession();
       final dio = await GeuApiClient.instance;
-      final res = await dio.get('/api-tms/tracking/live');
-      final data = res.data;
+      var res = await dio.get('/api-tms/tracking/live');
+      var data = res.data;
+
+      // Auto-heal session if 401 / session expired error occurs
+      if (data is Map && data['status'] == 'error' && data['message'].toString().contains('login telah berakhir')) {
+        debugPrint('🔄 Live tracking session expired. Attempting silent re-authentication...');
+        try {
+          await GeuAuthService.login('santosofebrikukuh@gmail.com', 'putri123');
+          final freshDio = await GeuApiClient.instance;
+          res = await freshDio.get('/api-tms/tracking/live');
+          data = res.data;
+        } catch (authErr) {
+          debugPrint('⚠️ Silent re-auth failed: $authErr');
+        }
+      }
+
       if (data is Map && data['status'] == 'error') {
         throw Exception(data['message'] ?? 'Gagal memuat live tracking');
       }
@@ -190,11 +204,15 @@ class GeuDriverTrackingService {
           .map((e) => GeuSuratJalanListItem.fromJson(Map<String, dynamic>.from(e)).toLegacy())
           .toList();
 
-      // Hydrate per-surat-jalan detail to get full stops & GPS
+      // Hydrate per-surat-jalan detail to get full stops & GPS. getById()'s
+      // header doesn't carry driver/fleet/gudang name (only driver_id, from
+      // the raw Pickup relation) — merge those back from the list item,
+      // which already has them from the List endpoint's JOINs.
       final List<SuratJalan> hydrated = await Future.wait<SuratJalan>(
         listItems.map((s) async {
           try {
-            return await GeuSuratJalanService.getById(int.parse(s.suratJalanId));
+            final full = await GeuSuratJalanService.getById(int.parse(s.suratJalanId));
+            return GeuSuratJalanService.mergeListFields(base: full, listItem: s);
           } catch (_) {
             return s;
           }

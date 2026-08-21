@@ -35,13 +35,14 @@ class UserStorage {
   static Future<String?> getToken() async {
     final prefs = await SharedPreferences.getInstance();
     final secure = await _secureStorage.read(key: _keyToken);
-    if (secure != null) return secure;
+    if (secure != null && secure.trim().isNotEmpty) return secure;
     final legacy = prefs.getString(_keyToken);
-    if (legacy != null) {
+    if (legacy != null && legacy.trim().isNotEmpty) {
       await _secureStorage.write(key: _keyToken, value: legacy);
       await prefs.remove(_keyToken);
+      return legacy;
     }
-    return legacy;
+    return null;
   }
 
   // Get user name

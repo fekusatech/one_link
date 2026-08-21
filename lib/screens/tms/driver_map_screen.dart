@@ -668,7 +668,7 @@ class _DriverRouteDetailViewState extends State<DriverRouteDetailView> {
 
     // Destination pins
     List<Map<String, dynamic>> stops = [];
-    int stopCounter = 1;
+    int ownStopCounter = 1;
 
     for (final sj in _suratJalanList) {
       for (final detail in sj.suratJalanDetail) {
@@ -677,10 +677,13 @@ class _DriverRouteDetailViewState extends State<DriverRouteDetailView> {
           final lat = double.tryParse(parts[0].trim());
           final lng = double.tryParse(parts[1].trim());
           if (lat != null && lng != null) {
-            final isOwn = sj.driverName.isEmpty ||
-                sj.driverName.toLowerCase() == widget.driverName.toLowerCase();
+            // Compare by ID, not name — sj.driverName isn't reliably
+            // populated (only the List endpoint's JOIN has it, not
+            // getById()), and even when it is, name collisions between two
+            // different drivers would silently misattribute a stop.
+            final isOwn = sj.driverId != null && sj.driverId == widget.driverId;
             stops.add({
-              'index': stopCounter++,
+              'index': isOwn ? ownStopCounter++ : null,
               'latLng': LatLng(lat, lng),
               'detail': detail,
               'suratJalan': sj,
@@ -775,7 +778,8 @@ class _DriverRouteDetailViewState extends State<DriverRouteDetailView> {
                 markers: stops.map((item) {
                   final detail = item['detail'] as SuratJalanDetail;
                   final statusColor = _getStatusColor(detail.status);
-                  final index = item['index'] as int;
+                  final index = item['index'] as int?;
+                  final isOwn = item['isOwn'] as bool;
 
                   return Marker(
                     point: item['latLng'] as LatLng,
@@ -789,18 +793,25 @@ class _DriverRouteDetailViewState extends State<DriverRouteDetailView> {
                         decoration: BoxDecoration(
                           color: statusColor,
                           shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white, width: 2.5),
+                          // Dashed-looking lighter border marks a teammate's
+                          // stop (same gudang, not this driver's own job).
+                          border: Border.all(
+                            color: isOwn ? Colors.white : Colors.white.withValues(alpha: 0.6),
+                            width: isOwn ? 2.5 : 1.5,
+                          ),
                           boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 4)],
                         ),
                         alignment: Alignment.center,
-                        child: Text(
-                          '$index',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 13,
-                          ),
-                        ),
+                        child: isOwn
+                            ? Text(
+                                '$index',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 13,
+                                ),
+                              )
+                            : const Icon(Icons.people_alt_rounded, color: Colors.white, size: 16),
                       ),
                     ),
                   );
@@ -874,19 +885,22 @@ class _DriverRouteDetailViewState extends State<DriverRouteDetailView> {
                                 final sj = item['suratJalan'] as SuratJalan;
                                 final statusColor = _getStatusColor(detail.status);
                                 final dwellMins = _dwellTimeMinutes[detail.suratJalanDetailId] ?? 0;
+                                final isOwn = item['isOwn'] as bool;
 
                                 return ListTile(
                                   leading: CircleAvatar(
                                     backgroundColor: statusColor,
                                     radius: 14,
-                                    child: Text(
-                                      '${item['index']}',
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 12,
-                                      ),
-                                    ),
+                                    child: isOwn
+                                        ? Text(
+                                            '${item['index']}',
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 12,
+                                            ),
+                                          )
+                                        : const Icon(Icons.people_alt_rounded, color: Colors.white, size: 14),
                                   ),
                                   title: Text(
                                     detail.supplierName,
@@ -901,6 +915,14 @@ class _DriverRouteDetailViewState extends State<DriverRouteDetailView> {
                                         overflow: TextOverflow.ellipsis,
                                         style: const TextStyle(fontSize: 12),
                                       ),
+                                      if (!isOwn && sj.driverName.isNotEmpty && sj.driverName != '-')
+                                        Padding(
+                                          padding: const EdgeInsets.only(top: 2),
+                                          child: Text(
+                                            '${sj.driverName} (tim gudang sama)',
+                                            style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                                          ),
+                                        ),
                                       if (dwellMins > 0)
                                         Padding(
                                           padding: const EdgeInsets.only(top: 2),

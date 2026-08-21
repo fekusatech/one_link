@@ -82,11 +82,32 @@ class GeuAuthService {
           [],
     );
     await _saveProfile(user);
+
+    // Extract auth_token JWT from Set-Cookie header if present
+    String jwtToken = '';
+    final rawCookies = res.headers['set-cookie'] ?? [];
+    for (var header in rawCookies) {
+      if (header.contains('auth_token=')) {
+        final match = RegExp(r'auth_token=([^;]+)').firstMatch(header);
+        if (match != null) {
+          jwtToken = match.group(1) ?? '';
+          break;
+        }
+      }
+    }
+
+    await UserStorage.saveUser(
+      user: {
+        'id': user.id,
+        'name': user.name,
+        'email': user.email,
+        'groups': user.roles,
+        'roles': user.roles,
+      },
+      token: jwtToken,
+    );
+
     if (rememberCredentials) {
-      // Encrypted (Keystore/Keychain), not plaintext — lets ensureSession()
-      // silently re-open a Canvassing session on every app start, including
-      // for users who auto-login via a still-valid main-app token and never
-      // pass through a password field.
       await _storage.write(key: _secureKeyEmail, value: email);
       await _storage.write(key: _secureKeyPassword, value: password);
     }

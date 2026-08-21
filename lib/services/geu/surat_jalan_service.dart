@@ -144,8 +144,12 @@ class GeuSuratJalanService {
   }
 
   /// Fills in fields the detail endpoint doesn't carry (driver/fleet/gudang
-  /// info only lives in the List response's JOINs) with the shallow list
+  /// *name* only lives in the List response's JOINs) with the shallow list
   /// item's values, keeping everything else from the hydrated detail.
+  /// driverId is the exception: the List response never had it (only
+  /// driver_name, see SuratJalanListResponse in the Go API), so keep
+  /// `base.driverId` — getById()'s header carries it via the raw Pickup
+  /// relation (`pickup.driver_id`).
   static SuratJalan mergeListFields({
     required SuratJalan base,
     required SuratJalan listItem,
@@ -157,7 +161,7 @@ class GeuSuratJalanService {
       tanggalFormatted: base.tanggalFormatted,
       status: base.status,
       kodePickup: listItem.kodePickup,
-      driverId: listItem.driverId,
+      driverId: base.driverId,
       driverName: listItem.driverName,
       plat: listItem.plat,
       gudangName: listItem.gudangName,
