@@ -47,11 +47,14 @@ class _VisitPlanScreenState extends State<VisitPlanScreen> {
   List<LatLng> _drivingRoute = const [];
   LatLng? _routeOrigin;
   StreamSubscription<GpsFix>? _navigationLocationSubscription;
+  StreamSubscription<GpsFix>? _mapLocationSubscription;
   StreamSubscription<MagnetometerEvent>? _compassSubscription;
   int? _addingSupplierId;
   LatLng? _searchCenter;
   bool _isAdmin = false;
   bool _showRecenter = false;
+  LatLng? _lastNearbyQueryPoint;
+  int _nearbyRequestId = 0;
 
   @override
   void initState() {
@@ -59,6 +62,7 @@ class _VisitPlanScreenState extends State<VisitPlanScreen> {
     _loadAdminAccess();
     _startCompassUpdates();
     _load();
+    unawaited(_startMapLocationUpdates());
   }
 
   void _startCompassUpdates() {
@@ -108,6 +112,7 @@ class _VisitPlanScreenState extends State<VisitPlanScreen> {
           _searchCenter ??
           (fix == null ? null : LatLng(fix.latitude, fix.longitude));
       if (queryCenter != null) {
+        _lastNearbyQueryPoint = queryCenter;
         try {
           suppliers = await VisitPlannerService.getNearbySuppliers(
             latitude: queryCenter.latitude,
@@ -145,8 +150,66 @@ class _VisitPlanScreenState extends State<VisitPlanScreen> {
   @override
   void dispose() {
     _navigationLocationSubscription?.cancel();
+    _mapLocationSubscription?.cancel();
     _compassSubscription?.cancel();
     super.dispose();
+  }
+
+  /// Keeps the driver map's radius circle and supplier markings aligned with
+  /// the moving GPS position. Admins can still pin a manual search center;
+  /// normal users always follow their current location.
+  Future<void> _startMapLocationUpdates() async {
+    try {
+      final positions = await GpsService.watchPosition();
+      _mapLocationSubscription = positions.listen((fix) {
+        if (!mounted || _missionActive || _searchCenter != null) return;
+        final point = LatLng(fix.latitude, fix.longitude);
+        final previous = _lastNearbyQueryPoint;
+        if (previous != null &&
+            haversineDistanceKm(
+                  previous.latitude,
+                  previous.longitude,
+                  point.latitude,
+                  point.longitude,
+                ) <
+                .05) {
+          if (mounted) {
+            setState(() {
+              _user = point;
+              _headingDegrees = fix.headingDegrees;
+            });
+          }
+          return;
+        }
+        _lastNearbyQueryPoint = point;
+        setState(() {
+          _user = point;
+          _headingDegrees = fix.headingDegrees;
+          _showRecenter = false;
+        });
+        _map.move(point, 15);
+        unawaited(_refreshNearbySuppliers(point));
+      });
+    } catch (_) {
+      // The initial load already reports location errors where appropriate.
+    }
+  }
+
+  Future<void> _refreshNearbySuppliers(LatLng point) async {
+    final requestId = ++_nearbyRequestId;
+    try {
+      final suppliers = await VisitPlannerService.getNearbySuppliers(
+        latitude: point.latitude,
+        longitude: point.longitude,
+        radiusMeters: _supplierRadiusMeters,
+      );
+      if (!mounted || requestId != _nearbyRequestId || _searchCenter != null) {
+        return;
+      }
+      setState(() => _databaseSuppliers = suppliers);
+    } catch (_) {
+      // Keep the last known markings when a location refresh is offline.
+    }
   }
 
   @override
