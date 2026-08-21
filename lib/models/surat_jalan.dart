@@ -312,13 +312,13 @@ class SuratJalanDetail {
     }
 
     // Jika foto sudah berupa path lengkap (dimulai dengan filemanager/),
-    // maka hanya tambahkan domain
+    // maka tambahkan CDN domain
     if (foto!.startsWith('filemanager/')) {
-      return '${AppConfig.serverDomain}/$foto';
+      return 'https://geu.fekusa.com/$foto';
     }
 
-    // Jika hanya nama file, tambahkan path lengkap
-    return '${AppConfig.serverDomain}/filemanager/foto-pengambilan/$foto';
+    // Jika hanya nama file, tambahkan path lengkap CDN
+    return 'https://geu.fekusa.com/filemanager/foto-pengambilan/$foto';
   }
 
   String? get ttdUrl {
@@ -331,13 +331,13 @@ class SuratJalanDetail {
     }
 
     // Jika ttd sudah berupa path lengkap (dimulai dengan filemanager/),
-    // maka hanya tambahkan domain
+    // maka tambahkan CDN domain
     if (ttd!.startsWith('filemanager/')) {
-      return '${AppConfig.serverDomain}/$ttd';
+      return 'https://geu.fekusa.com/$ttd';
     }
 
-    // Jika hanya nama file, tambahkan path lengkap
-    return '${AppConfig.serverDomain}/filemanager/ttd/$ttd';
+    // Jika hanya nama file, tambahkan path lengkap CDN
+    return 'https://geu.fekusa.com/filemanager/ttd/$ttd';
   }
 
   Map<String, dynamic> toJson() {

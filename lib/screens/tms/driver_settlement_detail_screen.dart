@@ -352,9 +352,9 @@ class _DriverSettlementDetailScreenState extends State<DriverSettlementDetailScr
     } else if (clean.startsWith('http://') || clean.startsWith('https://')) {
       imageUrl = clean;
     } else {
-      // Relative path: prefix with erp.greenenergiutama.co.id domain
+      // Relative path: prefix with Cloudflare R2 CDN
       final relativePath = clean.startsWith('/') ? clean.substring(1) : clean;
-      imageUrl = 'https://erp.greenenergiutama.co.id/$relativePath';
+      imageUrl = 'https://geu.fekusa.com/$relativePath';
     }
 
     return Card(

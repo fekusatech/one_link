@@ -37,10 +37,8 @@ class AppConfig {
   static const String backend = 'REST API';
   static const String database = 'MySQL';
 
-  // Konfigurasi API
-  static const String serverDomain = 'https://erp.greenenergiutama.co.id';
-  //  static const String serverDomain = 'https://greenenergiutama.cloud';
-  //static const String serverDomain = 'http://localhost:8088';
+  // Konfigurasi API (Menggunakan Go REST API Service)
+  static const String serverDomain = 'https://apipi.greenenergiutama.co.id';
   static const String baseUrl = '$serverDomain/api';
   static const String googleMapsApiKey =
       'AIzaSyDrojsCV5A1SB5v-WxK38upqLIdyEoYBYg';
