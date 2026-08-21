@@ -59,6 +59,38 @@ class DriverScoreBadge {
   }
 }
 
+class DriverScoreHistoryDay {
+  final String date;
+  final int score;
+  final double totalKmDriven;
+  final int speedSafetyRate;
+  final int smoothBrakingRate;
+  final int overspeedCount;
+  final int harshBrakeCount;
+
+  DriverScoreHistoryDay({
+    required this.date,
+    required this.score,
+    required this.totalKmDriven,
+    required this.speedSafetyRate,
+    required this.smoothBrakingRate,
+    required this.overspeedCount,
+    required this.harshBrakeCount,
+  });
+
+  factory DriverScoreHistoryDay.fromJson(Map<String, dynamic> json) {
+    return DriverScoreHistoryDay(
+      date: json['date']?.toString() ?? '',
+      score: json['score'] ?? 0,
+      totalKmDriven: (json['total_km_driven'] as num?)?.toDouble() ?? 0.0,
+      speedSafetyRate: json['speed_safety_rate'] ?? 0,
+      smoothBrakingRate: json['smooth_braking_rate'] ?? 0,
+      overspeedCount: json['overspeed_count'] ?? 0,
+      harshBrakeCount: json['harsh_brake_count'] ?? 0,
+    );
+  }
+}
+
 class DriverScoreData {
   final int driverId;
   final String driverName;

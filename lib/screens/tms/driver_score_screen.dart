@@ -13,7 +13,9 @@ class DriverScoreScreen extends StatefulWidget {
 
 class _DriverScoreScreenState extends State<DriverScoreScreen> {
   DriverScoreData? _scoreData;
+  List<DriverScoreHistoryDay> _history = [];
   bool _isLoading = true;
+  bool _loadFailed = false;
 
   @override
   void initState() {
@@ -23,10 +25,15 @@ class _DriverScoreScreenState extends State<DriverScoreScreen> {
 
   Future<void> _loadScoreData() async {
     setState(() => _isLoading = true);
-    final data = await DriverScoreService.instance.getMyScore();
+    final results = await Future.wait([
+      DriverScoreService.instance.getMyScore(),
+      DriverScoreService.instance.getHistory(),
+    ]);
     if (mounted) {
       setState(() {
-        _scoreData = data;
+        _scoreData = results[0] as DriverScoreData?;
+        _history = results[1] as List<DriverScoreHistoryDay>;
+        _loadFailed = _scoreData == null;
         _isLoading = false;
       });
     }
@@ -46,24 +53,69 @@ class _DriverScoreScreenState extends State<DriverScoreScreen> {
           ? const Center(
               child: CircularProgressIndicator(color: AppColors.primaryGreen),
             )
-          : RefreshIndicator(
-              color: AppColors.primaryGreen,
-              onRefresh: _loadScoreData,
-              child: ListView(
-                padding: const EdgeInsets.all(16),
+          : _loadFailed
+              ? _buildErrorState()
+              : RefreshIndicator(
+                  color: AppColors.primaryGreen,
+                  onRefresh: _loadScoreData,
+                  child: ListView(
+                    padding: const EdgeInsets.all(16),
+                    children: [
+                      _buildHeaderCard(_scoreData!),
+                      const SizedBox(height: 16),
+                      _buildMetricsGrid(_scoreData!),
+                      const SizedBox(height: 16),
+                      _buildBadgesSection(_scoreData!),
+                      const SizedBox(height: 16),
+                      _buildHistorySection(),
+                      const SizedBox(height: 16),
+                      _buildIncidentsSection(_scoreData!),
+                      const SizedBox(height: 16),
+                      _buildTipsSection(_scoreData!),
+                    ],
+                  ),
+                ),
+    );
+  }
+
+  Widget _buildErrorState() {
+    return RefreshIndicator(
+      color: AppColors.primaryGreen,
+      onRefresh: _loadScoreData,
+      child: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          SizedBox(
+            height: MediaQuery.of(context).size.height * 0.6,
+            child: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  _buildHeaderCard(_scoreData!),
+                  Icon(Icons.cloud_off_rounded, size: 48, color: AppColors.textSecondary),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Gagal memuat penilaian berkendara',
+                    style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Periksa koneksi internet, lalu tarik untuk memuat ulang.',
+                    style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary),
+                    textAlign: TextAlign.center,
+                  ),
                   const SizedBox(height: 16),
-                  _buildMetricsGrid(_scoreData!),
-                  const SizedBox(height: 16),
-                  _buildBadgesSection(_scoreData!),
-                  const SizedBox(height: 16),
-                  _buildIncidentsSection(_scoreData!),
-                  const SizedBox(height: 16),
-                  _buildTipsSection(_scoreData!),
+                  OutlinedButton.icon(
+                    onPressed: _loadScoreData,
+                    icon: const Icon(Icons.refresh_rounded),
+                    label: const Text('Coba Lagi'),
+                  ),
                 ],
               ),
             ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -395,6 +447,98 @@ class _DriverScoreScreenState extends State<DriverScoreScreen> {
         ),
       ],
     );
+  }
+
+  Widget _buildHistorySection() {
+    if (_history.isEmpty) return const SizedBox.shrink();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Riwayat Penilaian (${_history.length} Hari Terakhir)',
+          style: AppTextStyles.bodyLarge.copyWith(fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 10),
+        Container(
+          decoration: BoxDecoration(
+            color: AppColors.white,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: AppColors.borderColor),
+          ),
+          child: Column(
+            children: _history
+                .asMap()
+                .entries
+                .map((entry) => _historyRow(entry.value, isLast: entry.key == _history.length - 1))
+                .toList(),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _historyRow(DriverScoreHistoryDay day, {required bool isLast}) {
+    final color = day.score >= 90
+        ? AppColors.success
+        : day.score >= 75
+            ? AppColors.accentOrange
+            : AppColors.error;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        border: isLast ? null : Border(bottom: BorderSide(color: AppColors.borderColor)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.12),
+              shape: BoxShape.circle,
+            ),
+            child: Text(
+              '${day.score}',
+              style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 13),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _formatHistoryDate(day.date),
+                  style: AppTextStyles.bodySmall.copyWith(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '${day.totalKmDriven.toStringAsFixed(1)} km · '
+                  '${day.overspeedCount} overspeed · ${day.harshBrakeCount} rem mendadak',
+                  style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary, fontSize: 10),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _formatHistoryDate(String isoDate) {
+    try {
+      final parsed = DateTime.parse(isoDate);
+      const months = [
+        'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun',
+        'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des',
+      ];
+      return '${parsed.day} ${months[parsed.month - 1]} ${parsed.year}';
+    } catch (_) {
+      return isoDate;
+    }
   }
 
   Widget _buildIncidentsSection(DriverScoreData score) {
