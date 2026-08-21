@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../models/surat_jalan.dart';
 import '../models/geu/surat_jalan_models.dart';
 import '../services/geu/surat_jalan_service.dart';
+import '../services/user_storage.dart';
+import '../widgets/shared_bottom_navbar.dart';
 import '../utils/wa_format.dart';
 import 'navigation_screen.dart';
 import 'pickup_process_screen.dart';
@@ -25,13 +27,26 @@ class SuratJalanDetailScreen extends StatefulWidget {
 
 class _SuratJalanDetailScreenState extends State<SuratJalanDetailScreen> {
   late SuratJalan _current = widget.suratJalan;
+  bool _isWorkingMode = false;
 
   bool get _headerFinished => _current.status == 'done' || _current.status == 'cancel';
+
+  @override
+  void initState() {
+    super.initState();
+    _checkWorkingMode();
+  }
+
+  Future<void> _checkWorkingMode() async {
+    final active = await UserStorage.isWorkingModeActive();
+    if (mounted) setState(() => _isWorkingMode = active);
+  }
 
   // Pull-to-refresh: re-fetch this exact SJ (fresh photos/GPS/TTD/status —
   // e.g. after coming back from PickupProcessScreen) instead of relying on
   // whatever was hydrated when the driver first opened the card.
   Future<void> _refresh() async {
+    await _checkWorkingMode();
     try {
       final fresh = await GeuSuratJalanService.getById(int.parse(_current.suratJalanId));
       if (mounted) setState(() => _current = fresh);
@@ -108,6 +123,12 @@ class _SuratJalanDetailScreenState extends State<SuratJalanDetailScreen> {
                   ),
           ],
         ),
+      ),
+      bottomNavigationBar: SharedBottomNavbar(
+        currentIndex: 0,
+        onTap: (index) {
+          Navigator.of(context).pop();
+        },
       ),
     );
   }
@@ -392,6 +413,17 @@ class _SuratJalanDetailScreenState extends State<SuratJalanDetailScreen> {
                   Expanded(
                     child: OutlinedButton.icon(
                       onPressed: () async {
+                        final active = await UserStorage.isWorkingModeActive();
+                        if (!active) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('🛑 Mode Bekerja Belum Aktif! Harap aktifkan "Mulai Bekerja" di Beranda terlebih dahulu.'),
+                              backgroundColor: AppColors.error,
+                              duration: Duration(seconds: 3),
+                            ),
+                          );
+                          return;
+                        }
                         await Navigator.push(
                           context,
                           MaterialPageRoute(
@@ -400,11 +432,24 @@ class _SuratJalanDetailScreenState extends State<SuratJalanDetailScreen> {
                         );
                         _refresh();
                       },
-                      icon: const Icon(Icons.arrow_forward, size: 16),
-                      label: const Text('Lanjutkan'),
+                      icon: Icon(
+                        Icons.arrow_forward,
+                        size: 16,
+                        color: _isWorkingMode ? AppColors.primaryGreen : AppColors.grey,
+                      ),
+                      label: Text(
+                        'Lanjutkan',
+                        style: TextStyle(
+                          color: _isWorkingMode ? AppColors.primaryGreen : AppColors.grey,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                       style: OutlinedButton.styleFrom(
-                        foregroundColor: AppColors.primaryGreen,
-                        side: const BorderSide(color: AppColors.primaryGreen),
+                        foregroundColor: _isWorkingMode ? AppColors.primaryGreen : AppColors.grey,
+                        side: BorderSide(
+                          color: _isWorkingMode ? AppColors.primaryGreen : AppColors.lightGrey,
+                        ),
+                        backgroundColor: _isWorkingMode ? null : AppColors.backgroundGrey,
                         padding: const EdgeInsets.symmetric(vertical: 10),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                       ),
