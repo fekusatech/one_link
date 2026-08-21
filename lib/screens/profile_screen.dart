@@ -25,6 +25,7 @@ import 'canvassing/visit_history_screen.dart';
 import 'tms/driver_settlement_list_screen.dart';
 import 'tms/driver_score_screen.dart';
 import 'tms/vehicle_issue_report_screen.dart';
+import 'tms/driver_map_screen.dart';
 import '../services/geu/my_statistic_service.dart';
 import '../services/update_service.dart';
 import '../services/impersonation_service.dart';
@@ -517,6 +518,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                   child: Column(
                     children: [
+                      _buildMenuItem(
+                        icon: Icons.map_outlined,
+                        title: 'Peta Driver & Monitoring',
+                        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DriverMapScreen())),
+                      ),
+                      _buildDivider(),
                       _buildMenuItem(
                         icon: Icons.my_location_outlined,
                         title: 'Pengaturan Peta & Alamat GPS',
