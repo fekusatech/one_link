@@ -105,9 +105,16 @@ class _LoginScreenState extends State<LoginScreen> {
     if (_isLoading || _isGoogleLoading) return;
     setState(() => _isGoogleLoading = true);
     try {
+      // inAppBrowserView opens Chrome Custom Tabs (Android) / SFSafariViewController
+      // (iOS) — a browser overlay that slides up over the app instead of
+      // switching to a separate Chrome window, while staying a real system
+      // browser context. Google's OAuth screen actively blocks plain
+      // embedded WebViews ("This browser or app may not be secure") since
+      // 2016, so a true in-app WebView isn't an option here — this is the
+      // closest compliant equivalent.
       final opened = await launchUrl(
         _googleLoginUri,
-        mode: LaunchMode.externalApplication,
+        mode: LaunchMode.inAppBrowserView,
       );
       if (!opened && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -130,6 +137,34 @@ class _LoginScreenState extends State<LoginScreen> {
     } finally {
       if (mounted) setState(() => _isGoogleLoading = false);
     }
+  }
+
+  /// Backend/network exceptions land here as raw English/technical text
+  /// (e.g. "Exception: Invalid credentials", a Dio timeout dump) — map the
+  /// ones we actually expect to plain Indonesian, and fall back to a single
+  /// generic line for anything else rather than showing that to a driver.
+  String _friendlyLoginError(Object e) {
+    final raw = e.toString().replaceFirst('Exception: ', '').toLowerCase();
+
+    if (raw.contains('invalid credentials')) {
+      return 'Email atau password salah. Silakan periksa kembali.';
+    }
+    if (raw.contains('account is banned') || raw.contains('banned')) {
+      return 'Akun Anda dinonaktifkan. Hubungi admin untuk bantuan.';
+    }
+    if (raw.contains('tidak ada koneksi') || raw.contains('connection') || raw.contains('socketexception')) {
+      return 'Tidak ada koneksi internet. Periksa jaringan Anda dan coba lagi.';
+    }
+    if (raw.contains('timeout')) {
+      return 'Koneksi ke server terlalu lama. Silakan coba lagi.';
+    }
+    if (raw.contains('sesi login telah berakhir')) {
+      return 'Sesi telah berakhir. Silakan masuk kembali.';
+    }
+    if (raw.contains('endpoint not found') || raw.contains('404')) {
+      return 'Server sedang bermasalah. Silakan coba beberapa saat lagi.';
+    }
+    return 'Gagal masuk. Silakan periksa email/password Anda dan coba lagi.';
   }
 
   Future<void> _handleLogin() async {
@@ -182,7 +217,7 @@ class _LoginScreenState extends State<LoginScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Login gagal: $e'),
+          content: Text(_friendlyLoginError(e)),
           backgroundColor: AppColors.error,
         ),
       );
