@@ -34,7 +34,9 @@ class VisitPlanScreen extends StatefulWidget {
 }
 
 class _VisitPlanScreenState extends State<VisitPlanScreen> {
-  late int _supplierRadiusMeters;
+  // A safe initial value prevents the GPS stream from rebuilding the map
+  // before the remote distance_radius_map setting has finished loading.
+  int _supplierRadiusMeters = 1000;
   TodaysMission? _mission;
   LatLng? _user;
   double _headingDegrees = 0;
@@ -55,6 +57,8 @@ class _VisitPlanScreenState extends State<VisitPlanScreen> {
   bool _showRecenter = false;
   LatLng? _lastNearbyQueryPoint;
   int _nearbyRequestId = 0;
+  LatLng? _lastMovementPoint;
+  DateTime? _lastMovementAt;
 
   @override
   void initState() {
@@ -72,12 +76,41 @@ class _VisitPlanScreenState extends State<VisitPlanScreen> {
         ).listen((event) {
           final magnitude = math.sqrt(event.x * event.x + event.y * event.y);
           if (!mounted || magnitude < 1) return;
-          // Flat-phone compass heading. GPS heading remains the source while
-          // moving; the compass keeps the arrow responsive while standing still.
+          // Use the compass only while standing still. While moving, the
+          // bearing between GPS fixes is more reliable than phone orientation.
+          final movementAt = _lastMovementAt;
+          if (movementAt != null &&
+              DateTime.now().difference(movementAt).inSeconds < 4) {
+            return;
+          }
           var heading = math.atan2(event.y, event.x) * 180 / math.pi;
           if (heading < 0) heading += 360;
           setState(() => _headingDegrees = heading);
         });
+  }
+
+  double? _updateMovementHeading(LatLng point) {
+    final previous = _lastMovementPoint;
+    _lastMovementPoint = point;
+    if (previous == null) return null;
+    final distance = haversineDistanceKm(
+      previous.latitude,
+      previous.longitude,
+      point.latitude,
+      point.longitude,
+    );
+    if (distance < .003) return null;
+    final lat1 = previous.latitude * math.pi / 180;
+    final lat2 = point.latitude * math.pi / 180;
+    final dLng = (point.longitude - previous.longitude) * math.pi / 180;
+    final y = math.sin(dLng) * math.cos(lat2);
+    final x =
+        math.cos(lat1) * math.sin(lat2) -
+        math.sin(lat1) * math.cos(lat2) * math.cos(dLng);
+    var bearing = math.atan2(y, x) * 180 / math.pi;
+    if (bearing < 0) bearing += 360;
+    _lastMovementAt = DateTime.now();
+    return bearing;
   }
 
   Future<void> _loadAdminAccess() async {
@@ -164,6 +197,7 @@ class _VisitPlanScreenState extends State<VisitPlanScreen> {
       _mapLocationSubscription = positions.listen((fix) {
         if (!mounted || _missionActive || _searchCenter != null) return;
         final point = LatLng(fix.latitude, fix.longitude);
+        final bearing = _updateMovementHeading(point);
         final previous = _lastNearbyQueryPoint;
         if (previous != null &&
             haversineDistanceKm(
@@ -176,7 +210,7 @@ class _VisitPlanScreenState extends State<VisitPlanScreen> {
           if (mounted) {
             setState(() {
               _user = point;
-              _headingDegrees = fix.headingDegrees;
+              if (bearing != null) _headingDegrees = bearing;
             });
           }
           return;
@@ -184,7 +218,7 @@ class _VisitPlanScreenState extends State<VisitPlanScreen> {
         _lastNearbyQueryPoint = point;
         setState(() {
           _user = point;
-          _headingDegrees = fix.headingDegrees;
+          _headingDegrees = bearing ?? _headingDegrees;
           _showRecenter = false;
         });
         _map.move(point, 15);
@@ -643,9 +677,10 @@ class _VisitPlanScreenState extends State<VisitPlanScreen> {
       _navigationLocationSubscription = positions.listen((fix) {
         if (!mounted || !_missionActive) return;
         final point = LatLng(fix.latitude, fix.longitude);
+        final bearing = _updateMovementHeading(point);
         setState(() {
           _user = point;
-          _headingDegrees = fix.headingDegrees;
+          _headingDegrees = bearing ?? _headingDegrees;
         });
         _map.move(point, 17);
         final previousRouteOrigin = _routeOrigin;
