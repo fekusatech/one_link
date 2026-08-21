@@ -178,7 +178,7 @@ class UserStorage {
 
   static Future<bool> isWorkingModeActive() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getBool(_keyWorkingMode) ?? false; // Default false (Mode Lihat Histori Only)
+    return prefs.getBool(_keyWorkingMode) ?? true; // Default true (features enabled)
   }
 
   static Future<void> setWorkingModeActive(bool active) async {

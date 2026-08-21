@@ -569,7 +569,7 @@ class _HomeScreenState extends State<_HomeScreen> {
     return Column(
       children: [
         _buildConnectivityBanner(),
-        const WorkingModeHeaderWidget(),
+        // const WorkingModeHeaderWidget(),
         Expanded(
           child: RefreshIndicator(
             color: AppColors.primaryGreen,

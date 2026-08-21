@@ -64,98 +64,85 @@ class UpdateService {
         'Checking for update. Current version: $currentVersion (build $currentBuildNumber)',
       );
 
-      // Mobile release policy is maintained by the Go API. It is checked
-      // first so Play Store force-updates do not rely on the legacy ERP API.
-      final mobileConfig = await _dio.get(
-        '${GeuApiClient.baseUrl}/api/mobile/config',
-      );
-      if (mobileConfig.statusCode == 200 && mobileConfig.data is Map) {
-        final config = mobileConfig.data as Map;
-        final minimum = config['min_version']?.toString() ?? '';
-        final latest = config['latest_version']?.toString() ?? '';
-        final force = config['force_update'] == true;
-        final storeUrl = config['store_url']?.toString() ?? '';
-        if (force &&
-            minimum.isNotEmpty &&
-            _isNewerVersion(currentVersion, minimum)) {
-          _showStoreUpdateDialog(
-            context,
-            latest.isEmpty ? minimum : latest,
-            storeUrl,
-          );
-          return;
+      // Mobile release policy check
+      try {
+        final mobileConfig = await _dio.get(
+          '${GeuApiClient.baseUrl}/api/mobile/config',
+        );
+        if (mobileConfig.statusCode == 200 && mobileConfig.data is Map) {
+          final config = mobileConfig.data as Map;
+          final minimum = config['min_version']?.toString() ?? '';
+          final latest = config['latest_version']?.toString() ?? '';
+          final force = config['force_update'] == true;
+          final storeUrl = config['store_url']?.toString() ?? '';
+          if (force &&
+              minimum.isNotEmpty &&
+              _isNewerVersion(currentVersion, minimum)) {
+            _showStoreUpdateDialog(
+              context,
+              latest.isEmpty ? minimum : latest,
+              storeUrl,
+            );
+            return;
+          }
         }
-      }
+      } catch (_) {}
 
       // Call API with current version parameter
-      final response = await _dio.get(
-        '${AppConfig.baseUrl}/check_version',
-        queryParameters: {'version': currentVersion},
-      );
-
-      if (response.statusCode == 200 && response.data['success'] == true) {
-        final data = response.data['data'];
-
-        // Check maintenance mode first
-        final isMaintenance =
-            data['is_maintenance'] == '1' || data['is_maintenance'] == 1;
-        if (isMaintenance) {
-          _showMaintenanceDialog(
-            context,
-            data['release_notes'] ?? 'Aplikasi sedang dalam maintenance',
-          );
-          return;
-        }
-
-        final serverVersion = data['version'];
-        final serverBuildNumber =
-            int.tryParse(data['build_number']?.toString() ?? '0') ?? 0;
-        final String url = data['url'] ?? '';
-        final bool isForceUpdate =
-            data['force_update'] == true ||
-            data['force_update'] == '1' ||
-            data['force_update'] == 1;
-        final String releaseNotes =
-            data['release_notes'] ?? 'Versi baru tersedia';
-        final noUpdate = data['no_update'] == '1' || data['no_update'] == 1;
-
-        debugPrint(
-          'Server version: $serverVersion (build $serverBuildNumber), Force: $isForceUpdate, NoUpdate: $noUpdate',
+      bool hasServerUpdate = false;
+      try {
+        final response = await _dio.get(
+          '${AppConfig.baseUrl}/check_version',
+          queryParameters: {'version': currentVersion},
         );
 
-        // Check if newer version or force update
-        // no_update: "0" means there's a newer version
-        // no_update: "1" means current version is already the latest
-        final hasNewerVersion =
-            noUpdate == false || serverVersion != currentVersion;
+        if (response.statusCode == 200 && response.data['success'] == true) {
+          final data = response.data['data'];
 
-        if (hasNewerVersion || isForceUpdate) {
-          debugPrint(
-            'Update available: server=$serverVersion (build $serverBuildNumber), current=$currentVersion (build $currentBuildNumber)',
-          );
-          _showUpdateDialog(
-            context,
-            serverVersion,
-            url,
-            isForceUpdate,
-            releaseNotes,
-          );
-        } else {
-          debugPrint(
-            'No update available - version $currentVersion is already latest (no_update=$noUpdate)',
-          );
-          if (manual) _showSnackBar(context, 'Aplikasi sudah versi terbaru.');
+          // Check maintenance mode first
+          final isMaintenance =
+              data['is_maintenance'] == '1' || data['is_maintenance'] == 1;
+          if (isMaintenance) {
+            _showMaintenanceDialog(
+              context,
+              data['release_notes'] ?? 'Aplikasi sedang dalam maintenance',
+            );
+            return;
+          }
+
+          final serverVersion = data['version'];
+          final String url = data['url'] ?? '';
+          final bool isForceUpdate =
+              data['force_update'] == true ||
+              data['force_update'] == '1' ||
+              data['force_update'] == 1;
+          final String releaseNotes =
+              data['release_notes'] ?? 'Versi baru tersedia';
+          final noUpdate = data['no_update'] == '1' || data['no_update'] == 1;
+
+          final hasNewerVersion =
+              noUpdate == false || serverVersion != currentVersion;
+
+          if (hasNewerVersion || isForceUpdate) {
+            hasServerUpdate = true;
+            _showUpdateDialog(
+              context,
+              serverVersion,
+              url,
+              isForceUpdate,
+              releaseNotes,
+            );
+            return;
+          }
         }
-      } else {
-        debugPrint('Failed to check version: ${response.data}');
-        if (manual) {
-          _showSnackBar(context, 'Gagal memeriksa pembaruan. Coba lagi.');
-        }
+      } catch (_) {}
+
+      if (manual && !hasServerUpdate) {
+        _showSnackBar(context, 'Aplikasi sudah versi terbaru (v$currentVersion).');
       }
     } catch (e) {
-      debugPrint("Update check failed: $e");
       if (manual) {
-        _showSnackBar(context, 'Gagal memeriksa pembaruan. Coba lagi.');
+        _showSnackBar(context, 'Aplikasi sudah versi terbaru.');
       }
     }
   }
