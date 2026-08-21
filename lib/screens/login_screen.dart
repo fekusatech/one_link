@@ -30,7 +30,6 @@ class _LoginScreenState extends State<LoginScreen> {
   StreamSubscription<Uri>? _ssoLinkSubscription;
   final Set<String> _handledSsoCodes = {};
 
-
   @override
   void initState() {
     super.initState();
@@ -73,26 +72,11 @@ class _LoginScreenState extends State<LoginScreen> {
 
     if (mounted) setState(() => _isGoogleLoading = true);
     try {
-      final geuUser = await GeuAuthService.loginWithSsoCode(code);
-
-      final userMap = {
-        'id': geuUser.id,
-        'name': geuUser.name,
-        'email': geuUser.email,
-        'phone': '',
-        'groups': geuUser.roles,
-        'roles': geuUser.roles,
-      };
-
-      await UserStorage.saveUser(user: userMap, token: '');
-      await PersistentAuthService.instance.saveLoginData(
-        token: '',
-        userId: geuUser.id.toString(),
-        userName: geuUser.name,
-        userPhone: '',
-        userEmail: geuUser.email,
-        tokenExpiry: DateTime.now().add(const Duration(days: 30)).toIso8601String(),
-      );
+      // loginWithSsoCode exchanges the one-time code for a fresh Go access
+      // token and persists both UserStorage and PersistentAuthService. Do not
+      // overwrite that token here: the former callback saved an empty token,
+      // which made the Sales dashboard immediately receive HTTP 401.
+      await GeuAuthService.loginWithSsoCode(code);
 
       if (!mounted) return;
       Navigator.pushNamedAndRemoveUntil(
