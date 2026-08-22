@@ -1,9 +1,27 @@
 import '../models/api_response.dart';
 import '../models/supplier_list_model.dart';
+import '../models/supplier_order_history.dart';
 import 'user_storage.dart';
 import 'geu/geu_api_client.dart';
 
 class SupplierListService {
+  /// Order-history slice of a supplier's full detail (last order date,
+  /// lifetime totals, recent orders for a mini chart) — used by the
+  /// "Detail Supplier" map-marker sheet. Only existing m_supplier rows
+  /// resolve here; scanned/prospect pins never have a real id to call this
+  /// with.
+  static Future<SupplierOrderSummary?> getSupplierOrderSummary(int id) async {
+    try {
+      final dio = await GeuApiClient.instance;
+      final response = await dio.get('/api/suppliers/$id');
+      final body = response.data as Map<String, dynamic>;
+      if (body['status'] != 'success' || body['data'] == null) return null;
+      return SupplierOrderSummary.fromJson(body['data'] as Map<String, dynamic>);
+    } catch (e) {
+      print('❌ Error fetching supplier order summary: $e');
+      return null;
+    }
+  }
   /// Fetch supplier list with filter by pic_id and date
   static Future<ApiResponse<SupplierListResponse>> getSupplierList({
     int page = 1,

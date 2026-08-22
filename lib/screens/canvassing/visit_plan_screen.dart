@@ -5,9 +5,13 @@ import 'dart:ui' as ui;
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:sensors_plus/sensors_plus.dart';
+import 'package:fl_chart/fl_chart.dart';
+import 'package:intl/intl.dart';
 
 import '../../constants/app_colors.dart';
 import '../../models/geu/visit_planner_models.dart';
+import '../../models/supplier_order_history.dart';
+import '../../services/supplier_list_service.dart';
 import '../../services/geu/gps_service.dart';
 import '../../services/geu/geu_auth_service.dart';
 import '../../services/geu/haversine.dart';
@@ -52,7 +56,6 @@ class _VisitPlanScreenState extends State<VisitPlanScreen>
   StreamSubscription<GpsFix>? _navigationLocationSubscription;
   StreamSubscription<GpsFix>? _mapLocationSubscription;
   StreamSubscription<MagnetometerEvent>? _compassSubscription;
-  int? _addingSupplierId;
   LatLng? _searchCenter;
   bool _isAdmin = false;
   bool _showRecenter = false;
@@ -748,11 +751,11 @@ class _VisitPlanScreenState extends State<VisitPlanScreen>
         children: [
           const _LegendDot(
             color: Color(0xFF2196F3),
-            label: 'Supplier (PO done < 30 days)',
+            label: 'Supplier (PO < 30 days)',
           ),
           const _LegendDot(
             color: Color(0xFFFF9800),
-            label: 'Supplier (PO done > 30 days / none)',
+            label: 'Supplier (PO > 30 days)',
           ),
           const _LegendDot(color: Color(0xFFF44336), label: 'Scan Result'),
         ],
@@ -1414,96 +1417,22 @@ class _VisitPlanScreenState extends State<VisitPlanScreen>
   Future<void> _showSupplierDetails(NearbySupplier supplier) async {
     await showModalBottomSheet<void>(
       context: context,
+      isScrollControlled: true,
       showDragHandle: true,
-      builder: (sheetContext) => SafeArea(
-        top: false,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  const Icon(Icons.storefront_outlined),
-                  const SizedBox(width: 10),
-                  const Expanded(
-                    child: Text(
-                      'Detail Supplier',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  ),
-                  IconButton(
-                    tooltip: 'Tutup',
-                    onPressed: () => Navigator.pop(sheetContext),
-                    icon: const Icon(Icons.close),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
-              Text(
-                supplier.name,
-                style: const TextStyle(
-                  fontSize: 17,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-              const SizedBox(height: 8),
-              _supplierDetailRow(Icons.location_on_outlined, supplier.address),
-              if (supplier.phone.trim().isNotEmpty)
-                _supplierDetailRow(Icons.phone_outlined, supplier.phone),
-              _supplierDetailRow(
-                Icons.straighten_outlined,
-                'Jarak ${supplier.distanceKm.toStringAsFixed(2)} km',
-              ),
-              const SizedBox(height: 18),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton.icon(
-                  onPressed: _addingSupplierId == supplier.id
-                      ? null
-                      : () => _addSupplierToMission(supplier, sheetContext),
-                  icon: _addingSupplierId == supplier.id
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.add),
-                  label: Text(
-                    _addingSupplierId == supplier.id
-                        ? 'Menambahkan...'
-                        : 'Tambah ke Mission',
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (sheetContext) => _SupplierDetailSheet(
+        supplier: supplier,
+        onAddToMission: () => _addSupplierToMission(supplier, sheetContext),
       ),
     );
   }
-
-  Widget _supplierDetailRow(IconData icon, String value) => Padding(
-    padding: const EdgeInsets.only(top: 8),
-    child: Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(icon, size: 18, color: AppColors.textSecondary),
-        const SizedBox(width: 10),
-        Expanded(child: Text(value, style: const TextStyle(height: 1.35))),
-      ],
-    ),
-  );
 
   Future<void> _addSupplierToMission(
     NearbySupplier supplier,
     BuildContext sheetContext,
   ) async {
-    setState(() => _addingSupplierId = supplier.id);
     try {
       await VisitPlannerService.addSupplierToMission(supplier.id);
       if (!mounted) return;
@@ -1519,8 +1448,7 @@ class _VisitPlanScreenState extends State<VisitPlanScreen>
           context,
         ).showSnackBar(SnackBar(content: Text(error.toString())));
       }
-    } finally {
-      if (mounted) setState(() => _addingSupplierId = null);
+      rethrow;
     }
   }
 
@@ -1550,6 +1478,338 @@ class _VisitPlanScreenState extends State<VisitPlanScreen>
           ],
         ),
       );
+}
+
+/// "Detail Supplier" map-marker sheet — only ever opened for
+/// _databaseSuppliers (blue/orange pins, real m_supplier rows). Scanned
+/// prospect pins (red) have no supplier_id yet, so they stay tooltip-only
+/// with no sheet at all — nothing to fetch order history for.
+class _SupplierDetailSheet extends StatefulWidget {
+  final NearbySupplier supplier;
+  final Future<void> Function() onAddToMission;
+
+  const _SupplierDetailSheet({
+    required this.supplier,
+    required this.onAddToMission,
+  });
+
+  @override
+  State<_SupplierDetailSheet> createState() => _SupplierDetailSheetState();
+}
+
+class _SupplierDetailSheetState extends State<_SupplierDetailSheet> {
+  bool _isAdding = false;
+  bool _loadingSummary = true;
+  SupplierOrderSummary? _summary;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSummary();
+  }
+
+  Future<void> _loadSummary() async {
+    final summary = await SupplierListService.getSupplierOrderSummary(
+      widget.supplier.id,
+    );
+    if (mounted) {
+      setState(() {
+        _summary = summary;
+        _loadingSummary = false;
+      });
+    }
+  }
+
+  Future<void> _handleAdd() async {
+    setState(() => _isAdding = true);
+    try {
+      await widget.onAddToMission();
+    } catch (_) {
+      // Already surfaced to the user via SnackBar by the caller.
+    } finally {
+      if (mounted) setState(() => _isAdding = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final supplier = widget.supplier;
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.storefront_outlined),
+                const SizedBox(width: 10),
+                const Expanded(
+                  child: Text(
+                    'Detail Supplier',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+                  ),
+                ),
+                IconButton(
+                  tooltip: 'Tutup',
+                  onPressed: () => Navigator.pop(context),
+                  icon: const Icon(Icons.close),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Text(
+              supplier.name,
+              style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: 8),
+            _supplierDetailRow(Icons.location_on_outlined, supplier.address),
+            if (supplier.phone.trim().isNotEmpty)
+              _supplierDetailRow(Icons.phone_outlined, supplier.phone),
+            _supplierDetailRow(
+              Icons.straighten_outlined,
+              'Jarak ${supplier.distanceKm.toStringAsFixed(2)} km',
+            ),
+            const SizedBox(height: 14),
+            const Divider(height: 1),
+            const SizedBox(height: 14),
+            _buildOrderHistorySection(),
+            const SizedBox(height: 18),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                onPressed: _isAdding ? null : _handleAdd,
+                icon: _isAdding
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.add),
+                label: Text(_isAdding ? 'Menambahkan...' : 'Tambah ke Mission'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildOrderHistorySection() {
+    if (_loadingSummary) return const _OrderHistorySkeleton();
+
+    final summary = _summary;
+    if (summary == null || !summary.hasHistory) {
+      return Row(
+        children: [
+          Icon(Icons.info_outline, size: 16, color: AppColors.textSecondary),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'Belum ada riwayat setor minyak.',
+              style: TextStyle(color: AppColors.textSecondary, fontSize: 12.5),
+            ),
+          ),
+        ],
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _supplierDetailRow(
+          Icons.history_outlined,
+          'Terakhir setor ${_formatDate(summary.lastOrderDate)}'
+          '${summary.lastOrderNominal != null ? ' • ${_formatRupiah(summary.lastOrderNominal!)}' : ''}',
+        ),
+        _supplierDetailRow(
+          Icons.receipt_long_outlined,
+          '${summary.totalOrderCount}x setor • total ${_formatRupiah(summary.totalOrderNominal)}',
+        ),
+        if (summary.recentOrders.length >= 2) ...[
+          const SizedBox(height: 12),
+          SizedBox(
+            height: 80,
+            child: _RecentOrdersChart(orders: summary.recentOrders),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _supplierDetailRow(IconData icon, String value) => Padding(
+    padding: const EdgeInsets.only(top: 8),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: 18, color: AppColors.textSecondary),
+        const SizedBox(width: 10),
+        Expanded(child: Text(value, style: const TextStyle(height: 1.35))),
+      ],
+    ),
+  );
+
+  String _formatDate(DateTime? date) {
+    if (date == null) return '-';
+    return DateFormat('dd/MM/yyyy').format(date);
+  }
+
+  String _formatRupiah(double value) {
+    final formatted = value
+        .round()
+        .toString()
+        .replaceAllMapped(
+          RegExp(r'\B(?=(\d{3})+(?!\d))'),
+          (match) => '.',
+        );
+    return 'Rp$formatted';
+  }
+}
+
+class _OrderHistorySkeleton extends StatelessWidget {
+  const _OrderHistorySkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _SkeletonBox(width: 220, height: 14),
+        SizedBox(height: 10),
+        _SkeletonBox(width: 160, height: 14),
+        SizedBox(height: 12),
+        _SkeletonBox(width: double.infinity, height: 60),
+      ],
+    );
+  }
+}
+
+/// Minimal pulsing placeholder — no shimmer package in pubspec, and a
+/// static grey box already reads clearly as "loading" without one.
+class _SkeletonBox extends StatefulWidget {
+  final double width;
+  final double height;
+
+  const _SkeletonBox({required this.width, required this.height});
+
+  @override
+  State<_SkeletonBox> createState() => _SkeletonBoxState();
+}
+
+class _SkeletonBoxState extends State<_SkeletonBox>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 900),
+  )..repeat(reverse: true);
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FadeTransition(
+      opacity: Tween(begin: 0.4, end: 1.0).animate(_controller),
+      child: Container(
+        width: widget.width,
+        height: widget.height,
+        decoration: BoxDecoration(
+          color: AppColors.borderColor,
+          borderRadius: BorderRadius.circular(6),
+        ),
+      ),
+    );
+  }
+}
+
+/// Small bar chart of the last few orders (oldest → newest, left to right)
+/// — just enough to show a trend, not a full analytics chart.
+class _RecentOrdersChart extends StatelessWidget {
+  final List<SupplierOrderHistoryItem> orders;
+
+  const _RecentOrdersChart({required this.orders});
+
+  @override
+  Widget build(BuildContext context) {
+    final chronological = orders.reversed.toList();
+    final maxNominal = chronological
+        .map((o) => o.nominal)
+        .fold<double>(0, (a, b) => a > b ? a : b);
+    final maxY = maxNominal <= 0 ? 1.0 : maxNominal * 1.2;
+
+    return BarChart(
+      BarChartData(
+        maxY: maxY,
+        alignment: BarChartAlignment.spaceAround,
+        gridData: const FlGridData(show: false),
+        borderData: FlBorderData(show: false),
+        barTouchData: BarTouchData(
+          touchTooltipData: BarTouchTooltipData(
+            getTooltipItem: (group, groupIndex, rod, rodIndex) {
+              final order = chronological[group.x.toInt()];
+              return BarTooltipItem(
+                '${DateFormat('d/M').format(order.date)}\n'
+                'Rp${order.nominal.round()}',
+                const TextStyle(color: Colors.white, fontSize: 11),
+              );
+            },
+          ),
+        ),
+        titlesData: FlTitlesData(
+          leftTitles: const AxisTitles(
+            sideTitles: SideTitles(showTitles: false),
+          ),
+          rightTitles: const AxisTitles(
+            sideTitles: SideTitles(showTitles: false),
+          ),
+          topTitles: const AxisTitles(
+            sideTitles: SideTitles(showTitles: false),
+          ),
+          bottomTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              reservedSize: 20,
+              getTitlesWidget: (value, meta) {
+                final index = value.toInt();
+                if (index < 0 || index >= chronological.length) {
+                  return const SizedBox.shrink();
+                }
+                return Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Text(
+                    DateFormat('d/M').format(chronological[index].date),
+                    style: TextStyle(
+                      fontSize: 9,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ),
+        barGroups: [
+          for (var i = 0; i < chronological.length; i++)
+            BarChartGroupData(
+              x: i,
+              barRods: [
+                BarChartRodData(
+                  toY: chronological[i].nominal,
+                  color: const Color(0xFF2196F3),
+                  width: 14,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+              ],
+            ),
+        ],
+      ),
+    );
+  }
 }
 
 class _PinTailPainter extends CustomPainter {
