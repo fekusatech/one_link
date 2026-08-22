@@ -6,6 +6,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 class PickupSummary {
   final int id;
   final String code, date, warehouse, zone, status;
+  final String totalPickup, address, driver, fleet;
+  final double? qtyUco;
   const PickupSummary({
     required this.id,
     required this.code,
@@ -13,6 +15,11 @@ class PickupSummary {
     required this.warehouse,
     required this.zone,
     required this.status,
+    this.totalPickup = '',
+    this.address = '',
+    this.driver = '',
+    this.fleet = '',
+    this.qtyUco,
   });
   factory PickupSummary.fromJson(Map d) => PickupSummary(
     id: int.tryParse('${d['id'] ?? 0}') ?? 0,
@@ -21,6 +28,11 @@ class PickupSummary {
     warehouse: '${d['gudang_name'] ?? '-'}',
     zone: '${d['zona_nama'] ?? '-'}',
     status: '${d['status'] ?? '-'}',
+    totalPickup: '${d['total_pickup'] ?? ''}',
+    address: '${d['alamat'] ?? ''}',
+    driver: '${d['driver_name'] ?? ''}',
+    fleet: '${d['fleet_plat'] ?? ''}',
+    qtyUco: (d['qty_uco'] as num?)?.toDouble(),
   );
 }
 

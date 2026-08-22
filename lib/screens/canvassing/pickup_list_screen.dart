@@ -57,8 +57,25 @@ class _PickupListScreenState extends State<PickupListScreen> {
                 final x = items[i];
                 return Card(
                   child: ListTile(
-                    title: Text(x.code),
-                    subtitle: Text('${x.date} • ${x.warehouse}\n${x.zone}'),
+                    title: Text(
+                      x.code,
+                      style: const TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                    subtitle: Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Text(
+                        [
+                          '${x.date} • ${x.warehouse}',
+                          if (x.zone != '-') 'Zona: ${x.zone}',
+                          if (x.totalPickup.isNotEmpty) x.totalPickup,
+                          if (x.driver.isNotEmpty) 'Driver: ${x.driver}',
+                          if (x.fleet.isNotEmpty) 'Armada: ${x.fleet}',
+                          if (x.address.isNotEmpty) x.address,
+                        ].join('\n'),
+                        maxLines: 5,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
                     isThreeLine: true,
                     trailing: Text(x.status),
                     onTap: () => Navigator.push(

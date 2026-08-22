@@ -142,8 +142,21 @@ class _PickupRequestScreenState extends State<PickupRequestScreen> {
             value: wo,
             groupValue: selected,
             onChanged: (v) => setState(() => selected = v),
-            title: Text('${wo['kode'] ?? '-'}'),
-            subtitle: Text('${wo['supplier_name'] ?? '-'}'),
+            title: Text(
+              '${wo['kode'] ?? '-'} • ${wo['supplier_name'] ?? '-'}',
+              style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
+            subtitle: Text(
+              [
+                if ('${wo['supplier_kode'] ?? ''}'.isNotEmpty)
+                  'Kode supplier: ${wo['supplier_kode']}',
+                if ('${wo['supplier_phone'] ?? ''}'.isNotEmpty)
+                  'Telp: ${wo['supplier_phone']}',
+                if ('${wo['tgl'] ?? ''}'.isNotEmpty) 'Tanggal WO: ${wo['tgl']}',
+                if ('${wo['status_name'] ?? ''}'.isNotEmpty)
+                  'Status: ${wo['status_name']}',
+              ].join(' • '),
+            ),
           ),
         ),
         DropdownButtonFormField<int>(
