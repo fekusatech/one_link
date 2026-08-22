@@ -65,7 +65,7 @@ class _PickupListScreenState extends State<PickupListScreen> {
                       padding: const EdgeInsets.only(top: 4),
                       child: Text(
                         [
-                          '${x.date} • ${x.warehouse}',
+                          '${_formatDate(x.date)} • ${x.warehouse}',
                           if (x.zone != '-') 'Zona: ${x.zone}',
                           if (x.supplierNames.isNotEmpty)
                             'Supplier: ${x.supplierNames}',
@@ -112,5 +112,12 @@ class _PickupListScreenState extends State<PickupListScreen> {
       default:
         return value.isEmpty ? 'Belum dibayar' : value;
     }
+  }
+
+  String _formatDate(String value) {
+    final parsed = DateTime.tryParse(value);
+    if (parsed == null) return value;
+    return '${parsed.day.toString().padLeft(2, '0')}/'
+        '${parsed.month.toString().padLeft(2, '0')}/${parsed.year}';
   }
 }

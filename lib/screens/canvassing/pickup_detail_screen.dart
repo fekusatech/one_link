@@ -12,6 +12,37 @@ class _PickupDetailScreenState extends State<PickupDetailScreen> {
   Map<String, dynamic>? data;
   bool _busy = false;
 
+  String _formatDate(dynamic value) {
+    final parsed = DateTime.tryParse('$value');
+    if (parsed == null) return '${value ?? '-'}';
+    return '${parsed.day.toString().padLeft(2, '0')}/'
+        '${parsed.month.toString().padLeft(2, '0')}/${parsed.year}';
+  }
+
+  String _paymentLabel(dynamic value) {
+    switch ('$value'.toLowerCase()) {
+      case 'lunas':
+      case 'paid':
+        return 'Sudah dibayar';
+      case 'pending':
+        return 'Menunggu pembayaran';
+      default:
+        return value == null || '$value'.isEmpty ? 'Belum dibayar' : '$value';
+    }
+  }
+
+  Widget _statusTile(
+    IconData icon,
+    String label,
+    String value, {
+    bool ok = false,
+  }) => ListTile(
+    contentPadding: EdgeInsets.zero,
+    leading: Icon(icon, color: ok ? Colors.green : Colors.grey[700]),
+    title: Text(label),
+    subtitle: Text(value),
+  );
+
   @override
   void initState() {
     super.initState();
@@ -38,9 +69,7 @@ class _PickupDetailScreenState extends State<PickupDetailScreen> {
         title: const Text('Update Dasar Pickup'),
         content: TextField(
           controller: controller,
-          decoration: const InputDecoration(
-            labelText: 'Tanggal (YYYY-MM-DD)',
-          ),
+          decoration: const InputDecoration(labelText: 'Tanggal (YYYY-MM-DD)'),
           readOnly: true,
           onTap: () async {
             final picked = await showDatePicker(
@@ -61,7 +90,8 @@ class _PickupDetailScreenState extends State<PickupDetailScreen> {
             child: const Text('Batal'),
           ),
           FilledButton(
-            onPressed: () => Navigator.pop(dialogContext, controller.text.trim()),
+            onPressed: () =>
+                Navigator.pop(dialogContext, controller.text.trim()),
             child: const Text('Simpan'),
           ),
         ],
@@ -145,7 +175,9 @@ class _PickupDetailScreenState extends State<PickupDetailScreen> {
       );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Pengajuan perubahan terkirim, menunggu approval.')),
+        const SnackBar(
+          content: Text('Pengajuan perubahan terkirim, menunggu approval.'),
+        ),
       );
       await load();
     } catch (error) {
@@ -169,11 +201,70 @@ class _PickupDetailScreenState extends State<PickupDetailScreen> {
         padding: const EdgeInsets.all(16),
         children: [
           Text(
-            '${h['tgl_plan'] ?? h['tgl'] ?? ''}',
+            _formatDate(h['tgl_plan'] ?? h['tgl']),
             style: Theme.of(c).textTheme.titleMedium,
           ),
           Text('${h['gudang_name'] ?? '-'} • ${h['zona_nama'] ?? '-'}'),
           const SizedBox(height: 16),
+          const Text(
+            'Ringkasan pickup',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+          _statusTile(
+            Icons.flag_outlined,
+            'Status pickup',
+            '${h['status_label'] ?? h['status'] ?? '-'}',
+          ),
+          _statusTile(
+            Icons.payments_outlined,
+            'Pembayaran',
+            _paymentLabel(h['payment_status']),
+            ok: '${h['payment_status']}'.toLowerCase() == 'lunas',
+          ),
+          _statusTile(
+            Icons.fact_check_outlined,
+            'Uji quality',
+            '${h['uji_quality_code'] ?? 'Belum ada'}',
+            ok:
+                h['uji_quality_code'] != null &&
+                '${h['uji_quality_code']}'.isNotEmpty,
+          ),
+          _statusTile(
+            Icons.inventory_2_outlined,
+            'In stock',
+            '${h['in_stock_code'] ?? 'Belum ada'}',
+            ok:
+                h['in_stock_code'] != null &&
+                '${h['in_stock_code']}'.isNotEmpty,
+          ),
+          _statusTile(
+            Icons.receipt_long_outlined,
+            'Bukti transfer',
+            h['payment_proof'] == null || '${h['payment_proof']}'.isEmpty
+                ? 'Belum tersedia'
+                : 'Tersedia',
+            ok:
+                h['payment_proof'] != null &&
+                '${h['payment_proof']}'.isNotEmpty,
+          ),
+          const Divider(),
+          const Text(
+            'Supplier & Work Order',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+          ...((data!['items'] as List? ?? const []).map((item) {
+            final row = Map<String, dynamic>.from(item as Map);
+            return ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.storefront_outlined),
+              title: Text('${row['supplier_name'] ?? '-'}'),
+              subtitle: Text(
+                'WO: ${row['work_order_kode'] ?? '-'} • '
+                'Qty: ${row['qty'] ?? 0} ${row['satuan_name'] ?? ''}',
+              ),
+            );
+          })),
+          const SizedBox(height: 8),
           const Text(
             'Progres approval',
             style: TextStyle(fontWeight: FontWeight.bold),
