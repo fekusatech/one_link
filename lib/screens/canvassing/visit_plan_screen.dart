@@ -329,11 +329,9 @@ class _VisitPlanScreenState extends State<VisitPlanScreen> {
                 ),
               MarkerLayer(
                 markers: [
-                  if (!_missionActive)
+                  if (!_missionActive && !_hidePoo)
                     for (final supplier in _databaseSuppliers)
                       if (!activeMissionSupplierIds.contains(supplier.id) &&
-                          (!_hidePoo ||
-                              !supplier.type.toUpperCase().contains('POO')) &&
                           supplier.latitude != null &&
                           supplier.longitude != null)
                         Marker(
@@ -850,15 +848,6 @@ class _VisitPlanScreenState extends State<VisitPlanScreen> {
                       setSheetState(() {});
                     },
                   ),
-                  if (_isAdmin)
-                    OutlinedButton.icon(
-                      onPressed: () {
-                        Navigator.pop(sheetContext);
-                        _openCoordinateInput();
-                      },
-                      icon: const Icon(Icons.pin_drop_outlined),
-                      label: const Text('Atur titik radius di map'),
-                    ),
                   const SizedBox(height: 8),
                   SizedBox(
                     width: double.infinity,
