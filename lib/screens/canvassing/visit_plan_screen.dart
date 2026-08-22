@@ -527,9 +527,10 @@ class _VisitPlanScreenState extends State<VisitPlanScreen> {
               heroTag: 'scan-prospect-map',
               tooltip: 'Scan prospek di sekitar',
               onPressed: _openScanCenterSheet,
-              backgroundColor: AppColors.primaryGreen,
+              backgroundColor: const Color(0xFF287EF0),
               foregroundColor: Colors.white,
-              child: const Icon(Icons.qr_code_scanner_rounded),
+              shape: const CircleBorder(),
+              child: const Icon(Icons.radar_rounded, size: 24),
             ),
           ),
           Positioned(
