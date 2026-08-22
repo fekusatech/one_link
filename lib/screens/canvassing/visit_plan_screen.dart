@@ -366,9 +366,7 @@ class _VisitPlanScreenState extends State<VisitPlanScreen>
                           child: GestureDetector(
                             onTap: () => _showSupplierDetails(supplier),
                             child: _mapPin(
-                              supplier.badge.toUpperCase() == 'DALAM_30'
-                                  ? const Color(0xFF2196F3)
-                                  : const Color(0xFFFF9800),
+                              _supplierBadgeColor(supplier.badge),
                               Icons.storefront,
                               tooltip:
                                   '${supplier.name}\n${supplier.type} • ${supplier.distanceKm.toStringAsFixed(1)} km',
@@ -756,6 +754,10 @@ class _VisitPlanScreenState extends State<VisitPlanScreen>
           const _LegendDot(
             color: Color(0xFFFF9800),
             label: 'Supplier (PO > 30 days)',
+          ),
+          const _LegendDot(
+            color: Color(0xFF9E9E9E),
+            label: 'Supplier (Belum ada PO)',
           ),
           const _LegendDot(color: Color(0xFFF44336), label: 'Scan Result'),
         ],
@@ -1449,6 +1451,23 @@ class _VisitPlanScreenState extends State<VisitPlanScreen>
         ).showSnackBar(SnackBar(content: Text(error.toString())));
       }
       rethrow;
+    }
+  }
+
+  /// badge_status from the nearby-suppliers query is one of DALAM_30 (a
+  /// completed pickup within 30 days), LEBIH_30 (one, but older), or
+  /// BELUM_WO (never picked up at all — no t_pickup_detail row exists yet,
+  /// same source the order-history sheet checks). LEBIH_30 and BELUM_WO
+  /// used to share one orange color/legend entry ("PO > 30 days"), which
+  /// misleadingly implied every orange pin had SOME order history.
+  Color _supplierBadgeColor(String badge) {
+    switch (badge.toUpperCase()) {
+      case 'DALAM_30':
+        return const Color(0xFF2196F3);
+      case 'LEBIH_30':
+        return const Color(0xFFFF9800);
+      default:
+        return const Color(0xFF9E9E9E);
     }
   }
 
