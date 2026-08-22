@@ -729,16 +729,26 @@ class _TaskDetailSheetState extends State<_TaskDetailSheet> {
             ),
             const SizedBox(height: 8),
             if ((_orderSummary?.followupCount ?? 0) > 0 ||
-                (_orderSummary?.recentFollowups.isNotEmpty ?? false)) ...[
+                (_orderSummary?.recentFollowups.isNotEmpty ?? false) ||
+                (_orderSummary?.waValid == true)) ...[
               if ((_orderSummary?.followupCount ?? 0) > 0)
                 _row(
                   Icons.chat_bubble_outline,
                   'Sudah di-chat ${_orderSummary!.followupCount} kali',
                 ),
+              if ((_orderSummary?.followupCount ?? 0) == 0 &&
+                  _orderSummary?.waValid == true)
+                _row(Icons.chat_bubble_outline, 'Sudah di-chat'),
               if (_orderSummary!.recentFollowups.isNotEmpty)
                 _row(
                   Icons.history_outlined,
                   'Terakhir dihubungi ${_formatDate(_orderSummary!.recentFollowups.first.createdAt)}',
+                ),
+              if (_orderSummary!.recentFollowups.isEmpty &&
+                  _orderSummary?.waCheckedAt != null)
+                _row(
+                  Icons.history_outlined,
+                  'Terakhir dihubungi ${_formatDate(_orderSummary!.waCheckedAt)}',
                 ),
               if (task.notes.trim().isNotEmpty)
                 _row(Icons.notes_outlined, task.notes.trim()),
