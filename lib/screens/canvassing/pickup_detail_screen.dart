@@ -315,6 +315,53 @@ class _PickupDetailScreenState extends State<PickupDetailScreen> {
     );
   }
 
+  Widget _processTimeline() {
+    final timeline = _maps(data?['process_timeline']);
+    final suratJalan = _maps(data?['surat_jalan']);
+    if (timeline.isEmpty && suratJalan.isEmpty) return const SizedBox.shrink();
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      const Divider(height: 28),
+      const Text('Process Timeline', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+      const SizedBox(height: 8),
+      ...timeline.map((event) => ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: const Icon(Icons.check_circle_outline, color: Color(0xFF1E5A49)),
+            title: Text('${event['title'] ?? '-'}', style: const TextStyle(fontWeight: FontWeight.w700)),
+            subtitle: Text([
+              if ('${event['date'] ?? ''}'.trim().isNotEmpty) _formatDateTime(event['date']),
+              if ('${event['subtitle'] ?? ''}'.trim().isNotEmpty) '${event['subtitle']}',
+              if ('${event['description'] ?? ''}'.trim().isNotEmpty) '${event['description']}',
+            ].join('\n')),
+          )),
+      ...suratJalan.map((sj) {
+        final photos = sj['photos'] is List ? sj['photos'] as List : const [];
+        if (photos.isEmpty) return const SizedBox.shrink();
+        return Card(
+          margin: const EdgeInsets.only(top: 4, bottom: 8),
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('Foto Surat Jalan ${sj['kode'] ?? ''}', style: const TextStyle(fontWeight: FontWeight.w700)),
+              const SizedBox(height: 8),
+              _photoStrip(photos, title: 'Foto Surat Jalan'),
+            ]),
+          ),
+        );
+      }),
+    ]);
+  }
+
+  String _formatDateTime(dynamic value) {
+    final parsed = DateTime.tryParse('$value');
+    if (parsed == null) return '$value';
+    return '${parsed.day.toString().padLeft(2, '0')} ${_monthName(parsed.month)} ${parsed.year} '
+        '${parsed.hour.toString().padLeft(2, '0')}:${parsed.minute.toString().padLeft(2, '0')}';
+  }
+
+  String _monthName(int month) => const [
+        '', 'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'
+      ][month];
+
   Widget _evidenceSection({required IconData icon, required String title, required bool empty, required List<Widget> children}) =>
       ExpansionTile(
         tilePadding: EdgeInsets.zero,
@@ -524,6 +571,7 @@ class _PickupDetailScreenState extends State<PickupDetailScreen> {
                 h['payment_proof'] != null &&
                 '${h['payment_proof']}'.isNotEmpty,
           ),
+          _processTimeline(),
           _operationalEvidence(h),
           const SizedBox(height: 8),
           const Text(
