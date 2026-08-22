@@ -1062,7 +1062,13 @@ class _SalesDashboardScreenState extends State<SalesDashboardScreen> {
                   ),
                 ),
                 const SizedBox(height: 10),
-                SizedBox(height: 82, child: _activityChart(trend)),
+                SizedBox(
+                  height: 112,
+                  child: _activityChart(
+                    trend,
+                    stats.trend.map((item) => '${item['date'] ?? ''}').toList(),
+                  ),
+                ),
               ],
             ],
           ),
@@ -1092,31 +1098,67 @@ class _SalesDashboardScreenState extends State<SalesDashboardScreen> {
     ),
   );
 
-  Widget _activityChart(List<int> values) {
+  Widget _activityChart(List<int> values, List<String> dates) {
     final maxValue = values.reduce((a, b) => a > b ? a : b);
     return Row(
       crossAxisAlignment: CrossAxisAlignment.end,
-      children: values.take(7).map((value) {
+      children: List.generate(values.take(7).length, (index) {
+        final value = values[index];
         final fraction = value / maxValue;
+        final date = index < dates.length ? dates[index] : '';
         return Expanded(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 3),
-            child: Align(
-              alignment: Alignment.bottomCenter,
-              child: Container(
-                height: 10 + (62 * fraction),
-                decoration: BoxDecoration(
-                  color: AppColors.primaryGreen.withValues(alpha: .78),
-                  borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(4),
+          child: Tooltip(
+            message: '${_activityDateLabel(date)}\n$value aktivitas',
+            preferBelow: false,
+            triggerMode: TooltipTriggerMode.tap,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 3),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  Expanded(
+                    child: Align(
+                      alignment: Alignment.bottomCenter,
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: () {},
+                        child: Container(
+                          height: 10 + (62 * fraction),
+                          decoration: BoxDecoration(
+                            color: AppColors.primaryGreen.withValues(
+                              alpha: .78,
+                            ),
+                            borderRadius: const BorderRadius.vertical(
+                              top: Radius.circular(4),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
                   ),
-                ),
+                  const SizedBox(height: 4),
+                  Text(
+                    _activityDateLabel(date),
+                    textAlign: TextAlign.center,
+                    style: AppTextStyles.caption.copyWith(
+                      fontSize: 9,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
         );
-      }).toList(),
+      }),
     );
+  }
+
+  String _activityDateLabel(String iso) {
+    final date = DateTime.tryParse(iso);
+    if (date == null) return '-';
+    const weekdays = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
+    return '${weekdays[date.weekday - 1]}\n${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}';
   }
 
   int _number(dynamic value) =>
