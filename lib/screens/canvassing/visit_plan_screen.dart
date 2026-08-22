@@ -39,6 +39,8 @@ class VisitPlanScreen extends StatefulWidget {
 
 class _VisitPlanScreenState extends State<VisitPlanScreen>
     with SingleTickerProviderStateMixin {
+  static const _workAreaCenter = LatLng(-7.9666, 112.6326);
+  static const double _workAreaRadiusKm = 15;
   // A safe initial value prevents the GPS stream from rebuilding the map
   // before the remote distance_radius_map setting has finished loading.
   int _supplierRadiusMeters = 1000;
@@ -60,6 +62,8 @@ class _VisitPlanScreenState extends State<VisitPlanScreen>
   bool _isAdmin = false;
   bool _showRecenter = false;
   bool _hidePoo = false;
+  bool _insideWorkArea = true;
+  bool _workAreaAlertShown = false;
   late final AnimationController _radiusPulse;
   LatLng? _lastNearbyQueryPoint;
   int _nearbyRequestId = 0;
@@ -208,6 +212,7 @@ class _VisitPlanScreenState extends State<VisitPlanScreen>
       _mapLocationSubscription = positions.listen((fix) {
         if (!mounted || _missionActive || _searchCenter != null) return;
         final point = LatLng(fix.latitude, fix.longitude);
+        _updateWorkAreaStatus(point);
         final bearing = _updateMovementHeading(point);
         final previous = _lastNearbyQueryPoint;
         if (previous != null &&
@@ -255,6 +260,52 @@ class _VisitPlanScreenState extends State<VisitPlanScreen>
     } catch (_) {
       // Keep the last known markings when a location refresh is offline.
     }
+  }
+
+  void _updateWorkAreaStatus(LatLng point) {
+    final inside =
+        haversineDistanceKm(
+          _workAreaCenter.latitude,
+          _workAreaCenter.longitude,
+          point.latitude,
+          point.longitude,
+        ) <=
+        _workAreaRadiusKm;
+    if (_insideWorkArea == inside) return;
+    setState(() => _insideWorkArea = inside);
+    if (!inside && !_workAreaAlertShown) {
+      _workAreaAlertShown = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _showOutsideWorkAreaAlert();
+      });
+    } else if (inside) {
+      _workAreaAlertShown = false;
+    }
+  }
+
+  Future<void> _showOutsideWorkAreaAlert() async {
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        title: const Row(
+          children: [
+            Icon(Icons.location_off_rounded, color: Colors.redAccent),
+            SizedBox(width: 10),
+            Expanded(child: Text('Di luar area kerja')),
+          ],
+        ),
+        content: const Text(
+          'Lokasi Anda berada di luar area kerja Kota Malang. Fitur scan prospek dinonaktifkan sementara.',
+        ),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: Text('Mengerti'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -337,6 +388,18 @@ class _VisitPlanScreenState extends State<VisitPlanScreen>
                     );
                   },
                 ),
+              CircleLayer(
+                circles: [
+                  CircleMarker(
+                    point: _workAreaCenter,
+                    radius: _workAreaRadiusKm * 1000,
+                    useRadiusInMeter: true,
+                    color: Colors.orange.withValues(alpha: 0.025),
+                    borderColor: Colors.orange.withValues(alpha: 0.35),
+                    borderStrokeWidth: 2,
+                  ),
+                ],
+              ),
               if (_missionActive && _drivingRoute.length >= 2)
                 PolylineLayer(
                   polylines: [
@@ -681,6 +744,7 @@ class _VisitPlanScreenState extends State<VisitPlanScreen>
       _navigationLocationSubscription = positions.listen((fix) {
         if (!mounted || !_missionActive) return;
         final point = LatLng(fix.latitude, fix.longitude);
+        _updateWorkAreaStatus(point);
         final bearing = _updateMovementHeading(point);
         setState(() {
           _user = point;
@@ -766,6 +830,10 @@ class _VisitPlanScreenState extends State<VisitPlanScreen>
   );
 
   Future<void> _openScanCenterSheet() async {
+    if (!_insideWorkArea) {
+      await _showOutsideWorkAreaAlert();
+      return;
+    }
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -1676,13 +1744,10 @@ class _SupplierDetailSheetState extends State<_SupplierDetailSheet> {
   }
 
   String _formatRupiah(double value) {
-    final formatted = value
-        .round()
-        .toString()
-        .replaceAllMapped(
-          RegExp(r'\B(?=(\d{3})+(?!\d))'),
-          (match) => '.',
-        );
+    final formatted = value.round().toString().replaceAllMapped(
+      RegExp(r'\B(?=(\d{3})+(?!\d))'),
+      (match) => '.',
+    );
     return 'Rp$formatted';
   }
 }
