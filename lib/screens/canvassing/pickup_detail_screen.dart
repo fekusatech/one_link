@@ -516,23 +516,6 @@ class _PickupDetailScreenState extends State<PickupDetailScreen> {
                 '${h['payment_proof']}'.isNotEmpty,
           ),
           _operationalEvidence(h),
-          const Divider(),
-          const Text(
-            'Supplier & Work Order',
-            style: TextStyle(fontWeight: FontWeight.bold),
-          ),
-          ...((data!['items'] as List? ?? const []).map((item) {
-            final row = Map<String, dynamic>.from(item as Map);
-            return ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: const Icon(Icons.storefront_outlined),
-              title: Text('${row['supplier_name'] ?? '-'}'),
-              subtitle: Text(
-                'WO: ${row['work_order_kode'] ?? '-'} • '
-                'Qty: ${row['qty'] ?? 0} ${row['satuan_name'] ?? ''}',
-              ),
-            );
-          })),
           const SizedBox(height: 8),
           const Text(
             'Progres approval',
