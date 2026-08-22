@@ -282,7 +282,9 @@ class _MyStatisticScreenState extends State<MyStatisticScreen> {
   String _shortDate(String iso) {
     final date = DateTime.tryParse(iso);
     if (date == null) return iso;
-    return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}';
+    const weekdays = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
+    final weekday = weekdays[date.weekday - 1];
+    return '$weekday\n${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}';
   }
 
   /// Grouped bar chart with a tap-to-reveal tooltip showing the exact value
@@ -361,13 +363,17 @@ class _MyStatisticScreenState extends State<MyStatisticScreen> {
               gridData: const FlGridData(show: false),
               borderData: FlBorderData(show: false),
               barTouchData: BarTouchData(
+                handleBuiltInTouches: true,
                 touchTooltipData: BarTouchTooltipData(
                   getTooltipItem: (group, groupIndex, rod, rodIndex) {
                     final label = rodIndex < series.length
                         ? series[rodIndex].label
                         : '';
+                    final date = groupIndex < dates.length
+                        ? _shortDate(dates[groupIndex]).replaceAll('\n', ' ')
+                        : '';
                     return BarTooltipItem(
-                      '$label\n${rod.toY.toInt()}',
+                      '$date\n$label: ${rod.toY.toInt()}',
                       const TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
@@ -391,7 +397,7 @@ class _MyStatisticScreenState extends State<MyStatisticScreen> {
                 bottomTitles: AxisTitles(
                   sideTitles: SideTitles(
                     showTitles: true,
-                    reservedSize: 26,
+                    reservedSize: 36,
                     getTitlesWidget: (value, meta) {
                       final index = value.toInt();
                       if (index < 0 || index >= dates.length) {
@@ -401,6 +407,7 @@ class _MyStatisticScreenState extends State<MyStatisticScreen> {
                         padding: const EdgeInsets.only(top: 6),
                         child: Text(
                           _shortDate(dates[index]),
+                          textAlign: TextAlign.center,
                           style: AppTextStyles.caption.copyWith(
                             fontSize: 10,
                             color: AppColors.textSecondary,
