@@ -13,6 +13,7 @@ import '../../services/geu/visit_gps_ping_service.dart';
 import '../../utils/wa_format.dart';
 import 'checkin_dialog.dart';
 import 'checkout_dialog.dart';
+import '../../widgets/permission_gate.dart';
 import 'skip_mission_sheet.dart';
 import 'add_work_order_sheet.dart';
 import 'sync_status_screen.dart';
@@ -88,7 +89,9 @@ class _MissionTodayScreenState extends State<MissionTodayScreen> {
   Future<void> _openAllInGoogleMaps() async {
     final mission = _mission;
     if (mission == null) return;
-    final withCoords = mission.items.where((item) => item.hasCoordinates).toList();
+    final withCoords = mission.items
+        .where((item) => item.hasCoordinates)
+        .toList();
     if (withCoords.isEmpty) return;
     final dest = withCoords.first;
     await launchUrl(
@@ -113,7 +116,12 @@ class _MissionTodayScreenState extends State<MissionTodayScreen> {
             tooltip: 'Riwayat kunjungan',
             onPressed: () => Navigator.push(
               context,
-              MaterialPageRoute(builder: (_) => const VisitHistoryScreen()),
+              MaterialPageRoute(
+                builder: (_) => const PermissionGate(
+                  slug: 'crm-read-visit-planner',
+                  child: VisitHistoryScreen(),
+                ),
+              ),
             ),
           ),
           FutureBuilder<List>(
@@ -578,7 +586,9 @@ class _MissionTodayScreenState extends State<MissionTodayScreen> {
     final workOrderId = await showAddWorkOrderSheet(context, item);
     if (workOrderId != null && mounted) {
       setState(() => _activeWorkOrderIds.add(workOrderId));
-      _load();
+      // Refresh the mission before returning control to the user so the new
+      // WO badge/detail is visible immediately, without pull-to-refresh.
+      await _load();
     }
   }
 
@@ -751,9 +761,7 @@ class _MissionMapScreenState extends State<_MissionMapScreen> {
         ],
       ),
       body: mappable.isEmpty
-          ? const Center(
-              child: Text('Tidak ada supplier dengan koordinat.'),
-            )
+          ? const Center(child: Text('Tidak ada supplier dengan koordinat.'))
           : ListView.builder(
               padding: const EdgeInsets.all(16),
               itemCount: mappable.length,
