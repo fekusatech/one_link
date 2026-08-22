@@ -19,6 +19,7 @@ import '../../services/geu/reverse_geocoding_service.dart';
 import '../../services/geu/active_visit_service.dart';
 import '../../services/geu/visit_navigation_service.dart';
 import '../../services/geu/mission_navigation_state.dart';
+import '../../services/geu/malang_work_area_service.dart';
 import '../../services/geu/visit_planner_service.dart';
 import '../../services/geu/settings_service.dart';
 import '../../services/geu/visit_sync_service.dart';
@@ -64,6 +65,7 @@ class _VisitPlanScreenState extends State<VisitPlanScreen>
   bool _hidePoo = false;
   bool _insideWorkArea = true;
   bool _workAreaAlertShown = false;
+  List<List<LatLng>> _workAreaPolygons = const [];
   late final AnimationController _radiusPulse;
   LatLng? _lastNearbyQueryPoint;
   int _nearbyRequestId = 0;
@@ -80,7 +82,19 @@ class _VisitPlanScreenState extends State<VisitPlanScreen>
     _loadAdminAccess();
     _startCompassUpdates();
     _load();
+    unawaited(_loadWorkAreaBoundary());
     unawaited(_startMapLocationUpdates());
+  }
+
+  Future<void> _loadWorkAreaBoundary() async {
+    try {
+      final polygons = await MalangWorkAreaService.loadBoundary();
+      if (!mounted || polygons.isEmpty) return;
+      setState(() => _workAreaPolygons = polygons);
+      if (_user != null) _updateWorkAreaStatus(_user!);
+    } catch (_) {
+      // Keep the local fallback circle when ArcGIS is temporarily unavailable.
+    }
   }
 
   void _startCompassUpdates() {
@@ -210,9 +224,12 @@ class _VisitPlanScreenState extends State<VisitPlanScreen>
     try {
       final positions = await GpsService.watchPosition();
       _mapLocationSubscription = positions.listen((fix) {
-        if (!mounted || _missionActive || _searchCenter != null) return;
+        if (!mounted || _missionActive) return;
         final point = LatLng(fix.latitude, fix.longitude);
         _updateWorkAreaStatus(point);
+        // Admin map exploration may pin a temporary center, but the real GPS
+        // position must still be checked against the work-area boundary.
+        if (_searchCenter != null) return;
         final bearing = _updateMovementHeading(point);
         final previous = _lastNearbyQueryPoint;
         if (previous != null &&
@@ -263,14 +280,15 @@ class _VisitPlanScreenState extends State<VisitPlanScreen>
   }
 
   void _updateWorkAreaStatus(LatLng point) {
-    final inside =
-        haversineDistanceKm(
-          _workAreaCenter.latitude,
-          _workAreaCenter.longitude,
-          point.latitude,
-          point.longitude,
-        ) <=
-        _workAreaRadiusKm;
+    final inside = _workAreaPolygons.isNotEmpty
+        ? MalangWorkAreaService.contains(point, _workAreaPolygons)
+        : haversineDistanceKm(
+                _workAreaCenter.latitude,
+                _workAreaCenter.longitude,
+                point.latitude,
+                point.longitude,
+              ) <=
+              _workAreaRadiusKm;
     if (_insideWorkArea == inside) return;
     setState(() => _insideWorkArea = inside);
     if (!inside && !_workAreaAlertShown) {
@@ -296,7 +314,7 @@ class _VisitPlanScreenState extends State<VisitPlanScreen>
           ],
         ),
         content: const Text(
-          'Lokasi Anda berada di luar area kerja Kota Malang. Fitur scan prospek dinonaktifkan sementara.',
+          'Anda berada di luar area kerja Kota Malang. Aplikasi tidak dapat digunakan di lokasi ini. Silakan kembali ke area kerja untuk melanjutkan.',
         ),
         actions: [
           FilledButton(
@@ -388,18 +406,32 @@ class _VisitPlanScreenState extends State<VisitPlanScreen>
                     );
                   },
                 ),
-              CircleLayer(
-                circles: [
-                  CircleMarker(
-                    point: _workAreaCenter,
-                    radius: _workAreaRadiusKm * 1000,
-                    useRadiusInMeter: true,
-                    color: Colors.orange.withValues(alpha: 0.025),
-                    borderColor: Colors.orange.withValues(alpha: 0.35),
-                    borderStrokeWidth: 2,
-                  ),
-                ],
-              ),
+              if (_workAreaPolygons.isNotEmpty)
+                PolygonLayer(
+                  polygons: _workAreaPolygons
+                      .map(
+                        (points) => Polygon(
+                          points: points,
+                          color: Colors.orange.withValues(alpha: 0.045),
+                          borderColor: Colors.orange.withValues(alpha: 0.7),
+                          borderStrokeWidth: 2,
+                        ),
+                      )
+                      .toList(),
+                )
+              else
+                CircleLayer(
+                  circles: [
+                    CircleMarker(
+                      point: _workAreaCenter,
+                      radius: _workAreaRadiusKm * 1000,
+                      useRadiusInMeter: true,
+                      color: Colors.orange.withValues(alpha: 0.025),
+                      borderColor: Colors.orange.withValues(alpha: 0.35),
+                      borderStrokeWidth: 2,
+                    ),
+                  ],
+                ),
               if (_missionActive && _drivingRoute.length >= 2)
                 PolylineLayer(
                   polylines: [
@@ -642,12 +674,60 @@ class _VisitPlanScreenState extends State<VisitPlanScreen>
                 child: const Icon(Icons.my_location),
               ),
             ),
+          if (!_insideWorkArea)
+            Positioned.fill(
+              child: AbsorbPointer(
+                child: Container(
+                  color: Colors.white.withValues(alpha: .86),
+                  alignment: Alignment.center,
+                  padding: const EdgeInsets.all(28),
+                  child: Card(
+                    elevation: 8,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(24),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(24, 26, 24, 24),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.location_off_rounded,
+                            size: 42,
+                            color: Colors.redAccent,
+                          ),
+                          const SizedBox(height: 12),
+                          const Text(
+                            'Di luar area kerja',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          const Text(
+                            'Anda berada di luar area kerja Kota Malang. Aplikasi tidak dapat digunakan di lokasi ini.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(height: 1.35),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
     );
   }
 
   Future<void> _openVisits() async {
+    if (!_insideWorkArea) {
+      await _showOutsideWorkAreaAlert();
+      return;
+    }
     final items = _mission?.items ?? const <MissionItem>[];
     final hasRemaining = items.any((item) {
       final status = item.status.toUpperCase();
@@ -710,6 +790,10 @@ class _VisitPlanScreenState extends State<VisitPlanScreen>
   }
 
   Future<void> _startDrivingMode(MissionItem item) async {
+    if (!_insideWorkArea) {
+      await _showOutsideWorkAreaAlert();
+      return;
+    }
     _setMissionActive(true, target: item);
     MissionNavigationStateService.start(
       destination: item,
@@ -1072,6 +1156,10 @@ class _VisitPlanScreenState extends State<VisitPlanScreen>
   }
 
   Future<void> _openRegisterSupplier() async {
+    if (!_insideWorkArea) {
+      await _showOutsideWorkAreaAlert();
+      return;
+    }
     final point = _user;
     if (point == null) {
       ScaffoldMessenger.of(context).showSnackBar(
