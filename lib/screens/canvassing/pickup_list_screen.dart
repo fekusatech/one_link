@@ -13,6 +13,13 @@ class _PickupListScreenState extends State<PickupListScreen> {
   List<PickupSummary> items = [];
   bool loading = true;
   String status = '';
+  final _searchController = TextEditingController();
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
   @override
   void initState() {
     super.initState();
@@ -27,6 +34,24 @@ class _PickupListScreenState extends State<PickupListScreen> {
     } finally {
       if (mounted) setState(() => loading = false);
     }
+  }
+
+  List<PickupSummary> get _visibleItems {
+    final query = _searchController.text.trim().toLowerCase();
+    return items.where((item) {
+      final text = [
+        item.code,
+        item.supplierNames,
+        item.driver,
+        item.fleet,
+        item.warehouse,
+        item.zone,
+      ].join(' ').toLowerCase();
+      final matchesQuery = query.isEmpty || text.contains(query);
+      final normalized = '${item.statusLabel} ${item.status}'.toLowerCase();
+      final matchesStatus = status.isEmpty || normalized.contains(status);
+      return matchesQuery && matchesStatus;
+    }).toList();
   }
 
   @override
@@ -47,14 +72,65 @@ class _PickupListScreenState extends State<PickupListScreen> {
         ),
       ],
     ),
-    body: RefreshIndicator(
-      onRefresh: load,
-      child: loading
-          ? const Center(child: CircularProgressIndicator())
-          : ListView.builder(
-              itemCount: items.length,
+    body: Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(12, 10, 12, 4),
+          child: TextField(
+            controller: _searchController,
+            onChanged: (_) => setState(() {}),
+            decoration: InputDecoration(
+              hintText: 'Cari kode, supplier, driver...',
+              prefixIcon: const Icon(Icons.search),
+              suffixIcon: _searchController.text.isEmpty
+                  ? null
+                  : IconButton(
+                      icon: const Icon(Icons.clear),
+                      onPressed: () {
+                        _searchController.clear();
+                        setState(() {});
+                      },
+                    ),
+              filled: true,
+              fillColor: Colors.grey.shade100,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: BorderSide.none,
+              ),
+            ),
+          ),
+        ),
+        SizedBox(
+          height: 48,
+          child: ListView(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+            scrollDirection: Axis.horizontal,
+            children: [
+              _filterChip('Semua', ''),
+              _filterChip('Pending', 'pending'),
+              _filterChip('Approved', 'approved'),
+              _filterChip('Pickup', 'pickup'),
+              _filterChip('Selesai', 'done'),
+            ],
+          ),
+        ),
+        Expanded(
+          child: RefreshIndicator(
+            onRefresh: load,
+            child: loading
+                ? ListView(children: const [
+                    SizedBox(height: 220),
+                    Center(child: CircularProgressIndicator()),
+                  ])
+                : _visibleItems.isEmpty
+                    ? ListView(children: const [
+                        SizedBox(height: 180),
+                        Center(child: Text('Pickup tidak ditemukan')),
+                      ])
+                    : ListView.builder(
+              itemCount: _visibleItems.length,
               itemBuilder: (_, i) {
-                final x = items[i];
+                final x = _visibleItems[i];
                 return Card(
                   margin: const EdgeInsets.fromLTRB(12, 5, 12, 5),
                   elevation: 0,
@@ -146,9 +222,26 @@ class _PickupListScreenState extends State<PickupListScreen> {
                   ),
                 );
               },
-            ),
+                    ),
+          ),
+        ),
+      ],
     ),
   );
+
+  Widget _filterChip(String label, String value) => Padding(
+        padding: const EdgeInsets.only(right: 8),
+        child: FilterChip(
+          label: Text(label),
+          selected: status == value,
+          onSelected: (_) {
+            setState(() => status = value);
+            load();
+          },
+          selectedColor: const Color(0xFFD9EEE6),
+          checkmarkColor: const Color(0xFF1E5A49),
+        ),
+      );
 
   bool _hasValue(String value) => value.trim().isNotEmpty && value.trim() != '-';
 
