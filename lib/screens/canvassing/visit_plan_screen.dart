@@ -5,13 +5,13 @@ import 'dart:ui' as ui;
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:sensors_plus/sensors_plus.dart';
-import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
 
 import '../../constants/app_colors.dart';
 import '../../models/geu/visit_planner_models.dart';
 import '../../models/supplier_order_history.dart';
 import '../../services/supplier_list_service.dart';
+import '../../widgets/order_history_widgets.dart';
 import '../../services/geu/gps_service.dart';
 import '../../services/geu/geu_auth_service.dart';
 import '../../services/geu/haversine.dart';
@@ -40,6 +40,9 @@ class VisitPlanScreen extends StatefulWidget {
 
 class _VisitPlanScreenState extends State<VisitPlanScreen>
     with SingleTickerProviderStateMixin {
+  // Temporary rollout switch: keep the area boundary code available, but do
+  // not restrict Visit Planner usage or show the static zone overlay.
+  static const bool _workAreaRestrictionEnabled = false;
   static const _workAreaCenter = LatLng(-7.9666, 112.6326);
   static const double _workAreaRadiusKm = 15;
   // A safe initial value prevents the GPS stream from rebuilding the map
@@ -87,6 +90,7 @@ class _VisitPlanScreenState extends State<VisitPlanScreen>
   }
 
   Future<void> _loadWorkAreaBoundary() async {
+    if (!_workAreaRestrictionEnabled) return;
     try {
       final polygons = await MalangWorkAreaService.loadBoundary();
       if (!mounted || polygons.isEmpty) return;
@@ -280,6 +284,13 @@ class _VisitPlanScreenState extends State<VisitPlanScreen>
   }
 
   void _updateWorkAreaStatus(LatLng point) {
+    if (!_workAreaRestrictionEnabled) {
+      if (_insideWorkArea != true && mounted) {
+        setState(() => _insideWorkArea = true);
+      }
+      _workAreaAlertShown = false;
+      return;
+    }
     final inside = _isInsideWorkAreaPoint(point);
     if (_insideWorkArea == inside) return;
     setState(() => _insideWorkArea = inside);
@@ -294,6 +305,7 @@ class _VisitPlanScreenState extends State<VisitPlanScreen>
   }
 
   bool _isInsideWorkAreaPoint(LatLng point) {
+    if (!_workAreaRestrictionEnabled) return true;
     if (_workAreaPolygons.isNotEmpty) {
       return MalangWorkAreaService.contains(point, _workAreaPolygons);
     }
@@ -411,7 +423,7 @@ class _VisitPlanScreenState extends State<VisitPlanScreen>
                     );
                   },
                 ),
-              if (_workAreaPolygons.isNotEmpty)
+              if (_workAreaRestrictionEnabled && _workAreaPolygons.isNotEmpty)
                 PolygonLayer(
                   polygons: _workAreaPolygons
                       .map(
@@ -428,7 +440,7 @@ class _VisitPlanScreenState extends State<VisitPlanScreen>
                       )
                       .toList(),
                 )
-              else
+              else if (_workAreaRestrictionEnabled)
                 CircleLayer(
                   circles: [
                     CircleMarker(
@@ -689,7 +701,7 @@ class _VisitPlanScreenState extends State<VisitPlanScreen>
                 child: const Icon(Icons.my_location),
               ),
             ),
-          if (!_insideWorkArea)
+          if (_workAreaRestrictionEnabled && !_insideWorkArea)
             Positioned.fill(
               child: AbsorbPointer(
                 child: Container(
@@ -1789,7 +1801,7 @@ class _SupplierDetailSheetState extends State<_SupplierDetailSheet> {
   }
 
   Widget _buildOrderHistorySection() {
-    if (_loadingSummary) return const _OrderHistorySkeleton();
+    if (_loadingSummary) return const OrderHistorySkeleton();
 
     final summary = _summary;
     if (summary == null || !summary.hasHistory) {
@@ -1813,17 +1825,17 @@ class _SupplierDetailSheetState extends State<_SupplierDetailSheet> {
         _supplierDetailRow(
           Icons.history_outlined,
           'Terakhir setor ${_formatDate(summary.lastOrderDate)}'
-          '${summary.lastOrderNominal != null ? ' • ${_formatRupiah(summary.lastOrderNominal!)}' : ''}',
+          '${summary.lastOrderNominal != null ? ' • ${formatRupiah(summary.lastOrderNominal!)}' : ''}',
         ),
         _supplierDetailRow(
           Icons.receipt_long_outlined,
-          '${summary.totalOrderCount}x setor • total ${_formatRupiah(summary.totalOrderNominal)}',
+          '${summary.totalOrderCount}x setor • total ${formatRupiah(summary.totalOrderNominal)}',
         ),
         if (summary.recentOrders.length >= 2) ...[
           const SizedBox(height: 12),
           SizedBox(
             height: 80,
-            child: _RecentOrdersChart(orders: summary.recentOrders),
+            child: RecentOrdersChart(orders: summary.recentOrders),
           ),
         ],
       ],
@@ -1845,158 +1857,6 @@ class _SupplierDetailSheetState extends State<_SupplierDetailSheet> {
   String _formatDate(DateTime? date) {
     if (date == null) return '-';
     return DateFormat('dd/MM/yyyy').format(date);
-  }
-
-  String _formatRupiah(double value) {
-    final formatted = value.round().toString().replaceAllMapped(
-      RegExp(r'\B(?=(\d{3})+(?!\d))'),
-      (match) => '.',
-    );
-    return 'Rp$formatted';
-  }
-}
-
-class _OrderHistorySkeleton extends StatelessWidget {
-  const _OrderHistorySkeleton();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _SkeletonBox(width: 220, height: 14),
-        SizedBox(height: 10),
-        _SkeletonBox(width: 160, height: 14),
-        SizedBox(height: 12),
-        _SkeletonBox(width: double.infinity, height: 60),
-      ],
-    );
-  }
-}
-
-/// Minimal pulsing placeholder — no shimmer package in pubspec, and a
-/// static grey box already reads clearly as "loading" without one.
-class _SkeletonBox extends StatefulWidget {
-  final double width;
-  final double height;
-
-  const _SkeletonBox({required this.width, required this.height});
-
-  @override
-  State<_SkeletonBox> createState() => _SkeletonBoxState();
-}
-
-class _SkeletonBoxState extends State<_SkeletonBox>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _controller = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 900),
-  )..repeat(reverse: true);
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return FadeTransition(
-      opacity: Tween(begin: 0.4, end: 1.0).animate(_controller),
-      child: Container(
-        width: widget.width,
-        height: widget.height,
-        decoration: BoxDecoration(
-          color: AppColors.borderColor,
-          borderRadius: BorderRadius.circular(6),
-        ),
-      ),
-    );
-  }
-}
-
-/// Small bar chart of the last few orders (oldest → newest, left to right)
-/// — just enough to show a trend, not a full analytics chart.
-class _RecentOrdersChart extends StatelessWidget {
-  final List<SupplierOrderHistoryItem> orders;
-
-  const _RecentOrdersChart({required this.orders});
-
-  @override
-  Widget build(BuildContext context) {
-    final chronological = orders.reversed.toList();
-    final maxNominal = chronological
-        .map((o) => o.nominal)
-        .fold<double>(0, (a, b) => a > b ? a : b);
-    final maxY = maxNominal <= 0 ? 1.0 : maxNominal * 1.2;
-
-    return BarChart(
-      BarChartData(
-        maxY: maxY,
-        alignment: BarChartAlignment.spaceAround,
-        gridData: const FlGridData(show: false),
-        borderData: FlBorderData(show: false),
-        barTouchData: BarTouchData(
-          touchTooltipData: BarTouchTooltipData(
-            getTooltipItem: (group, groupIndex, rod, rodIndex) {
-              final order = chronological[group.x.toInt()];
-              return BarTooltipItem(
-                '${DateFormat('d/M').format(order.date)}\n'
-                'Rp${order.nominal.round()}',
-                const TextStyle(color: Colors.white, fontSize: 11),
-              );
-            },
-          ),
-        ),
-        titlesData: FlTitlesData(
-          leftTitles: const AxisTitles(
-            sideTitles: SideTitles(showTitles: false),
-          ),
-          rightTitles: const AxisTitles(
-            sideTitles: SideTitles(showTitles: false),
-          ),
-          topTitles: const AxisTitles(
-            sideTitles: SideTitles(showTitles: false),
-          ),
-          bottomTitles: AxisTitles(
-            sideTitles: SideTitles(
-              showTitles: true,
-              reservedSize: 20,
-              getTitlesWidget: (value, meta) {
-                final index = value.toInt();
-                if (index < 0 || index >= chronological.length) {
-                  return const SizedBox.shrink();
-                }
-                return Padding(
-                  padding: const EdgeInsets.only(top: 4),
-                  child: Text(
-                    DateFormat('d/M').format(chronological[index].date),
-                    style: TextStyle(
-                      fontSize: 9,
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-        ),
-        barGroups: [
-          for (var i = 0; i < chronological.length; i++)
-            BarChartGroupData(
-              x: i,
-              barRods: [
-                BarChartRodData(
-                  toY: chronological[i].nominal,
-                  color: const Color(0xFF2196F3),
-                  width: 14,
-                  borderRadius: BorderRadius.circular(4),
-                ),
-              ],
-            ),
-        ],
-      ),
-    );
   }
 }
 
