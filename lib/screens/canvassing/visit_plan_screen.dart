@@ -55,6 +55,7 @@ class _VisitPlanScreenState extends State<VisitPlanScreen> {
   LatLng? _searchCenter;
   bool _isAdmin = false;
   bool _showRecenter = false;
+  bool _hidePoo = false;
   LatLng? _lastNearbyQueryPoint;
   int _nearbyRequestId = 0;
   LatLng? _lastMovementPoint;
@@ -331,6 +332,8 @@ class _VisitPlanScreenState extends State<VisitPlanScreen> {
                   if (!_missionActive)
                     for (final supplier in _databaseSuppliers)
                       if (!activeMissionSupplierIds.contains(supplier.id) &&
+                          (!_hidePoo ||
+                              !supplier.type.toUpperCase().contains('POO')) &&
                           supplier.latitude != null &&
                           supplier.longitude != null)
                         Marker(
@@ -433,7 +436,6 @@ class _VisitPlanScreenState extends State<VisitPlanScreen> {
                     const CircularProgressIndicator(
                       color: AppColors.primaryGreen,
                     ),
-                  if (!_missionActive) _mapLegend(),
                   const SizedBox(height: 8),
                   Semantics(
                     button: true,
@@ -516,32 +518,16 @@ class _VisitPlanScreenState extends State<VisitPlanScreen> {
               ),
             ),
           ),
+          if (!_missionActive)
+            Positioned(top: 66, left: 16, right: 16, child: _mapLegend()),
+          Positioned(top: 0, left: 0, right: 0, child: _visitHeader()),
           Positioned(
             top: 92,
             right: 20,
             child: FloatingActionButton.small(
               heroTag: 'scan-prospect-map',
               tooltip: 'Scan prospek di sekitar',
-              onPressed: () => showModalBottomSheet<void>(
-                context: context,
-                isScrollControlled: true,
-                backgroundColor: Colors.white,
-                showDragHandle: false,
-                builder: (_) => ScanProspectScreen(
-                  asSheet: true,
-                  onScanSaved: (job, prospects) async {
-                    if (!mounted) return;
-                    setState(() {
-                      final existing = _scannedProspects
-                          .where(
-                            (item) => !prospects.any((p) => p.id == item.id),
-                          )
-                          .toList();
-                      _scannedProspects = [...existing, ...prospects];
-                    });
-                  },
-                ),
-              ),
+              onPressed: _openScanCenterSheet,
               backgroundColor: AppColors.primaryGreen,
               foregroundColor: Colors.white,
               child: const Icon(Icons.qr_code_scanner_rounded),
@@ -732,44 +718,274 @@ class _VisitPlanScreenState extends State<VisitPlanScreen> {
   );
 
   Widget _mapLegend() => Align(
-    alignment: Alignment.centerLeft,
     child: Container(
-      padding: const EdgeInsets.all(10),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: .94),
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(18),
         boxShadow: const [BoxShadow(color: Color(0x22000000), blurRadius: 6)],
       ),
-      child: Column(
+      child: Row(
         mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const _LegendItem(color: Color(0xFF4CAF50), label: 'Online'),
-          const _LegendItem(
-            color: Color(0xFF2196F3),
-            label: 'Supplier (PO < 30 hari)',
-          ),
-          const _LegendItem(
-            color: Color(0xFFFF9800),
-            label: 'Supplier (PO > 30 hari / belum)',
-          ),
-          const _LegendItem(color: Color(0xFFF44336), label: 'Hasil Scan'),
-          const _LegendItem(color: Color(0xFF4CAF50), label: 'Lokasi GPS Anda'),
-          if (_isAdmin) ...[
-            const SizedBox(height: 6),
-            SizedBox(
-              width: 208,
-              child: OutlinedButton.icon(
-                onPressed: _openCoordinateInput,
-                icon: const Icon(Icons.settings, size: 16),
-                label: const Text('Atur titik radius'),
+          const _LegendDot(color: Color(0xFF2196F3), label: 'Supplier'),
+          const _LegendDot(color: Color(0xFFFF9800), label: 'PO lama'),
+          const _LegendDot(color: Color(0xFFF44336), label: 'Scan'),
+          const SizedBox(width: 8),
+          DecoratedBox(
+            decoration: BoxDecoration(
+              color: const Color(0xFF287EF0),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              child: Text(
+                'Online ›',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 12,
+                ),
               ),
             ),
-          ],
+          ),
         ],
       ),
     ),
   );
+
+  Widget _visitHeader() => Material(
+    color: Colors.white,
+    elevation: 1,
+    child: SafeArea(
+      bottom: false,
+      child: SizedBox(
+        height: 58,
+        child: Row(
+          children: [
+            const SizedBox(width: 18),
+            const Icon(Icons.map_outlined, size: 20),
+            const SizedBox(width: 14),
+            const Text(
+              'Visit Plan',
+              style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+            ),
+            const Spacer(),
+            IconButton(
+              tooltip: 'Notifikasi',
+              onPressed: () {},
+              icon: const Badge(
+                label: Text('3'),
+                child: Icon(Icons.notifications_none_rounded),
+              ),
+            ),
+            IconButton(
+              tooltip: 'Bahasa',
+              onPressed: () {},
+              icon: const Icon(Icons.translate_rounded, size: 20),
+            ),
+            IconButton(
+              tooltip: 'Mode malam',
+              onPressed: () {},
+              icon: const Icon(Icons.dark_mode_outlined, size: 20),
+            ),
+            const SizedBox(width: 8),
+          ],
+        ),
+      ),
+    ),
+  );
+
+  Future<void> _openScanCenterSheet() async {
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) => SafeArea(
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(20, 14, 20, 18),
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: StatefulBuilder(
+            builder: (context, setSheetState) {
+              final visited =
+                  _mission?.items
+                      .where((item) => item.status.toUpperCase() == 'VISITED')
+                      .length ??
+                  0;
+              final total = _mission?.items.length ?? 0;
+              final radiusLabel = _supplierRadiusMeters >= 1000
+                  ? '${(_supplierRadiusMeters / 1000).toStringAsFixed(1).replaceAll('.0', '')} km'
+                  : '${_supplierRadiusMeters} m';
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 38,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.black12,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: const [
+                      Icon(Icons.circle, color: Color(0xFF287EF0), size: 11),
+                      SizedBox(width: 8),
+                      Text(
+                        'Online',
+                        style: TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                      SizedBox(width: 4),
+                      Icon(Icons.keyboard_arrow_down, size: 18),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _statCard(
+                          Icons.radar_rounded,
+                          '${_scannedProspects.length}',
+                          'Scan results',
+                          const Color(0xFFFF6B00),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _statCard(
+                          Icons.trending_up_rounded,
+                          total == 0
+                              ? '0%'
+                              : '${(visited * 100 / total).round()}%',
+                          'Mission progress',
+                          const Color(0xFF16A34A),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _statCard(
+                          Icons.gps_fixed_rounded,
+                          radiusLabel,
+                          'Radius',
+                          const Color(0xFFFF6B00),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _statCard(
+                          Icons.pending_actions_rounded,
+                          '${total - visited}',
+                          'Pending',
+                          const Color(0xFFFFB000),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  SwitchListTile.adaptive(
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 2),
+                    title: const Text(
+                      'Hide POO',
+                      style: TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                    value: _hidePoo,
+                    onChanged: (value) {
+                      setState(() => _hidePoo = value);
+                      setSheetState(() {});
+                    },
+                  ),
+                  if (_isAdmin)
+                    OutlinedButton.icon(
+                      onPressed: () {
+                        Navigator.pop(sheetContext);
+                        _openCoordinateInput();
+                      },
+                      icon: const Icon(Icons.pin_drop_outlined),
+                      label: const Text('Atur titik radius di map'),
+                    ),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 50,
+                    child: FilledButton.icon(
+                      onPressed: () {
+                        Navigator.pop(sheetContext);
+                        _openProspectScanner();
+                      },
+                      icon: const Icon(Icons.radar_rounded),
+                      label: const Text('Mulai scan prospek'),
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _statCard(IconData icon, String value, String label, Color color) =>
+      Container(
+        padding: const EdgeInsets.fromLTRB(12, 10, 12, 9),
+        decoration: BoxDecoration(
+          border: Border.all(color: const Color(0xFFE4E7EC)),
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              label,
+              style: const TextStyle(color: Colors.black54, fontSize: 12),
+            ),
+            const SizedBox(height: 7),
+            Row(
+              children: [
+                Icon(icon, color: color, size: 18),
+                const SizedBox(width: 6),
+                Text(
+                  value,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 18,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      );
+
+  Future<void> _openProspectScanner() async {
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      showDragHandle: false,
+      builder: (_) => ScanProspectScreen(
+        asSheet: true,
+        onScanSaved: (job, prospects) async {
+          if (!mounted) return;
+          setState(() {
+            final existing = _scannedProspects
+                .where((item) => !prospects.any((p) => p.id == item.id))
+                .toList();
+            _scannedProspects = [...existing, ...prospects];
+          });
+        },
+      ),
+    );
+  }
 
   Future<void> _setSearchCenter(LatLng point) async {
     setState(() => _searchCenter = point);
@@ -1401,20 +1617,23 @@ class _PinTailPainter extends CustomPainter {
       oldDelegate.color != color;
 }
 
-class _LegendItem extends StatelessWidget {
+class _LegendDot extends StatelessWidget {
   final Color color;
   final String label;
-  const _LegendItem({required this.color, required this.label});
+  const _LegendDot({required this.color, required this.label});
 
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: 2),
+    padding: const EdgeInsets.only(right: 8),
     child: Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         Icon(Icons.circle, color: color, size: 10),
         const SizedBox(width: 5),
-        Text(label, style: const TextStyle(fontSize: 10)),
+        Text(
+          label,
+          style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600),
+        ),
       ],
     ),
   );
