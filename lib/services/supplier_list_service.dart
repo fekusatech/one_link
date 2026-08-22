@@ -22,6 +22,36 @@ class SupplierListService {
       return null;
     }
   }
+
+  /// Records whether a WA follow-up actually reached the supplier — the
+  /// confirmation shown right after a rep returns from the WhatsApp app.
+  /// [message] is the default generated follow-up text (logged for the
+  /// "Riwayat Follow Up" history even though the rep may have edited it
+  /// inside WhatsApp before sending). Returns true on success.
+  static Future<bool> updateWaStatus(
+    int supplierId, {
+    required bool valid,
+    String? reason,
+    String? message,
+  }) async {
+    try {
+      final dio = await GeuApiClient.instance;
+      final response = await dio.put(
+        '/api/suppliers/$supplierId/wa-status',
+        data: {
+          'valid': valid,
+          if (reason != null) 'reason': reason,
+          if (message != null) 'message': message,
+        },
+      );
+      final body = response.data;
+      return body is Map && body['status'] == 'success';
+    } catch (e) {
+      print('❌ Error updating WA status: $e');
+      return false;
+    }
+  }
+
   /// Fetch supplier list with filter by pic_id and date
   static Future<ApiResponse<SupplierListResponse>> getSupplierList({
     int page = 1,

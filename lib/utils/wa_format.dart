@@ -41,6 +41,27 @@ class WaFormat {
     return false;
   }
 
+  /// Default opener for a CRO/RO's assigned lead/supplier follow-up (Tugas
+  /// Saya). [alreadyContacted] switches the wording to a check-in tone
+  /// instead of a first-touch intro, since the task list already tells us
+  /// via contacted_at/notes whether someone reached out before.
+  static String generateTaskFollowUpMessage({
+    required String supplierName,
+    required String userName,
+    bool alreadyContacted = false,
+  }) {
+    if (alreadyContacted) {
+      return 'Halo Bapak/Ibu $supplierName,\n\n'
+          'Saya $userName dari Green Energi Utama (GEU). Ingin menindaklanjuti kembali '
+          'terkait pengumpulan minyak jelantah (UCO) di lokasi Anda.\n\n'
+          'Mohon info ketersediaan untuk jadwal berikutnya. Terima kasih! 🙏';
+    }
+    return 'Halo Bapak/Ibu $supplierName,\n\n'
+        'Perkenalkan, saya $userName dari Green Energi Utama (GEU). Kami ingin '
+        'menawarkan kerja sama pengumpulan minyak jelantah (UCO) di lokasi Anda.\n\n'
+        'Mohon info waktu yang tersedia untuk kami jelaskan lebih lanjut. Terima kasih! 🙏';
+  }
+
   /// Generate default proximity notification message for supplier
   static String generateProximityMessage({
     required String supplierName,
