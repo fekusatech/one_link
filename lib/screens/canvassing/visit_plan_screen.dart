@@ -412,9 +412,13 @@ class _VisitPlanScreenState extends State<VisitPlanScreen>
                       .map(
                         (points) => Polygon(
                           points: points,
-                          color: Colors.orange.withValues(alpha: 0.045),
-                          borderColor: Colors.orange.withValues(alpha: 0.7),
-                          borderStrokeWidth: 2,
+                          color: const Color(
+                            0xFF174D43,
+                          ).withValues(alpha: 0.18),
+                          borderColor: const Color(
+                            0xFF0F3D35,
+                          ).withValues(alpha: 0.9),
+                          borderStrokeWidth: 2.5,
                         ),
                       )
                       .toList(),
