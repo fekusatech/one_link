@@ -71,6 +71,12 @@ class _PickupListScreenState extends State<PickupListScreen> {
                           if (x.driver.isNotEmpty) 'Driver: ${x.driver}',
                           if (x.fleet.isNotEmpty) 'Armada: ${x.fleet}',
                           if (x.address.isNotEmpty) x.address,
+                          if (x.statusLabel.isNotEmpty)
+                            'Tahap: ${x.statusLabel}',
+                          'Pembayaran: ${_paymentLabel(x.paymentStatus)}',
+                          'Uji quality: ${x.ujiQualityCode.isEmpty ? 'Belum ada' : x.ujiQualityCode}',
+                          'In stock: ${x.inStockCode.isEmpty ? 'Belum ada' : x.inStockCode}',
+                          'Bukti transfer: ${x.paymentProof.isEmpty ? 'Belum ada' : 'Tersedia'}',
                         ].join('\n'),
                         maxLines: 5,
                         overflow: TextOverflow.ellipsis,
@@ -90,4 +96,19 @@ class _PickupListScreenState extends State<PickupListScreen> {
             ),
     ),
   );
+
+  String _paymentLabel(String value) {
+    switch (value.toLowerCase()) {
+      case 'lunas':
+      case 'paid':
+        return 'Sudah dibayar';
+      case 'pending':
+        return 'Menunggu pembayaran';
+      case 'cancelled':
+      case 'batal':
+        return 'Dibatalkan';
+      default:
+        return value.isEmpty ? 'Belum dibayar' : value;
+    }
+  }
 }

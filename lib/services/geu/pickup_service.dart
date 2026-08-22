@@ -7,6 +7,11 @@ class PickupSummary {
   final int id;
   final String code, date, warehouse, zone, status;
   final String totalPickup, address, driver, fleet;
+  final String statusLabel,
+      paymentStatus,
+      paymentProof,
+      ujiQualityCode,
+      inStockCode;
   final double? qtyUco;
   const PickupSummary({
     required this.id,
@@ -20,6 +25,11 @@ class PickupSummary {
     this.driver = '',
     this.fleet = '',
     this.qtyUco,
+    this.statusLabel = '',
+    this.paymentStatus = '',
+    this.paymentProof = '',
+    this.ujiQualityCode = '',
+    this.inStockCode = '',
   });
   factory PickupSummary.fromJson(Map d) => PickupSummary(
     id: int.tryParse('${d['id'] ?? 0}') ?? 0,
@@ -33,6 +43,11 @@ class PickupSummary {
     driver: '${d['driver_name'] ?? ''}',
     fleet: '${d['fleet_plat'] ?? ''}',
     qtyUco: (d['qty_uco'] as num?)?.toDouble(),
+    statusLabel: '${d['status_label'] ?? ''}',
+    paymentStatus: '${d['payment_status'] ?? ''}',
+    paymentProof: '${d['payment_proof'] ?? ''}',
+    ujiQualityCode: '${d['uji_quality_code'] ?? ''}',
+    inStockCode: '${d['in_stock_code'] ?? ''}',
   );
 }
 
