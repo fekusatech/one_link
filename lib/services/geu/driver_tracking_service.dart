@@ -4,6 +4,7 @@ import 'package:dio/dio.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:battery_plus/battery_plus.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import '../../models/surat_jalan.dart';
 import '../../models/geu/surat_jalan_models.dart';
 import 'geu_api_client.dart';
@@ -56,7 +57,9 @@ class TrackingLiveItem {
     }
 
     return TrackingLiveItem(
-      id: json['id'] is int ? json['id'] : int.tryParse(json['id'].toString()) ?? 0,
+      id: json['id'] is int
+          ? json['id']
+          : int.tryParse(json['id'].toString()) ?? 0,
       karyawanId: json['karyawan_id']?.toString() ?? '',
       email: json['email']?.toString() ?? '',
       name: json['name']?.toString() ?? json['email']?.toString() ?? 'Driver',
@@ -73,7 +76,8 @@ class TrackingLiveItem {
       lastUpdate: parsedDate,
       status: json['status']?.toString().toLowerCase() ?? 'offline',
       isMonitoring: json['is_monitoring'] == true || json['is_monitoring'] == 1,
-      vehiclePlat: json['vehicle_plat']?.toString() ?? json['fleet_plat']?.toString(),
+      vehiclePlat:
+          json['vehicle_plat']?.toString() ?? json['fleet_plat']?.toString(),
     );
   }
 }
@@ -121,6 +125,7 @@ class GeuDriverTrackingService {
     try {
       await GeuAuthService.ensureSession();
       final dio = await GeuApiClient.instance;
+      final packageInfo = await PackageInfo.fromPlatform();
       final res = await dio.post(
         '/api-tms/tracking/update',
         data: {
@@ -132,6 +137,7 @@ class GeuDriverTrackingService {
           if (position.altitude != 0) 'altitude': position.altitude,
           'battery_level': await _getBatteryLevel(),
           'device_info': await _getDeviceInfo(),
+          'app_version': '${packageInfo.version}+${packageInfo.buildNumber}',
         },
       );
       final data = res.data;
@@ -208,10 +214,7 @@ class GeuDriverTrackingService {
       final dio = await GeuApiClient.instance;
       final res = await dio.get(
         '/api-tms/tracking/history',
-        queryParameters: {
-          'karyawan_id': karyawanId,
-          'date': date,
-        },
+        queryParameters: {'karyawan_id': karyawanId, 'date': date},
       );
       final data = res.data;
       if (data is Map && data['status'] == 'error') {
@@ -220,7 +223,9 @@ class GeuDriverTrackingService {
 
       final items = (data is Map ? data['data'] : data) as List? ?? [];
       return items
-          .map((e) => TrackingHistoryItem.fromJson(Map<String, dynamic>.from(e)))
+          .map(
+            (e) => TrackingHistoryItem.fromJson(Map<String, dynamic>.from(e)),
+          )
           .toList();
     } on DioException catch (e) {
       debugPrint('⚠️ Error fetching route history: $e');
@@ -251,12 +256,19 @@ class GeuDriverTrackingService {
       );
 
       final data = res.data;
-      final items = (data is Map && data['data'] != null
-          ? (data['data'] is Map ? data['data']['data'] : data['data'])
-          : null) as List? ?? [];
+      final items =
+          (data is Map && data['data'] != null
+                  ? (data['data'] is Map ? data['data']['data'] : data['data'])
+                  : null)
+              as List? ??
+          [];
 
       final listItems = items
-          .map((e) => GeuSuratJalanListItem.fromJson(Map<String, dynamic>.from(e)).toLegacy())
+          .map(
+            (e) => GeuSuratJalanListItem.fromJson(
+              Map<String, dynamic>.from(e),
+            ).toLegacy(),
+          )
           .toList();
 
       // Hydrate per-surat-jalan detail to get full stops & GPS. getById()'s
@@ -266,8 +278,13 @@ class GeuDriverTrackingService {
       final List<SuratJalan> hydrated = await Future.wait<SuratJalan>(
         listItems.map((s) async {
           try {
-            final full = await GeuSuratJalanService.getById(int.parse(s.suratJalanId));
-            return GeuSuratJalanService.mergeListFields(base: full, listItem: s);
+            final full = await GeuSuratJalanService.getById(
+              int.parse(s.suratJalanId),
+            );
+            return GeuSuratJalanService.mergeListFields(
+              base: full,
+              listItem: s,
+            );
           } catch (_) {
             return s;
           }
