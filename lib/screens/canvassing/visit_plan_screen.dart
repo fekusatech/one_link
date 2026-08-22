@@ -719,26 +719,37 @@ class _VisitPlanScreenState extends State<VisitPlanScreen> {
 
   Widget _mapLegend() => Align(
     child: Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      width: 248,
+      padding: const EdgeInsets.fromLTRB(14, 9, 14, 8),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: .94),
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(16),
         boxShadow: const [BoxShadow(color: Color(0x22000000), blurRadius: 6)],
       ),
-      child: Row(
+      child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const _LegendDot(color: Color(0xFF2196F3), label: 'Supplier'),
-          const _LegendDot(color: Color(0xFFFF9800), label: 'PO lama'),
-          const _LegendDot(color: Color(0xFFF44336), label: 'Scan'),
-          const SizedBox(width: 8),
+          const _LegendDot(
+            color: Color(0xFF2196F3),
+            label: 'Supplier (PO done < 30 days)',
+          ),
+          const _LegendDot(
+            color: Color(0xFFFF9800),
+            label: 'Supplier (PO done > 30 days / none)',
+          ),
+          const _LegendDot(color: Color(0xFFF44336), label: 'Scan Result'),
+          const _LegendDot(
+            color: Color(0xFF4CAF50),
+            label: 'Your GPS Location',
+          ),
+          const SizedBox(height: 4),
           DecoratedBox(
             decoration: BoxDecoration(
               color: const Color(0xFF287EF0),
               borderRadius: BorderRadius.circular(14),
             ),
             child: const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 5),
               child: Text(
                 'Online ›',
                 style: TextStyle(
@@ -1582,7 +1593,7 @@ class _LegendDot extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(right: 8),
+    padding: const EdgeInsets.symmetric(vertical: 1),
     child: Row(
       mainAxisSize: MainAxisSize.min,
       children: [
