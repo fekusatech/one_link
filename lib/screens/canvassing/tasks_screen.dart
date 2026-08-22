@@ -125,7 +125,9 @@ class _TasksScreenState extends State<TasksScreen> with WidgetsBindingObserver {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              ok ? 'Tercatat di riwayat follow up.' : 'Gagal mencatat, coba lagi.',
+              ok
+                  ? 'Tercatat di riwayat follow up.'
+                  : 'Gagal mencatat, coba lagi.',
             ),
           ),
         );
@@ -146,7 +148,9 @@ class _TasksScreenState extends State<TasksScreen> with WidgetsBindingObserver {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            ok ? 'Status WA supplier diperbarui.' : 'Gagal mencatat, coba lagi.',
+            ok
+                ? 'Status WA supplier diperbarui.'
+                : 'Gagal mencatat, coba lagi.',
           ),
         ),
       );
@@ -205,7 +209,8 @@ class _TasksScreenState extends State<TasksScreen> with WidgetsBindingObserver {
             child: const Text('Batal'),
           ),
           FilledButton(
-            onPressed: () => Navigator.pop(dialogContext, controller.text.trim()),
+            onPressed: () =>
+                Navigator.pop(dialogContext, controller.text.trim()),
             child: const Text('Simpan'),
           ),
         ],
@@ -303,7 +308,8 @@ class _TasksScreenState extends State<TasksScreen> with WidgetsBindingObserver {
     _preferenceKey = user?.id.toString() ?? 'guest';
     final prefs = await SharedPreferences.getInstance();
     _status = prefs.getString('geu_tasks_status_$_preferenceKey') ?? 'active';
-    _dateScope = _DateScope.values[prefs.getInt('geu_tasks_scope_$_preferenceKey') ?? 0];
+    _dateScope =
+        _DateScope.values[prefs.getInt('geu_tasks_scope_$_preferenceKey') ?? 0];
     _search.text = prefs.getString('geu_tasks_search_$_preferenceKey') ?? '';
     await _load();
   }
@@ -609,10 +615,7 @@ class _TasksScreenState extends State<TasksScreen> with WidgetsBindingObserver {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (_) => _TaskDetailSheet(
-        task: task,
-        onChat: () => _openWa(task),
-      ),
+      builder: (_) => _TaskDetailSheet(task: task, onChat: () => _openWa(task)),
     );
   }
 }
@@ -675,7 +678,10 @@ class _TaskDetailSheetState extends State<_TaskDetailSheet> {
                 Expanded(
                   child: Text(
                     task.supplierName,
-                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                    ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -708,7 +714,10 @@ class _TaskDetailSheetState extends State<_TaskDetailSheet> {
             if (!_loading && _detail?.zonaName != null)
               _row(Icons.map_outlined, 'Zona: ${_detail!.zonaName}'),
             if (!_loading && (_detail?.jadwalHari.isNotEmpty ?? false))
-              _row(Icons.event_repeat_outlined, 'Jadwal: ${_detail!.jadwalHari.join(', ')}'),
+              _row(
+                Icons.event_repeat_outlined,
+                'Jadwal: ${_detail!.jadwalHari.join(', ')}',
+              ),
 
             const SizedBox(height: 14),
             const Divider(height: 1),
@@ -719,7 +728,21 @@ class _TaskDetailSheetState extends State<_TaskDetailSheet> {
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
             ),
             const SizedBox(height: 8),
-            if (task.hasBeenContacted) ...[
+            if ((_orderSummary?.followupCount ?? 0) > 0 ||
+                (_orderSummary?.recentFollowups.isNotEmpty ?? false)) ...[
+              if ((_orderSummary?.followupCount ?? 0) > 0)
+                _row(
+                  Icons.chat_bubble_outline,
+                  'Sudah di-chat ${_orderSummary!.followupCount} kali',
+                ),
+              if (_orderSummary!.recentFollowups.isNotEmpty)
+                _row(
+                  Icons.history_outlined,
+                  'Terakhir dihubungi ${_formatDate(_orderSummary!.recentFollowups.first.createdAt)}',
+                ),
+              if (task.notes.trim().isNotEmpty)
+                _row(Icons.notes_outlined, task.notes.trim()),
+            ] else if (task.hasBeenContacted) ...[
               if (task.contactedAt != null)
                 _row(
                   Icons.history_outlined,
@@ -730,12 +753,19 @@ class _TaskDetailSheetState extends State<_TaskDetailSheet> {
             ] else
               Row(
                 children: [
-                  Icon(Icons.info_outline, size: 16, color: AppColors.textSecondary),
+                  Icon(
+                    Icons.info_outline,
+                    size: 16,
+                    color: AppColors.textSecondary,
+                  ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       'Belum pernah dihubungi. Ini akan jadi kontak pertama.',
-                      style: TextStyle(color: AppColors.textSecondary, fontSize: 12.5),
+                      style: TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 12.5,
+                      ),
                     ),
                   ),
                 ],
@@ -764,7 +794,9 @@ class _TaskDetailSheetState extends State<_TaskDetailSheet> {
                       },
                 icon: const Icon(Icons.chat_bubble_outline),
                 label: Text(
-                  task.hasBeenContacted ? 'Follow Up via WhatsApp' : 'Hubungi via WhatsApp',
+                  task.hasBeenContacted
+                      ? 'Follow Up via WhatsApp'
+                      : 'Hubungi via WhatsApp',
                 ),
               ),
             ),
@@ -807,7 +839,10 @@ class _TaskDetailSheetState extends State<_TaskDetailSheet> {
         ),
         if (summary.recentOrders.length >= 2) ...[
           const SizedBox(height: 12),
-          SizedBox(height: 80, child: RecentOrdersChart(orders: summary.recentOrders)),
+          SizedBox(
+            height: 80,
+            child: RecentOrdersChart(orders: summary.recentOrders),
+          ),
         ],
       ],
     );
