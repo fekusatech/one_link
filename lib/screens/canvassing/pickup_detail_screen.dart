@@ -279,6 +279,14 @@ class _PickupDetailScreenState extends State<PickupDetailScreen> {
                       ),
                     );
                   }),
+                  if (p['bifast_history'] is List && (p['bifast_history'] as List).isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    const Text('Riwayat transfer BIFast', style: TextStyle(fontWeight: FontWeight.w700)),
+                    ...((p['bifast_history'] as List).whereType<Map>().map((t) => Text(
+                          '${t['status'] ?? '-'} • ${_money(t['amount_tran'])} • RC ${t['response_code'] ?? '-'}'
+                          '${t['refnum'] == null ? '' : '\nRef: ${t['refnum']}'}',
+                        ))),
+                  ],
                   if (p['notes'] != null && '${p['notes']}'.trim().isNotEmpty) Text('${p['notes']}'),
                   if (proof.isNotEmpty) ...[
                     const SizedBox(height: 8),
