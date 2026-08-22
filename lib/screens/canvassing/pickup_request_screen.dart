@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../services/geu/pickup_service.dart';
 
@@ -15,6 +16,23 @@ class _PickupRequestScreenState extends State<PickupRequestScreen> {
   DateTime? date;
   bool loading = false;
   bool online = true;
+  Timer? _searchDebounce;
+  int _searchRequest = 0;
+
+  static const _months = [
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'Mei',
+    'Jun',
+    'Jul',
+    'Agu',
+    'Sep',
+    'Okt',
+    'Nov',
+    'Des',
+  ];
   @override
   void initState() {
     super.initState();
@@ -24,6 +42,7 @@ class _PickupRequestScreenState extends State<PickupRequestScreen> {
 
   @override
   void dispose() {
+    _searchDebounce?.cancel();
     search.dispose();
     super.dispose();
   }
@@ -41,13 +60,38 @@ class _PickupRequestScreenState extends State<PickupRequestScreen> {
   }
 
   Future<void> _search() async {
+    final query = search.text.trim();
+    final request = ++_searchRequest;
+    if (query.length < 2) {
+      if (mounted)
+        setState(() {
+          workOrders = [];
+          loading = false;
+        });
+      return;
+    }
     setState(() => loading = true);
     try {
-      workOrders = await PickupService.searchWorkOrders(search.text);
-      if (mounted) setState(() {});
+      final result = await PickupService.searchWorkOrders(query);
+      if (mounted && request == _searchRequest) {
+        setState(() => workOrders = result);
+      }
     } finally {
-      if (mounted) setState(() => loading = false);
+      if (mounted && request == _searchRequest) setState(() => loading = false);
     }
+  }
+
+  void _onSearchChanged(String value) {
+    _searchDebounce?.cancel();
+    _searchDebounce = Timer(const Duration(milliseconds: 350), _search);
+  }
+
+  String _formatDate(dynamic raw) {
+    final value = '$raw'.trim();
+    if (value.isEmpty || value == 'null') return '-';
+    final parsed = DateTime.tryParse(value)?.toLocal();
+    if (parsed == null) return value;
+    return '${parsed.day.toString().padLeft(2, '0')} ${_months[parsed.month - 1]} ${parsed.year}';
   }
 
   Future<void> _submit() async {
@@ -127,16 +171,42 @@ class _PickupRequestScreenState extends State<PickupRequestScreen> {
       children: [
         TextField(
           controller: search,
-          onSubmitted: (_) => _search(),
+          onChanged: _onSearchChanged,
+          onSubmitted: (_) {
+            _searchDebounce?.cancel();
+            _search();
+          },
           decoration: InputDecoration(
             labelText: 'Cari Work Order',
-            suffixIcon: IconButton(
-              icon: const Icon(Icons.search),
-              onPressed: _search,
-            ),
+            hintText: 'Ketik kode WO atau nama supplier (min. 2 karakter)',
+            prefixIcon: const Icon(Icons.search),
+            suffixIcon: search.text.isEmpty
+                ? null
+                : IconButton(
+                    icon: const Icon(Icons.clear),
+                    onPressed: () {
+                      search.clear();
+                      _onSearchChanged('');
+                      setState(() {});
+                    },
+                  ),
           ),
         ),
         if (loading) const LinearProgressIndicator(),
+        if (!loading && search.text.trim().length < 2)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 20),
+            child: Text(
+              'Ketik minimal 2 karakter untuk mencari WO yang tersedia.',
+            ),
+          ),
+        if (!loading && search.text.trim().length >= 2 && workOrders.isEmpty)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 20),
+            child: Text(
+              'Tidak ada WO milik Anda yang berstatus A1/A3 dan belum menjadi Pickup.',
+            ),
+          ),
         ...workOrders.map(
           (wo) => RadioListTile<Map<String, dynamic>>(
             value: wo,
@@ -152,13 +222,22 @@ class _PickupRequestScreenState extends State<PickupRequestScreen> {
                   'Kode supplier: ${wo['supplier_kode']}',
                 if ('${wo['supplier_phone'] ?? ''}'.isNotEmpty)
                   'Telp: ${wo['supplier_phone']}',
-                if ('${wo['tgl'] ?? ''}'.isNotEmpty) 'Tanggal WO: ${wo['tgl']}',
-                if ('${wo['status_name'] ?? ''}'.isNotEmpty)
-                  'Status: ${wo['status_name']}',
+                'Tanggal WO: ${_formatDate(wo['tgl'] ?? wo['date'])}',
+                if ('${wo['status_name'] ?? wo['status_wo'] ?? ''}'.isNotEmpty)
+                  'Status: ${wo['status_name'] ?? wo['status_wo']}',
               ].join(' • '),
             ),
           ),
         ),
+        if (selected != null)
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton.icon(
+              onPressed: () => setState(() => selected = null),
+              icon: const Icon(Icons.close),
+              label: const Text('Hapus pilihan WO'),
+            ),
+          ),
         DropdownButtonFormField<int>(
           value: warehouseId,
           decoration: const InputDecoration(labelText: 'Gudang'),
