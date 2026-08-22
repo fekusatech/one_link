@@ -56,40 +56,91 @@ class _PickupListScreenState extends State<PickupListScreen> {
               itemBuilder: (_, i) {
                 final x = items[i];
                 return Card(
-                  child: ListTile(
-                    title: Text(
-                      x.code,
-                      style: const TextStyle(fontWeight: FontWeight.w700),
-                    ),
-                    subtitle: Padding(
-                      padding: const EdgeInsets.only(top: 4),
-                      child: Text(
-                        [
-                          '${_formatDate(x.date)} • ${x.warehouse}',
-                          if (x.zone != '-') 'Zona: ${x.zone}',
-                          if (x.supplierNames.isNotEmpty)
-                            'Supplier: ${x.supplierNames}',
-                          if (x.totalPickup.isNotEmpty) x.totalPickup,
-                          if (x.driver.isNotEmpty) 'Driver: ${x.driver}',
-                          if (x.fleet.isNotEmpty) 'Armada: ${x.fleet}',
-                          if (x.address.isNotEmpty) x.address,
-                          if (x.statusLabel.isNotEmpty)
-                            'Tahap: ${x.statusLabel}',
-                          'Pembayaran: ${_paymentLabel(x.paymentStatus)}',
-                          'Uji quality: ${x.ujiQualityCode.isEmpty ? 'Belum ada' : x.ujiQualityCode}',
-                          'In stock: ${x.inStockCode.isEmpty ? 'Belum ada' : x.inStockCode}',
-                          'Bukti transfer: ${x.paymentProof.isEmpty ? 'Belum ada' : 'Tersedia'}',
-                        ].join('\n'),
-                        maxLines: 5,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    isThreeLine: true,
-                    trailing: Text(x.status),
+                  margin: const EdgeInsets.fromLTRB(12, 5, 12, 5),
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(18),
+                    side: BorderSide(color: Colors.grey.shade200),
+                  ),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(18),
                     onTap: () => Navigator.push(
                       context,
                       MaterialPageRoute(
                         builder: (_) => PickupDetailScreen(id: x.id),
+                      ),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 14, 14, 14),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  x.code,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                              ),
+                              _statusBadge(_statusText(x)),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
+                            children: [
+                              Icon(Icons.calendar_today_outlined,
+                                  size: 15, color: Colors.grey.shade600),
+                              const SizedBox(width: 6),
+                              Text(_formatDate(x.date),
+                                  style: TextStyle(color: Colors.grey.shade700)),
+                              if (_hasValue(x.warehouse)) ...[
+                                const SizedBox(width: 12),
+                                Icon(Icons.warehouse_outlined,
+                                    size: 15, color: Colors.grey.shade600),
+                                const SizedBox(width: 5),
+                                Expanded(
+                                  child: Text(x.warehouse,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(color: Colors.grey.shade700)),
+                                ),
+                              ],
+                            ],
+                          ),
+                          if (_hasValue(x.supplierNames)) ...[
+                            const SizedBox(height: 10),
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Icon(Icons.storefront_outlined,
+                                    size: 18, color: const Color(0xFF1E5A49)),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(x.supplierNames,
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(fontWeight: FontWeight.w600)),
+                                ),
+                              ],
+                            ),
+                          ],
+                          const SizedBox(height: 10),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 6,
+                            children: [
+                              if (_hasValue(x.totalPickup))
+                                _infoChip(Icons.inventory_2_outlined, x.totalPickup),
+                              if (_hasValue(x.driver))
+                                _infoChip(Icons.person_outline, x.driver),
+                              if (_hasValue(x.fleet))
+                                _infoChip(Icons.local_shipping_outlined, x.fleet),
+                            ],
+                          ),
+                        ],
                       ),
                     ),
                   ),
@@ -99,20 +150,48 @@ class _PickupListScreenState extends State<PickupListScreen> {
     ),
   );
 
-  String _paymentLabel(String value) {
-    switch (value.toLowerCase()) {
-      case 'lunas':
-      case 'paid':
-        return 'Sudah dibayar';
+  bool _hasValue(String value) => value.trim().isNotEmpty && value.trim() != '-';
+
+  String _statusText(PickupSummary item) {
+    if (_hasValue(item.statusLabel)) return item.statusLabel;
+    switch (item.status.toLowerCase()) {
+      case 'pickup':
+        return 'Pickup';
+      case 'approved':
+        return 'Disetujui';
       case 'pending':
-        return 'Menunggu pembayaran';
-      case 'cancelled':
-      case 'batal':
-        return 'Dibatalkan';
+        return 'Menunggu';
+      case 'done':
+      case 'completed':
+        return 'Selesai';
       default:
-        return value.isEmpty ? 'Belum dibayar' : value;
+        return RegExp(r'^\d+$').hasMatch(item.status) ? 'Pickup' : item.status;
     }
   }
+
+  Widget _statusBadge(String label) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        decoration: BoxDecoration(
+          color: const Color(0xFFE5F3ED),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Text(label,
+            style: const TextStyle(
+                color: Color(0xFF1E5A49), fontWeight: FontWeight.w700, fontSize: 12)),
+      );
+
+  Widget _infoChip(IconData icon, String label) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
+        decoration: BoxDecoration(
+          color: Colors.grey.shade100,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          Icon(icon, size: 15, color: Colors.grey.shade700),
+          const SizedBox(width: 5),
+          Text(label, style: TextStyle(fontSize: 12, color: Colors.grey.shade800)),
+        ]),
+      );
 
   String _formatDate(String value) {
     final parsed = DateTime.tryParse(value);
