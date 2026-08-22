@@ -365,7 +365,12 @@ class _VisitPlanScreenState extends State<VisitPlanScreen>
             options: MapOptions(
               initialCenter: center,
               initialZoom: 15,
-              onPositionChanged: (_, hasGesture) {
+              onPositionChanged: (position, hasGesture) {
+                if (hasGesture && _isAdmin && !_missionActive) {
+                  // Admin map exploration is also a simulated location for
+                  // the planner, so enforce the same work-area boundary.
+                  _updateWorkAreaStatus(position.center);
+                }
                 if (hasGesture && !_showRecenter) {
                   WidgetsBinding.instance.addPostFrameCallback((_) {
                     if (mounted) setState(() => _showRecenter = true);
@@ -450,7 +455,7 @@ class _VisitPlanScreenState extends State<VisitPlanScreen>
                 ),
               MarkerLayer(
                 markers: [
-                  if (!_missionActive && !_hidePoo)
+                  if (_insideWorkArea && !_missionActive && !_hidePoo)
                     for (final supplier in _databaseSuppliers)
                       if (!activeMissionSupplierIds.contains(supplier.id) &&
                           supplier.latitude != null &&
@@ -1104,6 +1109,7 @@ class _VisitPlanScreenState extends State<VisitPlanScreen>
   }
 
   Future<void> _setSearchCenter(LatLng point) async {
+    _updateWorkAreaStatus(point);
     setState(() => _searchCenter = point);
     _map.move(point, 15);
     await _load();
