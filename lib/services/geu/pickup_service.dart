@@ -12,6 +12,7 @@ class PickupSummary {
       paymentProof,
       ujiQualityCode,
       inStockCode;
+  final String supplierNames;
   final double? qtyUco;
   const PickupSummary({
     required this.id,
@@ -30,6 +31,7 @@ class PickupSummary {
     this.paymentProof = '',
     this.ujiQualityCode = '',
     this.inStockCode = '',
+    this.supplierNames = '',
   });
   factory PickupSummary.fromJson(Map d) => PickupSummary(
     id: int.tryParse('${d['id'] ?? 0}') ?? 0,
@@ -48,6 +50,7 @@ class PickupSummary {
     paymentProof: '${d['payment_proof'] ?? ''}',
     ujiQualityCode: '${d['uji_quality_code'] ?? ''}',
     inStockCode: '${d['in_stock_code'] ?? ''}',
+    supplierNames: '${d['supplier_names'] ?? ''}',
   );
 }
 

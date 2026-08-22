@@ -67,6 +67,8 @@ class _PickupListScreenState extends State<PickupListScreen> {
                         [
                           '${x.date} • ${x.warehouse}',
                           if (x.zone != '-') 'Zona: ${x.zone}',
+                          if (x.supplierNames.isNotEmpty)
+                            'Supplier: ${x.supplierNames}',
                           if (x.totalPickup.isNotEmpty) x.totalPickup,
                           if (x.driver.isNotEmpty) 'Driver: ${x.driver}',
                           if (x.fleet.isNotEmpty) 'Armada: ${x.fleet}',
