@@ -381,7 +381,7 @@ class _VisitPlanScreenState extends State<VisitPlanScreen>
                 urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                 userAgentPackageName: 'com.example.one_link',
               ),
-              if (_user != null)
+              if (_insideWorkArea && _user != null)
                 AnimatedBuilder(
                   animation: _radiusPulse,
                   builder: (context, child) {
