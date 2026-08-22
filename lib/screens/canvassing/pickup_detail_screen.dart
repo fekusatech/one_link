@@ -275,7 +275,8 @@ class _PickupDetailScreenState extends State<PickupDetailScreen> {
                       padding: const EdgeInsets.only(top: 4),
                       child: Text(
                         '${d['supplier_name'] ?? '-'} • ${_money(d['total_harga'])} • ${_paymentLabel(d['status'])}'
-                        '${workOrders.isEmpty ? '' : '\nWO: $workOrders'}',
+                        '${workOrders.isEmpty ? '' : '\nWO: $workOrders'}'
+                        '${(d['nomor_rek'] ?? '').toString().trim().isEmpty ? '' : '\nRekening: ${d['nomor_rek']}'}',
                       ),
                     );
                   }),
