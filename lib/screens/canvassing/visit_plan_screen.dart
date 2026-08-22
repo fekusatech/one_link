@@ -520,7 +520,6 @@ class _VisitPlanScreenState extends State<VisitPlanScreen> {
           ),
           if (!_missionActive)
             Positioned(top: 66, left: 16, right: 16, child: _mapLegend()),
-          Positioned(top: 0, left: 0, right: 0, child: _visitHeader()),
           Positioned(
             top: 92,
             right: 20,
@@ -750,48 +749,6 @@ class _VisitPlanScreenState extends State<VisitPlanScreen> {
             ),
           ),
         ],
-      ),
-    ),
-  );
-
-  Widget _visitHeader() => Material(
-    color: Colors.white,
-    elevation: 1,
-    child: SafeArea(
-      bottom: false,
-      child: SizedBox(
-        height: 58,
-        child: Row(
-          children: [
-            const SizedBox(width: 18),
-            const Icon(Icons.map_outlined, size: 20),
-            const SizedBox(width: 14),
-            const Text(
-              'Visit Plan',
-              style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
-            ),
-            const Spacer(),
-            IconButton(
-              tooltip: 'Notifikasi',
-              onPressed: () {},
-              icon: const Badge(
-                label: Text('3'),
-                child: Icon(Icons.notifications_none_rounded),
-              ),
-            ),
-            IconButton(
-              tooltip: 'Bahasa',
-              onPressed: () {},
-              icon: const Icon(Icons.translate_rounded, size: 20),
-            ),
-            IconButton(
-              tooltip: 'Mode malam',
-              onPressed: () {},
-              icon: const Icon(Icons.dark_mode_outlined, size: 20),
-            ),
-            const SizedBox(width: 8),
-          ],
-        ),
       ),
     ),
   );
