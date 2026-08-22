@@ -269,7 +269,16 @@ class _PickupDetailScreenState extends State<PickupDetailScreen> {
                     Chip(label: Text(_paymentLabel(p['status']))),
                   ]),
                   Text('${_formatDate(p['tgl'])} • ${_money(p['actual_amount'])}'),
-                  ...details.map((d) => Text('${d['supplier_name'] ?? '-'} • ${_money(d['total_harga'])} • ${_paymentLabel(d['status'])}')),
+                  ...details.map((d) {
+                    final workOrders = '${d['work_order_codes'] ?? ''}'.trim();
+                    return Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Text(
+                        '${d['supplier_name'] ?? '-'} • ${_money(d['total_harga'])} • ${_paymentLabel(d['status'])}'
+                        '${workOrders.isEmpty ? '' : '\nWO: $workOrders'}',
+                      ),
+                    );
+                  }),
                   if (p['notes'] != null && '${p['notes']}'.trim().isNotEmpty) Text('${p['notes']}'),
                   if (proof.isNotEmpty) ...[
                     const SizedBox(height: 8),
