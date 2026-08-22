@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:dio/dio.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
 import '../../services/geu/pickup_service.dart';
 
 class PickupDetailScreen extends StatefulWidget {
@@ -50,8 +53,273 @@ class _PickupDetailScreenState extends State<PickupDetailScreen> {
   }
 
   Future<void> load() async {
-    data = await PickupService.detail(widget.id);
+    try {
+      data = await PickupService.detail(widget.id);
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(error.toString())),
+        );
+      }
+    }
     if (mounted) setState(() {});
+  }
+
+  List<Map<String, dynamic>> _maps(dynamic value) => (value is List ? value : const [])
+      .whereType<Map>()
+      .map((e) => Map<String, dynamic>.from(e))
+      .toList();
+
+  String _url(dynamic value) => PickupService.resolveMediaUrl(value);
+
+  Future<void> _previewImage(String url, {String title = 'Bukti'}) async {
+    if (url.isEmpty) return;
+    await showDialog<void>(
+      context: context,
+      builder: (_) => Dialog(
+        backgroundColor: Colors.black,
+        insetPadding: const EdgeInsets.all(12),
+        child: Stack(
+          children: [
+            InteractiveViewer(
+              child: Image.network(
+                url,
+                fit: BoxFit.contain,
+                errorBuilder: (_, __, ___) => const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(32),
+                    child: Text('Foto tidak dapat dimuat', style: TextStyle(color: Colors.white)),
+                  ),
+                ),
+              ),
+            ),
+            Positioned(
+              right: 4,
+              top: 4,
+              child: IconButton(
+                color: Colors.white,
+                icon: const Icon(Icons.close),
+                onPressed: () => Navigator.pop(context),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _downloadAndShare(String url, String filename, String phone) async {
+    if (url.isEmpty) return;
+    try {
+      final dir = await getTemporaryDirectory();
+      final safeName = filename.replaceAll(RegExp(r'[^A-Za-z0-9._-]'), '_');
+      final path = '${dir.path}/$safeName';
+      await Dio().download(url, path);
+      if (!mounted) return;
+      await Share.shareXFiles(
+        [XFile(path)],
+        text: 'Bukti transaksi pickup ${data?['header']?['kode'] ?? ''}'
+            '${phone.trim().isEmpty ? '' : ' untuk supplier $phone'}',
+      );
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gagal mengunduh bukti: $error')),
+        );
+      }
+    }
+  }
+
+  Future<String?> _askSupplierPhone(String initialPhone) async {
+    final controller = TextEditingController(text: initialPhone);
+    final result = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Bagikan bukti transfer'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          keyboardType: TextInputType.phone,
+          decoration: const InputDecoration(
+            labelText: 'Nomor supplier (opsional)',
+            hintText: '08xxxxxxxxxx',
+            prefixIcon: Icon(Icons.phone_outlined),
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Batal')),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, controller.text.trim()),
+            child: const Text('Lanjutkan'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    return result;
+  }
+
+  Widget _photoStrip(List<dynamic> photos, {String title = 'Foto'}) {
+    final urls = photos
+        .map(_url)
+        .where((url) => url.isNotEmpty)
+        .toList();
+    if (urls.isEmpty) return const SizedBox.shrink();
+    return SizedBox(
+      height: 76,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: urls.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 8),
+        itemBuilder: (_, index) => GestureDetector(
+          onTap: () => _previewImage(urls[index], title: title),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(10),
+            child: Image.network(
+              urls[index], width: 76, height: 76, fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => Container(
+                width: 76, height: 76, color: Colors.grey.shade200,
+                child: const Icon(Icons.broken_image_outlined),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _operationalEvidence(Map<String, dynamic> h) {
+    final quality = _maps(data?['uji_quality']);
+    final stock = _maps(data?['in_stock']);
+    final payments = _maps(data?['payment_history']);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Divider(height: 28),
+        const Text('Bukti operasional', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+        const SizedBox(height: 8),
+        _evidenceSection(
+          icon: Icons.fact_check_outlined,
+          title: 'Uji quality',
+          empty: quality.isEmpty,
+          children: quality.map((q) {
+            final details = _maps(q['details']);
+            final photos = q['photos'] is List ? q['photos'] as List : const [];
+            return Card(
+              margin: const EdgeInsets.only(bottom: 8),
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text('${q['kode'] ?? 'Uji quality'}', style: const TextStyle(fontWeight: FontWeight.w700)),
+                  Text(_formatDate(q['tgl']), style: TextStyle(color: Colors.grey.shade700)),
+                  ...details.map((d) => Padding(
+                    padding: const EdgeInsets.only(top: 6),
+                    child: Text('${d['supplier_name'] ?? '-'} • ${d['keputusan'] ?? '-'}\n'
+                        'FFA ${d['ffa'] ?? '-'}  |  Moisture ${d['moisture'] ?? '-'}  |  Impurities ${d['impurities'] ?? '-'}'),
+                  )),
+                  if (photos.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    _photoStrip(photos, title: 'Foto uji quality'),
+                  ],
+                ]),
+              ),
+            );
+          }).toList(),
+        ),
+        _evidenceSection(
+          icon: Icons.inventory_2_outlined,
+          title: 'In stock',
+          empty: stock.isEmpty,
+          children: stock.map((s) {
+            final details = _maps(s['details']);
+            final photos = <dynamic>[];
+            for (final d in details) {
+              if (d['photos'] is List) photos.addAll(d['photos'] as List);
+            }
+            return Card(
+              margin: const EdgeInsets.only(bottom: 8),
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text('${s['kode'] ?? 'In stock'}', style: const TextStyle(fontWeight: FontWeight.w700)),
+                  Text(_formatDate(s['tgl'])),
+                  ...details.map((d) => Text('Qty ${d['quantity'] ?? 0} kg${d['keterangan'] == null ? '' : ' • ${d['keterangan']}'}')),
+                  if (photos.isNotEmpty) ...[const SizedBox(height: 8), _photoStrip(photos, title: 'Foto in stock')],
+                ]),
+              ),
+            );
+          }).toList(),
+        ),
+        _evidenceSection(
+          icon: Icons.payments_outlined,
+          title: 'Riwayat pembayaran',
+          empty: payments.isEmpty,
+          children: payments.map((p) {
+            final proof = _url(p['bukti_transfer']);
+            final details = _maps(p['details']);
+            final phone = (data?['items'] is List && (data!['items'] as List).isNotEmpty)
+                ? '${(data!['items'] as List).first['supplier_phone'] ?? ''}' : '';
+            return Card(
+              margin: const EdgeInsets.only(bottom: 8),
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Row(children: [
+                    Expanded(child: Text('${p['kode'] ?? 'Pembayaran'}', style: const TextStyle(fontWeight: FontWeight.w700))),
+                    Chip(label: Text(_paymentLabel(p['status']))),
+                  ]),
+                  Text('${_formatDate(p['tgl'])} • ${_money(p['actual_amount'])}'),
+                  ...details.map((d) => Text('${d['supplier_name'] ?? '-'} • ${_money(d['total_harga'])} • ${_paymentLabel(d['status'])}')),
+                  if (p['notes'] != null && '${p['notes']}'.trim().isNotEmpty) Text('${p['notes']}'),
+                  if (proof.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    Wrap(spacing: 8, children: [
+                      OutlinedButton.icon(onPressed: () => _previewImage(proof, title: 'Bukti transfer'), icon: const Icon(Icons.visibility_outlined), label: const Text('Lihat')),
+                      FilledButton.icon(
+                        onPressed: _busy
+                            ? null
+                            : () async {
+                                final selectedPhone = await _askSupplierPhone(phone);
+                                if (selectedPhone == null || !mounted) return;
+                                setState(() => _busy = true);
+                                try {
+                                  await _downloadAndShare(
+                                    proof,
+                                    '${p['kode'] ?? 'bukti'}.jpg',
+                                    selectedPhone,
+                                  );
+                                } finally {
+                                  if (mounted) setState(() => _busy = false);
+                                }
+                              },
+                        icon: const Icon(Icons.download_outlined),
+                        label: const Text('Download & share'),
+                      ),
+                    ]),
+                  ],
+                ]),
+              ),
+            );
+          }).toList(),
+        ),
+      ],
+    );
+  }
+
+  Widget _evidenceSection({required IconData icon, required String title, required bool empty, required List<Widget> children}) =>
+      ExpansionTile(
+        tilePadding: EdgeInsets.zero,
+        leading: Icon(icon, color: const Color(0xFF1E5A49)),
+        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
+        subtitle: empty ? const Text('Belum tersedia') : null,
+        initiallyExpanded: !empty,
+        children: children,
+      );
+
+  String _money(dynamic value) {
+    final number = num.tryParse('$value');
+    if (number == null) return '-';
+    return 'Rp ${number.toStringAsFixed(0)}';
   }
 
   bool get _isPending {
@@ -247,6 +515,7 @@ class _PickupDetailScreenState extends State<PickupDetailScreen> {
                 h['payment_proof'] != null &&
                 '${h['payment_proof']}'.isNotEmpty,
           ),
+          _operationalEvidence(h),
           const Divider(),
           const Text(
             'Supplier & Work Order',

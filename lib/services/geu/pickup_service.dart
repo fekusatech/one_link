@@ -55,6 +55,15 @@ class PickupSummary {
 }
 
 class PickupService {
+  static const String mediaBaseUrl = 'https://geu.fekusa.com/';
+
+  static String resolveMediaUrl(dynamic value) {
+    final raw = '${value ?? ''}'.trim();
+    if (raw.isEmpty) return '';
+    if (raw.startsWith('http://') || raw.startsWith('https://')) return raw;
+    return '$mediaBaseUrl${raw.startsWith('/') ? raw.substring(1) : raw}';
+  }
+
   static Future<bool> isOnline() async {
     try {
       return (await InternetAddress.lookup(
