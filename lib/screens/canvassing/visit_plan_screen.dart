@@ -370,12 +370,7 @@ class _VisitPlanScreenState extends State<VisitPlanScreen>
             options: MapOptions(
               initialCenter: center,
               initialZoom: 15,
-              onPositionChanged: (position, hasGesture) {
-                if (hasGesture && _isAdmin && !_missionActive) {
-                  // Admin map exploration is also a simulated location for
-                  // the planner, so enforce the same work-area boundary.
-                  _updateWorkAreaStatus(position.center);
-                }
+              onPositionChanged: (_, hasGesture) {
                 if (hasGesture && !_showRecenter) {
                   WidgetsBinding.instance.addPostFrameCallback((_) {
                     if (mounted) setState(() => _showRecenter = true);
