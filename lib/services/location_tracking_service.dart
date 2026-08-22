@@ -14,6 +14,7 @@ class LocationTrackingService {
 
   StreamSubscription<Position>? _positionStream;
   bool _isTracking = false;
+  bool _ignoreWorkingMode = false;
   Function(Position)? _onLocationUpdate;
 
   Timer? _heartbeatTimer;
@@ -37,6 +38,11 @@ class LocationTrackingService {
     LocationPermission permission = await Geolocator.checkPermission();
     return permission == LocationPermission.always ||
         permission == LocationPermission.whileInUse;
+  }
+
+  /// Background tracking requires Android's "Allow all the time" permission.
+  Future<bool> hasBackgroundPermission() async {
+    return await Geolocator.checkPermission() == LocationPermission.always;
   }
 
   /// Request location permissions with proper explanation
@@ -100,7 +106,10 @@ class LocationTrackingService {
   }
 
   /// Start tracking without permission check (for enforcement service)
-  Future<bool> startTrackingWithoutPermissionCheck() async {
+  Future<bool> startTrackingWithoutPermissionCheck({
+    bool ignoreWorkingMode = false,
+  }) async {
+    _ignoreWorkingMode = ignoreWorkingMode;
     if (_isTracking) return true;
 
     // Check if we already have permissions
@@ -198,7 +207,9 @@ class LocationTrackingService {
           );
 
           debugPrint('📍 Sending heartbeat location update...');
-          _handleLocationUpdate(position);
+          // A heartbeat must be sent even when the device is stationary;
+          // otherwise the monitoring map marks an active user offline.
+          _handleLocationUpdate(position, force: true);
         } catch (e) {
           debugPrint('❌ Failed to get heartbeat position: $e');
         }
@@ -216,14 +227,15 @@ class LocationTrackingService {
     _heartbeatTimer = null;
     _isTracking = false;
     _onLocationUpdate = null;
+    _ignoreWorkingMode = false;
 
     print('📍 Location tracking stopped');
   }
 
   /// Handle location updates
-  void _handleLocationUpdate(Position position) async {
+  void _handleLocationUpdate(Position position, {bool force = false}) async {
     final isWorking = await UserStorage.isWorkingModeActive();
-    if (!isWorking) {
+    if (!isWorking && !_ignoreWorkingMode) {
       debugPrint('🛑 Mode Bekerja OFF: Skipping location update to server.');
       return;
     }
@@ -231,7 +243,9 @@ class LocationTrackingService {
     // Check if should send based on distance
     bool shouldSend = false;
 
-    if (_lastSentPosition != null) {
+    if (force) {
+      shouldSend = true;
+    } else if (_lastSentPosition != null) {
       // Calculate distance from last sent position
       final distance = Geolocator.distanceBetween(
         _lastSentPosition!.latitude,
