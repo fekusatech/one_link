@@ -33,7 +33,8 @@ class VisitPlanScreen extends StatefulWidget {
   State<VisitPlanScreen> createState() => _VisitPlanScreenState();
 }
 
-class _VisitPlanScreenState extends State<VisitPlanScreen> {
+class _VisitPlanScreenState extends State<VisitPlanScreen>
+    with SingleTickerProviderStateMixin {
   // A safe initial value prevents the GPS stream from rebuilding the map
   // before the remote distance_radius_map setting has finished loading.
   int _supplierRadiusMeters = 1000;
@@ -56,6 +57,7 @@ class _VisitPlanScreenState extends State<VisitPlanScreen> {
   bool _isAdmin = false;
   bool _showRecenter = false;
   bool _hidePoo = false;
+  late final AnimationController _radiusPulse;
   LatLng? _lastNearbyQueryPoint;
   int _nearbyRequestId = 0;
   LatLng? _lastMovementPoint;
@@ -64,6 +66,10 @@ class _VisitPlanScreenState extends State<VisitPlanScreen> {
   @override
   void initState() {
     super.initState();
+    _radiusPulse = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    )..repeat(reverse: true);
     _loadAdminAccess();
     _startCompassUpdates();
     _load();
@@ -186,6 +192,7 @@ class _VisitPlanScreenState extends State<VisitPlanScreen> {
     _navigationLocationSubscription?.cancel();
     _mapLocationSubscription?.cancel();
     _compassSubscription?.cancel();
+    _radiusPulse.dispose();
     super.dispose();
   }
 
@@ -303,17 +310,29 @@ class _VisitPlanScreenState extends State<VisitPlanScreen> {
                 userAgentPackageName: 'com.example.one_link',
               ),
               if (_user != null)
-                CircleLayer(
-                  circles: [
-                    CircleMarker(
-                      point: _user!,
-                      radius: _supplierRadiusMeters.toDouble(),
-                      useRadiusInMeter: true,
-                      color: AppColors.info.withValues(alpha: 0.10),
-                      borderColor: AppColors.info.withValues(alpha: 0.72),
-                      borderStrokeWidth: 2,
-                    ),
-                  ],
+                AnimatedBuilder(
+                  animation: _radiusPulse,
+                  builder: (context, child) {
+                    final pulse = Curves.easeInOut.transform(
+                      _radiusPulse.value,
+                    );
+                    return CircleLayer(
+                      circles: [
+                        CircleMarker(
+                          point: _user!,
+                          radius: _supplierRadiusMeters * (0.94 + pulse * 0.06),
+                          useRadiusInMeter: true,
+                          color: AppColors.info.withValues(
+                            alpha: 0.12 - pulse * 0.035,
+                          ),
+                          borderColor: AppColors.info.withValues(
+                            alpha: 0.58 - pulse * 0.18,
+                          ),
+                          borderStrokeWidth: 2,
+                        ),
+                      ],
+                    );
+                  },
                 ),
               if (_missionActive && _drivingRoute.length >= 2)
                 PolylineLayer(
