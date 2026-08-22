@@ -280,15 +280,7 @@ class _VisitPlanScreenState extends State<VisitPlanScreen>
   }
 
   void _updateWorkAreaStatus(LatLng point) {
-    final inside = _workAreaPolygons.isNotEmpty
-        ? MalangWorkAreaService.contains(point, _workAreaPolygons)
-        : haversineDistanceKm(
-                _workAreaCenter.latitude,
-                _workAreaCenter.longitude,
-                point.latitude,
-                point.longitude,
-              ) <=
-              _workAreaRadiusKm;
+    final inside = _isInsideWorkAreaPoint(point);
     if (_insideWorkArea == inside) return;
     setState(() => _insideWorkArea = inside);
     if (!inside && !_workAreaAlertShown) {
@@ -299,6 +291,19 @@ class _VisitPlanScreenState extends State<VisitPlanScreen>
     } else if (inside) {
       _workAreaAlertShown = false;
     }
+  }
+
+  bool _isInsideWorkAreaPoint(LatLng point) {
+    if (_workAreaPolygons.isNotEmpty) {
+      return MalangWorkAreaService.contains(point, _workAreaPolygons);
+    }
+    return haversineDistanceKm(
+          _workAreaCenter.latitude,
+          _workAreaCenter.longitude,
+          point.latitude,
+          point.longitude,
+        ) <=
+        _workAreaRadiusKm;
   }
 
   Future<void> _showOutsideWorkAreaAlert() async {
@@ -459,7 +464,10 @@ class _VisitPlanScreenState extends State<VisitPlanScreen>
                     for (final supplier in _databaseSuppliers)
                       if (!activeMissionSupplierIds.contains(supplier.id) &&
                           supplier.latitude != null &&
-                          supplier.longitude != null)
+                          supplier.longitude != null &&
+                          _isInsideWorkAreaPoint(
+                            LatLng(supplier.latitude!, supplier.longitude!),
+                          ))
                         Marker(
                           point: LatLng(
                             supplier.latitude!,
@@ -480,7 +488,10 @@ class _VisitPlanScreenState extends State<VisitPlanScreen>
                   if (!_missionActive)
                     for (final prospect in _scannedProspects)
                       if (prospect.latitude != null &&
-                          prospect.longitude != null)
+                          prospect.longitude != null &&
+                          _isInsideWorkAreaPoint(
+                            LatLng(prospect.latitude!, prospect.longitude!),
+                          ))
                         Marker(
                           point: LatLng(
                             prospect.latitude!,
