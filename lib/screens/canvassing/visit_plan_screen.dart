@@ -738,28 +738,6 @@ class _VisitPlanScreenState extends State<VisitPlanScreen> {
             label: 'Supplier (PO done > 30 days / none)',
           ),
           const _LegendDot(color: Color(0xFFF44336), label: 'Scan Result'),
-          const _LegendDot(
-            color: Color(0xFF4CAF50),
-            label: 'Your GPS Location',
-          ),
-          const SizedBox(height: 4),
-          DecoratedBox(
-            decoration: BoxDecoration(
-              color: const Color(0xFF287EF0),
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-              child: Text(
-                'Online ›',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 12,
-                ),
-              ),
-            ),
-          ),
         ],
       ),
     ),
