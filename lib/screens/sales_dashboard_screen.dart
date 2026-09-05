@@ -5,6 +5,7 @@ import '../constants/app_text_styles.dart';
 
 import 'add_supplier_screen_simple.dart';
 import '../providers/supplier_form_provider.dart';
+import '../widgets/active_visit_warning_banner.dart';
 import 'supplier_list_screen.dart';
 import '../widgets/permission_gate.dart';
 import '../services/role_management_service.dart';
@@ -368,7 +369,9 @@ class _SalesDashboardScreenState extends State<SalesDashboardScreen> {
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 118),
       children: [
         _buildCroGreeting(),
-        const SizedBox(height: 24),
+        const SizedBox(height: 12),
+        const ActiveVisitWarningBanner(),
+        const SizedBox(height: 12),
         if (hasVisitPlanner) ...[
           _buildMissionSummary(),
           const SizedBox(height: 24),

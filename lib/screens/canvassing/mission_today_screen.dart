@@ -14,6 +14,7 @@ import '../../utils/wa_format.dart';
 import 'checkin_dialog.dart';
 import 'checkout_dialog.dart';
 import '../../widgets/permission_gate.dart';
+import '../../widgets/active_visit_warning_banner.dart';
 import 'skip_mission_sheet.dart';
 import 'add_work_order_sheet.dart';
 import 'register_supplier_dialog.dart';
@@ -220,35 +221,7 @@ class _MissionTodayScreenState extends State<MissionTodayScreen> {
             ],
           ),
         ),
-        ValueListenableBuilder<ActiveVisitState>(
-          valueListenable: ActiveVisitService.current,
-          builder: (_, state, __) => state.isActive
-              ? Container(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: AppColors.accentOrange.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(
-                        Icons.place_outlined,
-                        color: AppColors.accentOrange,
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          state.isPendingLocal
-                              ? 'Check-in tersimpan di perangkat dan menunggu sinkronisasi.'
-                              : 'Anda sedang check-in di lokasi supplier.',
-                        ),
-                      ),
-                    ],
-                  ),
-                )
-              : const SizedBox.shrink(),
-        ),
+        const ActiveVisitWarningBanner(),
         if (mission.cachedAt != null) _buildCacheBanner(mission.cachedAt!),
         if (mission.items.isEmpty) _buildEmpty(),
         ...mission.items.map(_buildMissionCard),
@@ -514,7 +487,7 @@ class _MissionTodayScreenState extends State<MissionTodayScreen> {
       draft.fix.latitude,
       draft.fix.longitude,
     );
-    await VisitSyncService.enqueueCheckin(
+    final queued = await VisitSyncService.enqueueCheckin(
       supplierId: item.supplierId,
       latitude: draft.fix.latitude,
       longitude: draft.fix.longitude,
@@ -525,12 +498,15 @@ class _MissionTodayScreenState extends State<MissionTodayScreen> {
     );
     ActiveVisitService.markPendingCheckin(item.supplierId);
     await VisitSyncService.syncNow();
+    final delivered = await VisitSyncService.wasDelivered(queued.id);
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          'Check-in disimpan untuk sinkronisasi (${(draft.distanceKm * 1000).round()}m'
-          '${draft.confirmFar ? ", confirm_far" : ""}).',
+          delivered
+              ? 'Check-in berhasil dikirim ke server (${(draft.distanceKm * 1000).round()}m'
+                    '${draft.confirmFar ? ", confirm_far" : ""}).'
+              : 'Check-in tersimpan offline — akan dikirim otomatis saat koneksi tersedia.',
         ),
       ),
     );
@@ -543,7 +519,7 @@ class _MissionTodayScreenState extends State<MissionTodayScreen> {
       draft.fix.latitude,
       draft.fix.longitude,
     );
-    await VisitSyncService.enqueueCheckout(
+    final queued = await VisitSyncService.enqueueCheckout(
       latitude: draft.fix.latitude,
       longitude: draft.fix.longitude,
       address: address,
@@ -554,6 +530,7 @@ class _MissionTodayScreenState extends State<MissionTodayScreen> {
       isMockLocation: draft.fix.isMocked,
     );
     await VisitSyncService.syncNow();
+    final delivered = await VisitSyncService.wasDelivered(queued.id);
     try {
       await VisitPlannerService.updateMissionStatus(
         planDetailId: item.planDetailId,
@@ -563,11 +540,24 @@ class _MissionTodayScreenState extends State<MissionTodayScreen> {
     } catch (_) {
       // The check-out remains safely queued; status can be retried on refresh.
     }
-    ActiveVisitService.markCheckoutQueued();
+    if (delivered) {
+      ActiveVisitService.markCheckoutQueued();
+    } else {
+      ActiveVisitService.markCheckoutFailed(
+        supplierId: item.supplierId,
+        supplierName: item.supplierName,
+      );
+    }
     _activeWorkOrderIds.clear();
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Check-out disimpan untuk sinkronisasi.')),
+      SnackBar(
+        content: Text(
+          delivered
+              ? 'Check-out berhasil dikirim ke server.'
+              : 'Check-out tersimpan offline — akan dikirim otomatis saat koneksi tersedia. Cek ikon sinkronisasi jika lama.',
+        ),
+      ),
     );
   }
 

@@ -1,10 +1,13 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../services/persistent_auth_service.dart';
 import '../services/mandatory_gps_service.dart';
 import '../services/update_service.dart';
+import '../services/device_security_service.dart';
 import '../services/geu/geu_auth_service.dart';
 import '../services/geu/active_visit_service.dart';
 import '../services/geu/visit_sync_service.dart';
+import '../services/geu/push_notification_service.dart';
 
 import 'login_screen.dart';
 import 'role_selection_screen.dart';
@@ -25,6 +28,11 @@ class _SplashScreenState extends State<SplashScreen>
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
   late Animation<double> _scaleAnimation;
+  String _loadingStatus = 'Menyiapkan aplikasi...';
+
+  void _setLoadingStatus(String status) {
+    if (mounted) setState(() => _loadingStatus = status);
+  }
 
   @override
   void initState() {
@@ -48,30 +56,46 @@ class _SplashScreenState extends State<SplashScreen>
     // Reset update service flag untuk app session baru
     UpdateService.instance.resetForNewLoad();
 
+    // Root/fake-GPS scan runs in the background here so the result is
+    // already cached (DeviceSecurityService.lastResult) by the time the
+    // user opens Diagnosa Sistem - fire-and-forget, must never delay login.
+    DeviceSecurityService.check();
+
     // 2. Lanjut ke Cek Login secara paralel/setelah delay
     _checkLoginStatus();
   }
 
   Future<void> _checkLoginStatus() async {
     // Tunggu minimal 2 detik untuk menampilkan splash screen
+    _setLoadingStatus('Menyiapkan layanan aplikasi...');
     await Future.delayed(const Duration(seconds: 2));
 
     try {
+      _setLoadingStatus('Mengecek sesi login...');
       final authService = PersistentAuthService.instance;
       final isLoggedIn = await authService.isLoggedIn();
 
       if (mounted) {
         if (isLoggedIn) {
+          _setLoadingStatus('Mengamankan sesi akun...');
           // Best-effort, non-blocking: re-open the Canvassing/Visit Planner
           // session using securely cached credentials, since this auto-login
           // path never sees a password to forward.
           final geuSessionReady = await GeuAuthService.ensureSession();
+          _setLoadingStatus('Memulihkan kunjungan aktif...');
           await ActiveVisitService.restore();
           if (geuSessionReady) {
+            _setLoadingStatus('Menyinkronkan data terbaru...');
             await VisitSyncService.syncNow();
+            // Re-register here too, not just on a fresh password login — an
+            // app reinstall or a token FCM silently rotated before the
+            // previous session ended would otherwise never get a token on
+            // file until the user explicitly logs out and back in.
+            unawaited(PushNotificationService.registerToken());
           }
 
           // Check if user needs mandatory GPS consent
+          _setLoadingStatus('Mengecek izin lokasi dan GPS...');
           bool needsGpsConsent = await MandatoryGpsService.instance
               .needsMandatoryGpsConsent();
 
@@ -88,9 +112,8 @@ class _SplashScreenState extends State<SplashScreen>
             );
           } else {
             // Auto-login successful, navigate straight to main app
-            print(
-              '🚀 Auto-login successful, navigating to main app',
-            );
+            _setLoadingStatus('Menyiapkan dashboard...');
+            print('🚀 Auto-login successful, navigating to main app');
             Navigator.pushReplacement(
               context,
               MaterialPageRoute(
@@ -100,6 +123,7 @@ class _SplashScreenState extends State<SplashScreen>
           }
         } else {
           // Belum login atau token expired, ke login screen
+          _setLoadingStatus('Sesi belum ditemukan, membuka login...');
           print('🔑 No valid login found, navigating to login');
           Navigator.pushReplacement(
             context,
@@ -108,6 +132,7 @@ class _SplashScreenState extends State<SplashScreen>
         }
       }
     } catch (e) {
+      _setLoadingStatus('Terjadi kendala, membuka halaman login...');
       print('❌ Error during auto-login check: $e');
       // Jika ada error, arahkan ke login screen
       if (mounted) {
@@ -218,7 +243,7 @@ class _SplashScreenState extends State<SplashScreen>
                       const SizedBox(height: 20),
 
                       Text(
-                        'Checking login status...',
+                        _loadingStatus,
                         style: AppTextStyles.bodySmall.copyWith(
                           color: AppColors.white.withOpacity(0.7),
                         ),

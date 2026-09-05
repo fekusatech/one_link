@@ -7,11 +7,15 @@ import 'visit_sync_service.dart';
 class ActiveVisitState {
   final bool isActive;
   final bool isPendingLocal;
+  final bool syncFailed;
   final int? supplierId;
+  final String? supplierName;
   const ActiveVisitState({
     required this.isActive,
     this.isPendingLocal = false,
+    this.syncFailed = false,
     this.supplierId,
+    this.supplierName,
   });
 }
 
@@ -47,6 +51,7 @@ class ActiveVisitService {
         ActiveVisitState(
           isActive: active,
           supplierId: visit?['supplier_id'] as int?,
+          supplierName: visit?['supplier_name'] as String?,
         ),
       );
     } catch (_) {
@@ -66,8 +71,31 @@ class ActiveVisitService {
       supplierId: supplierId,
     ),
   );
+
+  /// Only call once the checkout is CONFIRMED delivered
+  /// (`VisitSyncService.wasDelivered`) — clearing this optimistically before
+  /// delivery is exactly how a stuck check-in goes unnoticed on-device: the
+  /// server still sees the visit as open and will reject the next check-in
+  /// with 409, but the app itself no longer suspects anything is wrong.
   static void markCheckoutQueued() =>
       _set(const ActiveVisitState(isActive: false));
+
+  /// The checkout request reached the server and was hard-rejected (e.g. GPS
+  /// too far from the check-in point) or is still stuck retrying — the
+  /// server-side visit is still open. Keep isActive so the RO sees a warning
+  /// instead of the app silently forgetting about it until the next blocked
+  /// check-in confuses them.
+  static void markCheckoutFailed({
+    required int supplierId,
+    required String supplierName,
+  }) => _set(
+    ActiveVisitState(
+      isActive: true,
+      syncFailed: true,
+      supplierId: supplierId,
+      supplierName: supplierName,
+    ),
+  );
 }
 
 extension<T> on Iterable<T> {

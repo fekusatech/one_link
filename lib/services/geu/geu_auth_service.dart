@@ -1,9 +1,42 @@
+import 'dart:async';
+import 'dart:convert';
+
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../persistent_auth_service.dart';
 import '../user_storage.dart';
 import 'geu_api_client.dart';
+import 'push_notification_service.dart';
+
+/// One entry in the account switcher — every account ever successfully
+/// logged into on this device. Password lives in the same OS-encrypted
+/// secure vault ensureSession() already trusts for the single "current"
+/// account; this just keeps one per remembered account instead of one slot
+/// total.
+class SavedAccount {
+  final String email;
+  final String password;
+  final String name;
+
+  const SavedAccount({
+    required this.email,
+    required this.password,
+    required this.name,
+  });
+
+  Map<String, dynamic> toJson() => {
+    'email': email,
+    'password': password,
+    'name': name,
+  };
+
+  factory SavedAccount.fromJson(Map<String, dynamic> json) => SavedAccount(
+    email: json['email']?.toString() ?? '',
+    password: json['password']?.toString() ?? '',
+    name: json['name']?.toString() ?? '',
+  );
+}
 
 class GeuUser {
   final int id;
@@ -48,6 +81,7 @@ class GeuAuthService {
 
   static const _secureKeyEmail = 'geu_cred_email';
   static const _secureKeyPassword = 'geu_cred_password';
+  static const _secureKeyAccounts = 'geu_saved_accounts';
   static const _storage = FlutterSecureStorage();
 
   static Future<GeuUser> login(
@@ -110,8 +144,69 @@ class GeuAuthService {
     if (rememberCredentials) {
       await _storage.write(key: _secureKeyEmail, value: email);
       await _storage.write(key: _secureKeyPassword, value: password);
+      // Server-confirmed email/name (not the raw, possibly differently-cased
+      // input) so the switcher list and the "current account" comparison
+      // it does against getCachedUser() always match on the same casing.
+      await _rememberAccount(
+        SavedAccount(email: user.email, password: password, name: user.name),
+      );
     }
+    unawaited(PushNotificationService.registerToken());
     return user;
+  }
+
+  /// Every account this device has ever logged into, most-recently-used
+  /// first — the account switcher's data source.
+  static Future<List<SavedAccount>> getSavedAccounts() async {
+    final raw = await _storage.read(key: _secureKeyAccounts);
+    if (raw == null || raw.isEmpty) return [];
+    try {
+      final list = jsonDecode(raw) as List;
+      return list
+          .whereType<Map>()
+          .map((e) => SavedAccount.fromJson(Map<String, dynamic>.from(e)))
+          .toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  static Future<void> _rememberAccount(SavedAccount account) async {
+    final accounts = await getSavedAccounts();
+    accounts.removeWhere(
+      (a) => a.email.toLowerCase() == account.email.toLowerCase(),
+    );
+    accounts.insert(0, account);
+    await _storage.write(
+      key: _secureKeyAccounts,
+      value: jsonEncode(accounts.map((a) => a.toJson()).toList()),
+    );
+  }
+
+  /// Removes an account from the switcher only — does not touch its actual
+  /// session server-side. Use when a saved password stops working (changed
+  /// server-side) or the user explicitly wants it off this device's list.
+  static Future<void> forgetSavedAccount(String email) async {
+    final accounts = await getSavedAccounts();
+    accounts.removeWhere((a) => a.email.toLowerCase() == email.toLowerCase());
+    await _storage.write(
+      key: _secureKeyAccounts,
+      value: jsonEncode(accounts.map((a) => a.toJson()).toList()),
+    );
+  }
+
+  /// Switches the active session to [email] using its remembered password
+  /// — a full login (clears the old session first), just without retyping
+  /// anything. Throws if the account isn't saved, or the saved password no
+  /// longer works (changed server-side since it was remembered).
+  static Future<GeuUser> switchToAccount(String email) async {
+    final accounts = await getSavedAccounts();
+    final account = accounts.firstWhere(
+      (a) => a.email.toLowerCase() == email.toLowerCase(),
+      orElse: () =>
+          throw Exception('Akun tidak ditemukan di perangkat ini.'),
+    );
+    return login(account.email, account.password);
   }
 
   /// Refresh & cache the current user's avatar from the Go API.
@@ -314,6 +409,9 @@ class GeuAuthService {
   }
 
   static Future<void> logout() async {
+    // Must happen before clearSession() — deactivating needs the still-valid
+    // session to identify which user's token to turn off.
+    await PushNotificationService.deactivateToken();
     try {
       final dio = await GeuApiClient.instance;
       await dio.post('/api-auth/logout');

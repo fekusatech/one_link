@@ -101,6 +101,19 @@ class VisitSyncService {
 
   static Future<List<VisitSyncItem>> allItems() => _read();
 
+  /// Whether [id] (the id returned by an enqueueCheckin/enqueueCheckout call)
+  /// actually reached the server. Callers must check this after `syncNow()`
+  /// instead of assuming success — syncNow() swallows delivery failures by
+  /// design (an item just stays queued for the next retry) so it returning
+  /// normally does NOT mean the visit data was received.
+  static Future<bool> wasDelivered(String id) async {
+    final queue = await _read();
+    for (final item in queue) {
+      if (item.id == id) return item.state == VisitSyncState.succeeded;
+    }
+    return false;
+  }
+
   /// Removes only unsent visit data after an explicit destructive logout.
   static Future<void> discardPending() async {
     final queue = await _read();

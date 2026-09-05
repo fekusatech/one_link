@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'constants/app_colors.dart';
 import 'screens/splash_screen.dart';
 import 'screens/login_screen.dart';
@@ -17,11 +18,15 @@ import 'screens/supplier_list_screen.dart';
 import 'screens/role_selection_screen.dart';
 import 'screens/mandatory_gps_consent_screen.dart';
 import 'providers/supplier_form_provider.dart';
-import 'providers/supplier_list_provider.dart';
+
+import 'widgets/permission_gate.dart';
 import 'services/gps_enforcement_service.dart';
 import 'services/user_storage.dart';
 import 'services/driver_monitoring_service.dart';
 import 'services/file_logger_service.dart';
+import 'services/geu/active_visit_service.dart';
+import 'services/geu/visit_sync_service.dart';
+import 'services/geu/push_notification_service.dart';
 
 import 'config/app_config.dart';
 
@@ -36,6 +41,8 @@ Future<void> main() async {
       await _configureOrientation();
       await AppConfig.init();
       await FileLoggerService.instance.init();
+      await Firebase.initializeApp();
+      PushNotificationService.registerBackgroundHandler();
       runApp(const MyApp());
     },
     (error, stack) {
@@ -68,12 +75,48 @@ Future<void> _configureOrientation() async {
   await SystemChrome.setPreferredOrientations(DeviceOrientation.values);
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
+
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
+  final _navigatorKey = GlobalKey<NavigatorState>();
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    unawaited(PushNotificationService.initialize(_navigatorKey));
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  /// There is no background sync service — a queued check-in/check-out (or
+  /// one the server hard-rejected) otherwise sits with zero retry until the
+  /// RO happens to open a screen that calls syncNow(). Re-checking whenever
+  /// the app comes back to the foreground closes most of that gap without
+  /// needing a real background service (foreground-service permissions,
+  /// battery-optimization prompts, etc.) — cold start is already covered by
+  /// splash_screen.dart, this only adds the resume-from-background case.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      unawaited(VisitSyncService.syncNow());
+      unawaited(ActiveVisitService.restore());
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorKey: _navigatorKey,
       title: 'One Link',
       debugShowCheckedModeBanner: false,
       locale: const Locale('id'),
@@ -134,9 +177,9 @@ class MyApp extends StatelessWidget {
           create: (_) => SupplierFormProvider(),
           child: const AddSupplierScreenSimple(),
         ),
-        '/supplier-list': (context) => ChangeNotifierProvider(
-          create: (_) => SupplierListProvider(),
-          child: const SupplierListScreen(),
+        '/supplier-list': (context) => const PermissionGate(
+          slug: 'crm-read-supplier',
+          child: SupplierListScreen(),
         ),
         '/exit': (context) => const AppExitHandler(),
       },

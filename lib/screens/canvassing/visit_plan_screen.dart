@@ -12,6 +12,7 @@ import '../../models/geu/visit_planner_models.dart';
 import '../../models/supplier_order_history.dart';
 import '../../services/supplier_list_service.dart';
 import '../../widgets/order_history_widgets.dart';
+import '../../widgets/active_visit_warning_banner.dart';
 import '../../services/geu/gps_service.dart';
 import '../../services/geu/geu_auth_service.dart';
 import '../../services/geu/haversine.dart';
@@ -592,6 +593,7 @@ class _VisitPlanScreenState extends State<VisitPlanScreen>
               padding: const EdgeInsets.all(12),
               child: Column(
                 children: [
+                  const ActiveVisitWarningBanner(),
                   if (_missionActive)
                     Align(
                       alignment: Alignment.centerLeft,
@@ -685,7 +687,19 @@ class _VisitPlanScreenState extends State<VisitPlanScreen>
             ),
           ),
           if (!_missionActive)
-            Positioned(top: 66, left: 16, right: 16, child: _mapLegend()),
+            ValueListenableBuilder<ActiveVisitState>(
+              valueListenable: ActiveVisitService.current,
+              // The warning banner sits above this in the same top area but
+              // is a separate Positioned overlay with no shared layout flow,
+              // so its height has to be accounted for here manually instead
+              // of the legend just flowing below it.
+              builder: (_, state, __) => Positioned(
+                top: state.isActive ? 150 : 66,
+                left: 16,
+                right: 16,
+                child: _mapLegend(),
+              ),
+            ),
           Positioned(
             top: 92,
             right: 20,
@@ -1767,7 +1781,7 @@ class _TodayVisitsSheetState extends State<_TodayVisitsSheet> {
         draft.fix.latitude,
         draft.fix.longitude,
       );
-      await VisitSyncService.enqueueCheckin(
+      final queued = await VisitSyncService.enqueueCheckin(
         supplierId: item.supplierId,
         latitude: draft.fix.latitude,
         longitude: draft.fix.longitude,
@@ -1778,10 +1792,17 @@ class _TodayVisitsSheetState extends State<_TodayVisitsSheet> {
       );
       ActiveVisitService.markPendingCheckin(item.supplierId);
       await VisitSyncService.syncNow();
+      final delivered = await VisitSyncService.wasDelivered(queued.id);
       if (!mounted) return;
       setState(() => _checkedInSupplierId = item.supplierId);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Check-in berhasil disimpan.')),
+        SnackBar(
+          content: Text(
+            delivered
+                ? 'Check-in berhasil dikirim ke server.'
+                : 'Check-in tersimpan offline — akan dikirim otomatis saat koneksi tersedia.',
+          ),
+        ),
       );
     } catch (error) {
       if (mounted) {
@@ -1800,7 +1821,7 @@ class _TodayVisitsSheetState extends State<_TodayVisitsSheet> {
         draft.fix.latitude,
         draft.fix.longitude,
       );
-      await VisitSyncService.enqueueCheckout(
+      final queued = await VisitSyncService.enqueueCheckout(
         latitude: draft.fix.latitude,
         longitude: draft.fix.longitude,
         address: address,
@@ -1811,11 +1832,22 @@ class _TodayVisitsSheetState extends State<_TodayVisitsSheet> {
         isMockLocation: draft.fix.isMocked,
       );
       await VisitSyncService.syncNow();
+      final delivered = await VisitSyncService.wasDelivered(queued.id);
+      // The RO has physically finished here regardless of connectivity, so
+      // the mission still advances — queued data keeps retrying in the
+      // background. Only the message below is honest about delivery.
       await VisitPlannerService.updateMissionStatus(
         planDetailId: item.planDetailId,
         status: 'VISITED',
       );
-      ActiveVisitService.markCheckoutQueued();
+      if (delivered) {
+        ActiveVisitService.markCheckoutQueued();
+      } else {
+        ActiveVisitService.markCheckoutFailed(
+          supplierId: item.supplierId,
+          supplierName: item.supplierName,
+        );
+      }
       if (!mounted) return;
       setState(() {
         _checkedInSupplierId = null;
@@ -1824,7 +1856,13 @@ class _TodayVisitsSheetState extends State<_TodayVisitsSheet> {
       await _refreshMission();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Check-out berhasil disimpan.')),
+          SnackBar(
+            content: Text(
+              delivered
+                  ? 'Check-out berhasil dikirim ke server.'
+                  : 'Check-out tersimpan offline — akan dikirim otomatis saat koneksi tersedia. Cek ikon sinkronisasi jika lama.',
+            ),
+          ),
         );
       }
     } catch (error) {

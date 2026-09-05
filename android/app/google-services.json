@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1040535061437",
+    "project_id": "greenenergi-31451",
+    "storage_bucket": "greenenergi-31451.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1040535061437:android:2f9691a212f558b70308d4",
+        "android_client_info": {
+          "package_name": "com.example.one_link"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD5_hvtDczXpEZB6CpiFsMwvIJalJP4wYI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
