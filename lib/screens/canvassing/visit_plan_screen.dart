@@ -49,6 +49,10 @@ class _VisitPlanScreenState extends State<VisitPlanScreen>
   // A safe initial value prevents the GPS stream from rebuilding the map
   // before the remote distance_radius_map setting has finished loading.
   int _supplierRadiusMeters = 1000;
+  // 'osm' | 'google' — from the 'visit_plan_map_provider' backend setting.
+  // Only the tile source changes; markers/circles/routes are unaffected.
+  String _mapTileProvider = 'osm';
+  String _googleTilesApiKey = '';
   TodaysMission? _mission;
   LatLng? _user;
   double _headingDegrees = 0;
@@ -166,6 +170,14 @@ class _VisitPlanScreenState extends State<VisitPlanScreen>
         throw StateError('Radius scanner belum tersedia dari server.');
       }
       _supplierRadiusMeters = (radiusKm * 1000).round();
+      final tileProvider = await SettingsService.getByKey(
+        'visit_plan_map_provider',
+      );
+      if (tileProvider == 'google') {
+        _mapTileProvider = 'google';
+        _googleTilesApiKey =
+            await SettingsService.getByKey('google_maps_api_key') ?? '';
+      }
       final mission = await VisitPlannerService.getTodaysMission();
       GpsFix? fix;
       try {
@@ -197,6 +209,7 @@ class _VisitPlanScreenState extends State<VisitPlanScreen>
         _databaseSuppliers = suppliers;
       });
       MissionNavigationStateService.refresh(mission.items);
+      _advanceNavigationTargetIfNeeded(mission.items);
       final center =
           _user ??
           (mission.items.where((item) => item.hasCoordinates).isNotEmpty
@@ -398,8 +411,15 @@ class _VisitPlanScreenState extends State<VisitPlanScreen>
             ),
             children: [
               TileLayer(
-                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                urlTemplate: _tileUrl,
                 userAgentPackageName: 'com.example.one_link',
+                errorTileCallback: (tile, error, stackTrace) {
+                  // Google's raster endpoint isn't an officially supported
+                  // third-party API — fall back to OSM if it stops serving.
+                  if (_mapTileProvider == 'google' && mounted) {
+                    setState(() => _mapTileProvider = 'osm');
+                  }
+                },
               ),
               if (_insideWorkArea && _user != null)
                 AnimatedBuilder(
@@ -817,6 +837,47 @@ class _VisitPlanScreenState extends State<VisitPlanScreen>
     if (point != null && point.hasCoordinates) {
       _map.move(LatLng(point.lat!, point.lng!), 15);
     }
+  }
+
+  /// The "Tujuan:" banner and driving route both key off `_navigationTarget`,
+  /// but nothing was advancing it once that stop got checked out — the map
+  /// kept navigating to an already-VISITED supplier instead of the next
+  /// pending one. Called every time the mission list is refreshed (checkout,
+  /// skip, add, remove) while a mission is actively being driven.
+  void _advanceNavigationTargetIfNeeded(List<MissionItem> items) {
+    if (!_missionActive) return;
+    final target = _navigationTarget;
+    final targetStatus = target == null
+        ? null
+        : items
+              .cast<MissionItem?>()
+              .firstWhere(
+                (i) => i?.planDetailId == target.planDetailId,
+                orElse: () => null,
+              )
+              ?.status
+              .toUpperCase();
+    final targetDone =
+        target == null || targetStatus == null || targetStatus == 'VISITED' || targetStatus == 'SKIPPED';
+    if (!targetDone) return;
+
+    MissionItem? next;
+    for (final item in items) {
+      final status = item.status.toUpperCase();
+      if (status != 'VISITED' && status != 'SKIPPED' && item.hasCoordinates) {
+        next = item;
+        break;
+      }
+    }
+    if (next == null) {
+      // Every stop is done or skipped — nothing left to navigate to.
+      _setMissionActive(false);
+      return;
+    }
+    setState(() => _navigationTarget = next);
+    MissionNavigationStateService.start(destination: next, items: items);
+    _map.move(LatLng(next.lat!, next.lng!), _map.camera.zoom);
+    unawaited(_refreshDrivingRoute());
   }
 
   Future<void> _startDrivingMode(MissionItem item) async {
@@ -1271,6 +1332,11 @@ class _VisitPlanScreenState extends State<VisitPlanScreen>
   /// same source the order-history sheet checks). LEBIH_30 and BELUM_WO
   /// used to share one orange color/legend entry ("PO > 30 days"), which
   /// misleadingly implied every orange pin had SOME order history.
+  String get _tileUrl => _mapTileProvider == 'google'
+      ? 'https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}'
+            '${_googleTilesApiKey.isNotEmpty ? '&key=$_googleTilesApiKey' : ''}'
+      : 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
+
   Color _supplierBadgeColor(String badge) {
     switch (badge.toUpperCase()) {
       case 'DALAM_30':
