@@ -542,12 +542,15 @@ class _VisitPlanScreenState extends State<VisitPlanScreen>
                           point: LatLng(item.lat!, item.lng!),
                           width: 44,
                           height: 52,
-                          child: _mapPin(
-                            item == _navigationTarget
-                                ? AppColors.primaryGreen
-                                : const Color(0xFF2196F3),
-                            Icons.flag,
-                            tooltip: '${item.supplierName}\n${item.status}',
+                          child: GestureDetector(
+                            onTap: () => _showMissionItemDetails(item),
+                            child: _mapPin(
+                              item == _navigationTarget
+                                  ? AppColors.primaryGreen
+                                  : const Color(0xFF2196F3),
+                              Icons.flag,
+                              tooltip: '${item.supplierName}\n${item.status}',
+                            ),
                           ),
                         ),
                   if (_user != null)
@@ -1286,6 +1289,82 @@ class _VisitPlanScreenState extends State<VisitPlanScreen>
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('${result.name} ditambahkan ke Mission.')),
       );
+  }
+
+  Widget _detailRow(IconData icon, String value) => Padding(
+    padding: const EdgeInsets.only(top: 8),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: 18, color: AppColors.textSecondary),
+        const SizedBox(width: 10),
+        Expanded(child: Text(value, style: const TextStyle(height: 1.35))),
+      ],
+    ),
+  );
+
+  Future<void> _showMissionItemDetails(MissionItem item) async {
+    final distanceKm = (_user != null && item.hasCoordinates)
+        ? haversineDistanceKm(_user!.latitude, _user!.longitude, item.lat!, item.lng!)
+        : null;
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (sheetContext) => Padding(
+        padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.flag_outlined),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    item.supplierName,
+                    style: const TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            if (item.address.isNotEmpty)
+              _detailRow(Icons.location_on_outlined, item.address),
+            if (item.supplierPhone.trim().isNotEmpty)
+              _detailRow(Icons.phone_outlined, item.supplierPhone),
+            if (distanceKm != null)
+              _detailRow(
+                Icons.straighten_outlined,
+                'Jarak ${distanceKm.toStringAsFixed(2)} km',
+              ),
+            _detailRow(Icons.info_outline, 'Status: ${item.status}'),
+            const SizedBox(height: 18),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                onPressed: item.status.toUpperCase() == 'VISITED' ||
+                        item.status.toUpperCase() == 'SKIPPED'
+                    ? null
+                    : () {
+                        Navigator.pop(sheetContext);
+                        _startDrivingMode(item);
+                      },
+                icon: const Icon(Icons.navigation_outlined),
+                label: const Text('Navigate ke titik ini'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Future<void> _showSupplierDetails(NearbySupplier supplier) async {
@@ -2158,6 +2237,23 @@ class _TodayVisitsSheetState extends State<_TodayVisitsSheet> {
                                               spacing: 8,
                                               runSpacing: 6,
                                               children: [
+                                                if (isRegistered &&
+                                                    item.hasCoordinates &&
+                                                    !isNext)
+                                                  OutlinedButton.icon(
+                                                    onPressed: () =>
+                                                        widget.onStartDriving(
+                                                          item,
+                                                        ),
+                                                    icon: const Icon(
+                                                      Icons
+                                                          .navigation_outlined,
+                                                      size: 16,
+                                                    ),
+                                                    label: const Text(
+                                                      'Navigate',
+                                                    ),
+                                                  ),
                                                 OutlinedButton.icon(
                                                   onPressed: () =>
                                                       _skipMission(item),
