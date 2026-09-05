@@ -1,6 +1,5 @@
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 import 'geu_api_client.dart';
 import '../../screens/notification_screen.dart';
@@ -24,36 +23,20 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {}
 class PushNotificationService {
   PushNotificationService._();
 
-  static final _local = FlutterLocalNotificationsPlugin();
-  static const _channelId = 'erp_push_channel';
-  static const _channelName = 'Notifikasi';
-  static const _channelDesc = 'Notifikasi dari sistem (ERP)';
-  static bool _initialized = false;
-
   /// Call in main(), before runApp — registering the background handler
   /// only works before the widget tree exists.
   static void registerBackgroundHandler() {
     FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
   }
 
-  /// Call once the app's widget tree exists (e.g. MyApp.initState) — sets up
-  /// the local-notification channel used to actually show foreground
-  /// messages (FCM does NOT auto-display a system notification while the
-  /// app is in the foreground; that's the whole reason this local-notify
-  /// path exists), permission request, and tap-to-open handling.
+  /// Call once the app's widget tree exists (e.g. MyApp.initState) — requests
+  /// notification permission and wires up foreground/tap-to-open handling.
   static Future<void> initialize(GlobalKey<NavigatorState> navigatorKey) async {
-    if (!_initialized) {
-      const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
-      await _local.initialize(
-        const InitializationSettings(android: androidInit),
-        onDidReceiveNotificationResponse: (_) => _openInbox(navigatorKey),
-      );
-      _initialized = true;
-    }
-
     await FirebaseMessaging.instance.requestPermission();
 
-    FirebaseMessaging.onMessage.listen((message) => _showForeground(message));
+    FirebaseMessaging.onMessage.listen(
+      (message) => _showForegroundModal(navigatorKey, message),
+    );
     FirebaseMessaging.onMessageOpenedApp.listen(
       (_) => _openInbox(navigatorKey),
     );
@@ -72,21 +55,38 @@ class PushNotificationService {
     );
   }
 
-  static Future<void> _showForeground(RemoteMessage message) async {
+  /// FCM does not show a system-tray notification while the app is in the
+  /// foreground, so a message arriving here would otherwise go unnoticed —
+  /// show it as an in-app modal instead, since the user is already looking
+  /// at the app.
+  static void _showForegroundModal(
+    GlobalKey<NavigatorState> navigatorKey,
+    RemoteMessage message,
+  ) {
     final notification = message.notification;
     if (notification == null) return;
-    const androidDetails = AndroidNotificationDetails(
-      _channelId,
-      _channelName,
-      channelDescription: _channelDesc,
-      importance: Importance.high,
-      priority: Priority.high,
-    );
-    await _local.show(
-      message.hashCode,
-      notification.title,
-      notification.body,
-      const NotificationDetails(android: androidDetails),
+    final context = navigatorKey.currentState?.overlay?.context;
+    if (context == null) return;
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(notification.title ?? 'Notifikasi'),
+        content: Text(notification.body ?? ''),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Tutup'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.of(dialogContext).pop();
+              _openInbox(navigatorKey);
+            },
+            child: const Text('Lihat'),
+          ),
+        ],
+      ),
     );
   }
 
