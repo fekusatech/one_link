@@ -10,6 +10,7 @@ import 'nearby_supplier_screen.dart';
 import 'tasks_screen.dart';
 import 'pickup_list_screen.dart';
 import 'my_statistic_screen.dart';
+import '../../widgets/permission_gate.dart';
 
 /// Hub for the 4 CRM operational modules (PRD §3.1) — Visit Planner is the
 /// only one wired to real data so far; the rest are placeholders for the
@@ -141,7 +142,10 @@ class _CanvassingHomeScreenState extends State<CanvassingHomeScreen> {
                   onTap: () => Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (_) => const NearbySupplierScreen(),
+                      builder: (_) => const PermissionGate(
+                        slug: 'crm-read-visit-planner',
+                        child: NearbySupplierScreen(),
+                      ),
                     ),
                   ),
                 ),
@@ -153,7 +157,10 @@ class _CanvassingHomeScreenState extends State<CanvassingHomeScreen> {
                   onTap: () => Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (_) => const ScanProspectScreen(),
+                      builder: (_) => const PermissionGate(
+                        slug: 'crm-read-visit-planner',
+                        child: ScanProspectScreen(),
+                      ),
                     ),
                   ),
                 ),
@@ -174,7 +181,12 @@ class _CanvassingHomeScreenState extends State<CanvassingHomeScreen> {
                   color: AppColors.textSecondary,
                   onTap: () => Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (_) => const PickupListScreen()),
+                    MaterialPageRoute(
+                      builder: (_) => const PermissionGate(
+                        slug: 'crm-read-pickup',
+                        child: PickupListScreen(),
+                      ),
+                    ),
                   ),
                 ),
                 _FieldActionCard(

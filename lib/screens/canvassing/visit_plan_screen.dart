@@ -27,6 +27,7 @@ import 'add_work_order_sheet.dart';
 import 'checkin_dialog.dart';
 import 'checkout_dialog.dart';
 import 'mission_today_screen.dart';
+import 'register_supplier_dialog.dart';
 import 'scan_prospect_screen.dart';
 import 'skip_mission_sheet.dart';
 
@@ -258,7 +259,9 @@ class _VisitPlanScreenState extends State<VisitPlanScreen>
           _headingDegrees = bearing ?? _headingDegrees;
           _showRecenter = false;
         });
-        _map.move(point, 15);
+        // Pan only — forcing a fixed zoom here fights any manual zoom the RO
+        // made to confirm the exact pin position while approaching a POO.
+        _map.move(point, _map.camera.zoom);
         unawaited(_refreshNearbySuppliers(point));
       });
     } catch (_) {
@@ -861,7 +864,9 @@ class _VisitPlanScreenState extends State<VisitPlanScreen>
           _user = point;
           _headingDegrees = bearing ?? _headingDegrees;
         });
-        _map.move(point, 17);
+        // Same reasoning as the browsing-mode listener above: pan without
+        // resetting zoom so the RO's manual zoom survives while navigating.
+        _map.move(point, _map.camera.zoom);
         final previousRouteOrigin = _routeOrigin;
         if (previousRouteOrigin == null ||
             haversineDistanceKm(
@@ -1208,396 +1213,18 @@ class _VisitPlanScreenState extends State<VisitPlanScreen>
       // Coordinates remain a useful offline fallback.
     }
     if (!mounted) return;
-    List<BankOption> banks = const [];
-    try {
-      banks = await VisitPlannerService.getBanks();
-    } catch (_) {
-      // The optional account section remains usable after a later retry.
-    }
-    if (!mounted) return;
-    final name = TextEditingController();
-    final address = TextEditingController(text: initialAddress);
-    final employee = TextEditingController();
-    final position = TextEditingController();
-    final phone = TextEditingController();
-    final accountName = TextEditingController();
-    final accountNumber = TextEditingController();
-    var submitting = false;
-    var validatingAccount = false;
-    BankOption? selectedBank;
-    String? accountValidationMessage;
-    await showDialog<void>(
-      context: context,
-      builder: (dialogContext) => StatefulBuilder(
-        builder: (context, setDialogState) {
-          Future<void> submit() async {
-            if (name.text.trim().isEmpty ||
-                employee.text.trim().isEmpty ||
-                position.text.trim().isEmpty)
-              return;
-            setDialogState(() => submitting = true);
-            try {
-              final supplierId = await VisitPlannerService.registerProspect(
-                name: name.text.trim(),
-                address: address.text.trim(),
-                phone: phone.text.trim(),
-                latitude: point.latitude,
-                longitude: point.longitude,
-                employeeName: employee.text.trim(),
-                employeePosition: position.text.trim(),
-                accountName: accountName.text.trim(),
-                accountNumber: accountNumber.text.trim(),
-                bankId: selectedBank?.id,
-              );
-              await VisitPlannerService.addSupplierToMission(supplierId);
-              if (!dialogContext.mounted) return;
-              Navigator.pop(dialogContext);
-              await _load();
-              if (mounted)
-                ScaffoldMessenger.of(this.context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      '${name.text.trim()} ditambahkan ke Mission.',
-                    ),
-                  ),
-                );
-            } catch (error) {
-              if (dialogContext.mounted)
-                ScaffoldMessenger.of(
-                  dialogContext,
-                ).showSnackBar(SnackBar(content: Text(error.toString())));
-            } finally {
-              if (dialogContext.mounted)
-                setDialogState(() => submitting = false);
-            }
-          }
-
-          return AlertDialog(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(28),
-            ),
-            insetPadding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 24,
-            ),
-            titlePadding: const EdgeInsets.fromLTRB(24, 22, 24, 4),
-            contentPadding: const EdgeInsets.fromLTRB(24, 8, 24, 0),
-            actionsPadding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
-            title: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  width: 42,
-                  height: 42,
-                  decoration: BoxDecoration(
-                    color: Colors.deepPurple.withOpacity(0.10),
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: const Icon(
-                    Icons.person_add_alt_1,
-                    color: Colors.deepPurple,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                const Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Register Supplier',
-                        style: TextStyle(
-                          fontSize: 21,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                      SizedBox(height: 3),
-                      Text(
-                        'Tambahkan supplier baru ke mission',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            content: SingleChildScrollView(
-              child: SizedBox(
-                width: MediaQuery.sizeOf(context).width - 80,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Lokasi: ${point.latitude.toStringAsFixed(6)}, ${point.longitude.toStringAsFixed(6)}',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    _field(name, 'Nama Supplier *'),
-                    _field(address, 'Alamat', maxLines: 2),
-                    const SizedBox(height: 18),
-                    _dialogSectionHeader(
-                      Icons.contact_phone_outlined,
-                      'Kontak PIC',
-                    ),
-                    _field(employee, 'Nama Karyawan *'),
-                    _field(position, 'Jabatan *'),
-                    _field(
-                      phone,
-                      'Nomor Telepon',
-                      keyboard: TextInputType.phone,
-                    ),
-                    const SizedBox(height: 18),
-                    _dialogSectionHeader(
-                      Icons.account_balance_outlined,
-                      'Rekening opsional',
-                    ),
-                    _field(accountName, 'Nama Pemilik Rekening'),
-                    _field(
-                      accountNumber,
-                      'Nomor Rekening',
-                      keyboard: TextInputType.number,
-                    ),
-                    const SizedBox(height: 10),
-                    DropdownButtonFormField<BankOption>(
-                      value: selectedBank,
-                      isExpanded: true,
-                      decoration: const InputDecoration(
-                        labelText: 'Pilih Bank',
-                        border: OutlineInputBorder(),
-                      ),
-                      items: banks
-                          .map(
-                            (bank) => DropdownMenuItem(
-                              value: bank,
-                              child: Text('${bank.name} (${bank.code})'),
-                            ),
-                          )
-                          .toList(),
-                      onChanged: submitting || validatingAccount
-                          ? null
-                          : (bank) => setDialogState(() {
-                              selectedBank = bank;
-                              accountValidationMessage = null;
-                            }),
-                    ),
-                    const SizedBox(height: 10),
-                    SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton.icon(
-                        onPressed: validatingAccount
-                            ? null
-                            : () async {
-                                if (accountNumber.text.trim().isEmpty ||
-                                    selectedBank == null) {
-                                  setDialogState(
-                                    () => accountValidationMessage =
-                                        'Isi nomor rekening dan pilih bank terlebih dahulu.',
-                                  );
-                                  return;
-                                }
-                                setDialogState(() {
-                                  validatingAccount = true;
-                                  accountValidationMessage = null;
-                                });
-                                try {
-                                  final result =
-                                      await VisitPlannerService.validateBankAccount(
-                                        accountNumber: accountNumber.text
-                                            .trim(),
-                                        bankCode: selectedBank!.code,
-                                        accountName: accountName.text.trim(),
-                                      );
-                                  if (!dialogContext.mounted) return;
-                                  setDialogState(
-                                    () =>
-                                        accountValidationMessage = result.valid
-                                        ? '✓ ${result.accountName}'
-                                        : '✗ Rekening tidak valid.',
-                                  );
-                                } catch (error) {
-                                  if (dialogContext.mounted) {
-                                    setDialogState(
-                                      () => accountValidationMessage =
-                                          '✗ ${error.toString()}',
-                                    );
-                                  }
-                                } finally {
-                                  if (dialogContext.mounted) {
-                                    setDialogState(
-                                      () => validatingAccount = false,
-                                    );
-                                  }
-                                }
-                              },
-                        icon: validatingAccount
-                            ? const SizedBox(
-                                width: 16,
-                                height: 16,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                ),
-                              )
-                            : const Icon(Icons.verified_outlined),
-                        label: Text(
-                          validatingAccount
-                              ? 'Memvalidasi...'
-                              : 'Validasi rekening',
-                        ),
-                        style: OutlinedButton.styleFrom(
-                          minimumSize: const Size.fromHeight(46),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                        ),
-                      ),
-                    ),
-                    if (accountValidationMessage != null)
-                      Container(
-                        width: double.infinity,
-                        margin: const EdgeInsets.only(top: 10),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 10,
-                        ),
-                        decoration: BoxDecoration(
-                          color:
-                              (accountValidationMessage!.startsWith('✓')
-                                      ? AppColors.success
-                                      : AppColors.error)
-                                  .withOpacity(0.08),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          accountValidationMessage!,
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            color: accountValidationMessage!.startsWith('✓')
-                                ? AppColors.success
-                                : AppColors.error,
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-            ),
-            actions: [
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: submitting
-                          ? null
-                          : () => Navigator.pop(dialogContext),
-                      style: OutlinedButton.styleFrom(
-                        minimumSize: const Size.fromHeight(48),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                      ),
-                      child: const Text('Batal'),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    flex: 2,
-                    child: FilledButton(
-                      onPressed: submitting ? null : submit,
-                      style: FilledButton.styleFrom(
-                        minimumSize: const Size.fromHeight(48),
-                        backgroundColor: AppColors.primaryGreen,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                      ),
-                      child: Text(
-                        submitting ? 'Menyimpan...' : 'Tambah ke Mission',
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          );
-        },
-      ),
+    final result = await showRegisterSupplierDialog(
+      context,
+      latitude: point.latitude,
+      longitude: point.longitude,
+      initialAddress: initialAddress,
     );
-    name.dispose();
-    address.dispose();
-    employee.dispose();
-    position.dispose();
-    phone.dispose();
-    accountName.dispose();
-    accountNumber.dispose();
-  }
-
-  Widget _field(
-    TextEditingController controller,
-    String label, {
-    int maxLines = 1,
-    TextInputType? keyboard,
-  }) => Padding(
-    padding: const EdgeInsets.only(top: 10),
-    child: TextField(
-      controller: controller,
-      maxLines: maxLines,
-      keyboardType: keyboard,
-      decoration: InputDecoration(
-        labelText: label,
-        filled: true,
-        fillColor: AppColors.background,
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 15,
-          vertical: 14,
-        ),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(
-            color: AppColors.primaryGreen.withOpacity(0.18),
-          ),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(
-            color: AppColors.primaryGreen.withOpacity(0.18),
-          ),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(
-            color: AppColors.primaryGreen,
-            width: 1.5,
-          ),
-        ),
-      ),
-    ),
-  );
-
-  Widget _dialogSectionHeader(IconData icon, String title) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 2),
-      child: Row(
-        children: [
-          Icon(icon, size: 17, color: AppColors.primaryGreen),
-          const SizedBox(width: 7),
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w800,
-              color: AppColors.textPrimary,
-              letterSpacing: .3,
-            ),
-          ),
-        ],
-      ),
-    );
+    if (result == null || !mounted) return;
+    await _load();
+    if (mounted)
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('${result.name} ditambahkan ke Mission.')),
+      );
   }
 
   Future<void> _showSupplierDetails(NearbySupplier supplier) async {
@@ -1775,6 +1402,12 @@ class _SupplierDetailSheetState extends State<_SupplierDetailSheet> {
               Icons.straighten_outlined,
               'Jarak ${supplier.distanceKm.toStringAsFixed(2)} km',
             ),
+            if (supplier.lastWoKode != null && supplier.lastWoKode!.isNotEmpty)
+              _supplierDetailRow(
+                Icons.assignment_turned_in_outlined,
+                'WO terakhir: ${supplier.lastWoKode}'
+                '${supplier.umurHari != null ? ' (${supplier.umurHari} hari lalu)' : ''}',
+              ),
             const SizedBox(height: 14),
             const Divider(height: 1),
             const SizedBox(height: 14),
@@ -2093,6 +1726,31 @@ class _TodayVisitsSheetState extends State<_TodayVisitsSheet> {
     }
   }
 
+  Future<void> _registerSupplier(MissionItem item) async {
+    if (!item.hasCoordinates) return;
+    final result = await showRegisterSupplierDialog(
+      context,
+      latitude: item.lat!,
+      longitude: item.lng!,
+      initialName: item.supplierName,
+      initialAddress: item.address,
+      initialPhone: item.supplierPhone,
+    );
+    if (result == null || !mounted) return;
+    // The scanned-place row (supplier_id 0) is now redundant — the dialog
+    // added a fresh mission row with a real supplier_id above.
+    try {
+      await VisitPlannerService.removeFromMission(item.planDetailId);
+    } catch (_) {
+      // Non-fatal: the mission still has the newly registered supplier.
+    }
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('${result.name} terdaftar sebagai supplier.')),
+    );
+    await _refreshMission();
+  }
+
   Future<void> _removeMission(MissionItem item) async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -2312,6 +1970,7 @@ class _TodayVisitsSheetState extends State<_TodayVisitsSheet> {
                                   _missionStarted && item == _nextStop;
                               final hasWorkOrder = _hasWorkOrder(item);
                               final isCheckedIn = _isCheckedInAt(item);
+                              final isRegistered = item.supplierId > 0;
                               final canManage =
                                   item.status.toUpperCase() != 'VISITED' &&
                                   item.status.toUpperCase() != 'SKIPPED' &&
@@ -2368,7 +2027,25 @@ class _TodayVisitsSheetState extends State<_TodayVisitsSheet> {
                                               spacing: 8,
                                               runSpacing: 6,
                                               children: [
-                                                if (isNext && !hasWorkOrder)
+                                                if (isNext && !isRegistered)
+                                                  FilledButton.icon(
+                                                    onPressed: () =>
+                                                        _registerSupplier(
+                                                          item,
+                                                        ),
+                                                    icon: const Icon(
+                                                      Icons
+                                                          .person_add_alt_1_outlined,
+                                                      size: 16,
+                                                    ),
+                                                    label: const Text(
+                                                      'Daftarkan Supplier',
+                                                    ),
+                                                  ),
+                                                if (isNext &&
+                                                    isRegistered &&
+                                                    isCheckedIn &&
+                                                    !hasWorkOrder)
                                                   FilledButton.icon(
                                                     onPressed: () =>
                                                         _openAddWorkOrder(item),
@@ -2392,7 +2069,9 @@ class _TodayVisitsSheetState extends State<_TodayVisitsSheet> {
                                                       'Check-out',
                                                     ),
                                                   ),
-                                                if (isNext && !isCheckedIn)
+                                                if (isNext &&
+                                                    isRegistered &&
+                                                    !isCheckedIn)
                                                   OutlinedButton.icon(
                                                     onPressed: () =>
                                                         _checkIn(item),

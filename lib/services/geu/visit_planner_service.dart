@@ -70,6 +70,23 @@ class VisitPlannerService {
     }
   }
 
+  /// GET /api/visits/by-work-order/:workOrderId — the checkin/checkout
+  /// visit(s) that produced this WO, keyed off t_sales_visit.work_order_ids.
+  static Future<List<VisitHistoryItem>> getVisitsForWorkOrder(
+    int workOrderId,
+  ) async {
+    final dio = await GeuApiClient.instance;
+    final response = await dio.get('/api/visits/by-work-order/$workOrderId');
+    final body = response.data;
+    final rawList = body is Map && body['data'] is List
+        ? body['data'] as List
+        : const [];
+    return rawList
+        .whereType<Map>()
+        .map((item) => VisitHistoryItem.fromJson(Map<String, dynamic>.from(item)))
+        .toList();
+  }
+
   static Future<TodaysMission> getTodaysMission({
     bool forceRefresh = false,
   }) async {
@@ -362,6 +379,9 @@ class VisitPlannerService {
     String accountName = '',
     String accountNumber = '',
     int? bankId,
+    int? provinsiId,
+    int? kotaId,
+    int? kecamatanId,
   }) async {
     final dio = await GeuApiClient.instance;
     final response = await dio.post(
@@ -377,6 +397,9 @@ class VisitPlannerService {
         if (accountName.isNotEmpty) 'nama_rek': accountName,
         if (accountNumber.isNotEmpty) 'nomor_rek': accountNumber,
         if (bankId != null) 'bank_rek_id': bankId,
+        if (provinsiId != null) 'provinsi_id': provinsiId,
+        if (kotaId != null) 'kota_id': kotaId,
+        if (kecamatanId != null) 'kecamatan_id': kecamatanId,
       },
     );
     final data = GeuApiClient.unwrapData(response.data);
@@ -388,6 +411,29 @@ class VisitPlannerService {
       throw VisitPlannerException('ID supplier hasil registrasi tidak valid.');
     }
     return id;
+  }
+
+  /// Previews the province/city/district GPS coordinates resolve to — the
+  /// same lookup RegisterProspect runs server-side — so the register-supplier
+  /// form can show/confirm it before submitting. Any field may come back
+  /// null if Google Geocoding has no result or there's no matching row in
+  /// our own region tables; the dialog falls back to manual selection then.
+  static Future<DetectedRegion> detectRegion({
+    required double latitude,
+    required double longitude,
+  }) async {
+    final dio = await GeuApiClient.instance;
+    final response = await dio.get(
+      '/api/visit-planner/detect-region',
+      queryParameters: {'lat': latitude, 'lng': longitude},
+    );
+    final data = GeuApiClient.unwrapData(response.data);
+    if (response.statusCode != 200 || data is! Map) return const DetectedRegion();
+    return DetectedRegion(
+      provinsiId: int.tryParse(data['provinsi_id']?.toString() ?? ''),
+      kotaId: int.tryParse(data['kota_id']?.toString() ?? ''),
+      kecamatanId: int.tryParse(data['kecamatan_id']?.toString() ?? ''),
+    );
   }
 
   static Future<List<BankOption>> getBanks() async {
@@ -444,7 +490,12 @@ class VisitPlannerService {
   /// sibling endpoints (createScanJob, getNearbySuppliers) — this route's
   /// exact request schema isn't in doc.md, so confirm against the backend
   /// before relying on it in production.
-  static Future<void> addPoiToMission({
+  ///
+  /// Returns the new mission row's plan_detail_id so the caller can route the
+  /// RO straight into supplier registration and, once that succeeds, remove
+  /// this placeholder POI row (see _addPoi/_registerSupplier in
+  /// mission_today_screen.dart).
+  static Future<int> addPoiToMission({
     required String name,
     required double latitude,
     required double longitude,
@@ -468,6 +519,14 @@ class VisitPlannerService {
             'POI gagal ditambahkan ke Mission.',
       );
     }
+    final data = GeuApiClient.unwrapData(body);
+    final planDetailId = int.tryParse(
+      (data is Map ? data['plan_detail_id'] : null)?.toString() ?? '',
+    );
+    if (planDetailId == null || planDetailId <= 0) {
+      throw VisitPlannerException('ID titik hasil penambahan tidak valid.');
+    }
+    return planDetailId;
   }
 
   static Future<List<NearbySupplier>> getNearbySuppliers({
@@ -610,6 +669,13 @@ class ScannedProspect {
   );
 }
 
+class DetectedRegion {
+  final int? provinsiId;
+  final int? kotaId;
+  final int? kecamatanId;
+  const DetectedRegion({this.provinsiId, this.kotaId, this.kecamatanId});
+}
+
 class BankOption {
   final int id;
   final String name;
@@ -645,6 +711,9 @@ class NearbySupplier {
   final double distanceKm;
   final double? latitude;
   final double? longitude;
+  final DateTime? lastWoDate;
+  final String? lastWoKode;
+  final int? umurHari;
   const NearbySupplier({
     required this.id,
     required this.name,
@@ -655,6 +724,9 @@ class NearbySupplier {
     required this.distanceKm,
     this.latitude,
     this.longitude,
+    this.lastWoDate,
+    this.lastWoKode,
+    this.umurHari,
   });
   factory NearbySupplier.fromJson(Map<String, dynamic> json) {
     final gps = json['gps']?.toString().split(',') ?? const [];
@@ -668,6 +740,9 @@ class NearbySupplier {
       distanceKm: VisitPlannerService._asDouble(json['distance_km']) ?? 0,
       latitude: gps.length == 2 ? double.tryParse(gps.first.trim()) : null,
       longitude: gps.length == 2 ? double.tryParse(gps.last.trim()) : null,
+      lastWoDate: DateTime.tryParse(json['last_wo_date']?.toString() ?? ''),
+      lastWoKode: json['last_wo_kode']?.toString(),
+      umurHari: int.tryParse(json['umur_hari']?.toString() ?? ''),
     );
   }
 }

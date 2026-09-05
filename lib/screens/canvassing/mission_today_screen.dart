@@ -16,6 +16,7 @@ import 'checkout_dialog.dart';
 import '../../widgets/permission_gate.dart';
 import 'skip_mission_sheet.dart';
 import 'add_work_order_sheet.dart';
+import 'register_supplier_dialog.dart';
 import 'sync_status_screen.dart';
 import 'visit_history_screen.dart';
 
@@ -405,10 +406,19 @@ class _MissionTodayScreenState extends State<MissionTodayScreen> {
                   icon: const Icon(Icons.directions, size: 16),
                   label: const Text('Navigasi'),
                 ),
+              if (item.supplierId == 0 && item.hasCoordinates)
+                TextButton.icon(
+                  style: _actionButtonStyle,
+                  onPressed: () => _registerSupplier(item),
+                  icon: const Icon(Icons.person_add_alt_1_outlined, size: 16),
+                  label: const Text('Daftarkan Supplier'),
+                ),
               ValueListenableBuilder<ActiveVisitState>(
                 valueListenable: ActiveVisitService.current,
                 builder: (_, state, __) =>
-                    state.isActive && state.supplierId == item.supplierId
+                    item.supplierId > 0 &&
+                        state.isActive &&
+                        state.supplierId == item.supplierId
                     ? TextButton.icon(
                         style: _actionButtonStyle,
                         onPressed: () => _addWorkOrder(item),
@@ -417,7 +427,9 @@ class _MissionTodayScreenState extends State<MissionTodayScreen> {
                       )
                     : const SizedBox.shrink(),
               ),
-              if (item.status.toUpperCase() != 'VISITED' && item.hasCoordinates)
+              if (item.supplierId > 0 &&
+                  item.status.toUpperCase() != 'VISITED' &&
+                  item.hasCoordinates)
                 TextButton.icon(
                   style: _actionButtonStyle,
                   onPressed: () => _checkin(item),
@@ -592,6 +604,31 @@ class _MissionTodayScreenState extends State<MissionTodayScreen> {
     }
   }
 
+  Future<void> _registerSupplier(MissionItem item) async {
+    if (!item.hasCoordinates) return;
+    final result = await showRegisterSupplierDialog(
+      context,
+      latitude: item.lat!,
+      longitude: item.lng!,
+      initialName: item.supplierName,
+      initialAddress: item.address,
+      initialPhone: item.supplierPhone,
+    );
+    if (result == null || !mounted) return;
+    // The scanned-place row (supplier_id 0) is now redundant — the dialog
+    // added a fresh mission row with a real supplier_id above.
+    try {
+      await VisitPlannerService.removeFromMission(item.planDetailId);
+    } catch (_) {
+      // Non-fatal: the mission still has the newly registered supplier.
+    }
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('${result.name} terdaftar sebagai supplier.')),
+    );
+    await _load();
+  }
+
   Future<void> _remove(MissionItem item) async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -665,16 +702,42 @@ class _MissionTodayScreenState extends State<MissionTodayScreen> {
         fix.latitude,
         fix.longitude,
       );
-      await VisitPlannerService.addPoiToMission(
+      final planDetailId = await VisitPlannerService.addPoiToMission(
         name: name,
         latitude: fix.latitude,
         longitude: fix.longitude,
         address: address,
       );
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('POI ditambahkan ke Mission.')),
+      // FR from the 3-Sep-2026 RO meeting: don't leave a new point
+      // unregistered — go straight into the Supplier form so the RO can't
+      // forget to link it, same as tapping "Daftarkan Supplier" later would.
+      final result = await showRegisterSupplierDialog(
+        context,
+        latitude: fix.latitude,
+        longitude: fix.longitude,
+        initialName: name,
+        initialAddress: address,
       );
+      if (result != null && mounted) {
+        try {
+          await VisitPlannerService.removeFromMission(planDetailId);
+        } catch (_) {
+          // Non-fatal: the mission still has the newly registered supplier.
+        }
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${result.name} terdaftar sebagai supplier.')),
+        );
+      } else if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'POI ditambahkan ke Mission. Daftarkan sebagai supplier dari daftar Mission kapan saja.',
+            ),
+          ),
+        );
+      }
       await _load();
     } catch (error) {
       if (mounted)
