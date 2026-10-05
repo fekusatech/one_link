@@ -26,12 +26,23 @@ class LocationTrackingService {
   static const Duration _heartbeatInterval = Duration(
     minutes: 1,
   ); // Kirim setiap 1 menit jika tidak bergerak
-  static const Duration _heartbeatCheckInterval = Duration(
-    seconds: 30,
-  ); // Cek setiap 30 detik
 
   // Track last position for distance calculation
   Position? _lastSentPosition;
+
+  // Fix terakhir dari stream; dipakai heartbeat supaya tidak minta fix GPS baru.
+  Position? _lastKnownPosition;
+
+  // Cek perintah monitoring foto ke server tidak perlu tiap heartbeat.
+  static const Duration _monitoringCheckInterval = Duration(minutes: 5);
+  DateTime _lastMonitoringCheck = DateTime.fromMillisecondsSinceEpoch(0);
+
+  /// Mock-location status of the most recent fix this service sent to the
+  /// server - read by FakeGpsAlertService instead of polling GPS a second
+  /// time on its own timer.
+  final ValueNotifier<bool> isMockLocationNotifier = ValueNotifier<bool>(
+    false,
+  );
 
   /// Check if location permissions are granted
   Future<bool> hasPermissions() async {
@@ -127,16 +138,17 @@ class LocationTrackingService {
     try {
       // Configure for HYBRID tracking (100m movement OR 1 min heartbeat)
       final locationSettings = AndroidSettings(
-        accuracy: LocationAccuracy.high,
+        // medium = network+GPS balanced; cukup untuk filter 100m dan jauh
+        // lebih hemat baterai daripada high.
+        accuracy: LocationAccuracy.medium,
         distanceFilter: 100, // Only trigger on 100m movement
-        intervalDuration: const Duration(
-          seconds: 30,
-        ), // Check position every 30s for heartbeat
+        intervalDuration: const Duration(minutes: 1),
         forceLocationManager: false,
         foregroundNotificationConfig: const ForegroundNotificationConfig(
           notificationTitle: 'One Link - GPS Tracking',
           notificationText: 'Melacak lokasi Anda...',
-          enableWakeLock: true,
+          // ponytail: tanpa wake lock, CPU boleh deep sleep; foreground service tetap hidup.
+          enableWakeLock: false,
           notificationIcon: AndroidResource(
             name: 'ic_launcher',
             defType: 'mipmap',
@@ -150,6 +162,7 @@ class LocationTrackingService {
             locationSettings: locationSettings,
           ).listen(
             (Position position) {
+              _lastKnownPosition = position;
               _handleLocationUpdate(position);
             },
             onError: (error) {
@@ -161,6 +174,7 @@ class LocationTrackingService {
       // 2. Start Heartbeat Timer (Periodic: 1 minute)
       // Checks every 30 seconds if we need to force an update
       _lastLocationSendTime = DateTime.now(); // Reset on start
+      _lastKnownPosition ??= await Geolocator.getLastKnownPosition();
       _startHeartbeatTimer();
 
       _isTracking = true;
@@ -176,44 +190,27 @@ class LocationTrackingService {
 
   void _startHeartbeatTimer() {
     _heartbeatTimer?.cancel();
-    // Check every 30 seconds, but only send if 1 minute has passed since last send
-    _heartbeatTimer = Timer.periodic(const Duration(seconds: 30), (
-      timer,
-    ) async {
+    // Satu timer 1 menit: kirim ulang fix terakhir (tanpa menyalakan GPS)
+    // supaya peta monitoring tidak menandai user offline saat diam.
+    _heartbeatTimer = Timer.periodic(_heartbeatInterval, (timer) async {
       if (!_isTracking) {
         timer.cancel();
         return;
       }
 
-      // Check remote camera photo monitoring commands from server
-      DriverMonitoringService.instance.checkAndExecuteMonitoring();
-
       final now = DateTime.now();
-      final difference = now.difference(_lastLocationSendTime);
 
-      // Send heartbeat if 1 minute has passed since last location send
-      if (difference >= _heartbeatInterval) {
-        debugPrint(
-          '⏰ Heartbeat triggered (Last update: ${_lastLocationSendTime.toIso8601String()})',
-        );
-
-        // Force update current position
-        try {
-          // Use getCurrentPosition to get fresh data
-          final position = await Geolocator.getCurrentPosition(
-            locationSettings: const LocationSettings(
-              accuracy: LocationAccuracy.high,
-            ),
-          );
-
-          debugPrint('📍 Sending heartbeat location update...');
-          // A heartbeat must be sent even when the device is stationary;
-          // otherwise the monitoring map marks an active user offline.
-          _handleLocationUpdate(position, force: true);
-        } catch (e) {
-          debugPrint('❌ Failed to get heartbeat position: $e');
-        }
+      if (now.difference(_lastMonitoringCheck) >= _monitoringCheckInterval) {
+        _lastMonitoringCheck = now;
+        DriverMonitoringService.instance.checkAndExecuteMonitoring();
       }
+
+      if (now.difference(_lastLocationSendTime) < _heartbeatInterval) return;
+
+      final position = _lastKnownPosition;
+      if (position == null) return;
+      debugPrint('📍 Sending heartbeat from cached position...');
+      _handleLocationUpdate(position, force: true);
     });
   }
 
@@ -225,15 +222,22 @@ class LocationTrackingService {
     _heartbeatTimer?.cancel();
     _positionStream = null;
     _heartbeatTimer = null;
+    _lastKnownPosition = null;
     _isTracking = false;
     _onLocationUpdate = null;
     _ignoreWorkingMode = false;
+    isMockLocationNotifier.value = false;
 
     print('📍 Location tracking stopped');
   }
 
   /// Handle location updates
   void _handleLocationUpdate(Position position, {bool force = false}) async {
+    // Reflects every fix received, not just ones actually sent to the
+    // server - mock status is a property of the fix, independent of the
+    // distance-filter decision below.
+    isMockLocationNotifier.value = position.isMocked;
+
     final isWorking = await UserStorage.isWorkingModeActive();
     if (!isWorking && !_ignoreWorkingMode) {
       debugPrint('🛑 Mode Bekerja OFF: Skipping location update to server.');

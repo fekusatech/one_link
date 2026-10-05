@@ -13,7 +13,7 @@ import '../utils/image_compress_utils.dart';
 import 'geu/geu_api_client.dart';
 import 'user_storage.dart';
 
-class EmergencyShakeService {
+class EmergencyShakeService with WidgetsBindingObserver {
   static final EmergencyShakeService _instance = EmergencyShakeService._internal();
   static EmergencyShakeService get instance => _instance;
   EmergencyShakeService._internal();
@@ -42,11 +42,24 @@ class EmergencyShakeService {
       },
     );
     _isListening = true;
+    WidgetsBinding.instance.addObserver(this);
     debugPrint('🚨 Emergency Shake Detector started (Requirement: 3 shakes, Threshold: 3.5g)!');
+  }
+
+  // Akselerometer dimatikan saat app di background, dinyalakan lagi saat resume.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (!_isListening) return;
+    if (state == AppLifecycleState.resumed) {
+      _shakeDetector?.startListening();
+    } else if (state == AppLifecycleState.paused) {
+      _shakeDetector?.stopListening();
+    }
   }
 
   /// Stop listening for shake events (call on logout)
   void stopListening() {
+    WidgetsBinding.instance.removeObserver(this);
     _shakeDetector?.stopListening();
     _shakeDetector = null;
     _isListening = false;

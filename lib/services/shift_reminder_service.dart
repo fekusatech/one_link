@@ -12,13 +12,23 @@ class ShiftReminderService {
   ShiftReminderService._internal();
 
   Timer? _timer;
-  bool _alertShownToday = false;
-  int _lastAlertDay = -1;
 
+  // Satu timer sekali jalan sampai 17:00 (bukan polling 30 detik); setelah
+  // itu dijadwal ulang untuk hari berikutnya.
   void start(BuildContext context) {
+    // Sudah lewat 17:00 saat mulai: ingatkan sekali sekarang.
+    if (DateTime.now().hour >= 17) _checkShiftEnd(context);
+    _schedule(context);
+  }
+
+  void _schedule(BuildContext context) {
     _timer?.cancel();
-    _timer = Timer.periodic(const Duration(seconds: 30), (_) {
-      _checkShiftEnd(context);
+    final now = DateTime.now();
+    var target = DateTime(now.year, now.month, now.day, 17);
+    if (!now.isBefore(target)) target = target.add(const Duration(days: 1));
+    _timer = Timer(target.difference(now), () async {
+      await _checkShiftEnd(context);
+      if (context.mounted) _schedule(context);
     });
   }
 
@@ -28,24 +38,8 @@ class ShiftReminderService {
   }
 
   Future<void> _checkShiftEnd(BuildContext context) async {
-    final now = DateTime.now();
-
-    // Reset daily alert flag at midnight
-    if (_lastAlertDay != now.day) {
-      _alertShownToday = false;
-      _lastAlertDay = now.day;
-    }
-
     final isWorking = await UserStorage.isWorkingModeActive();
-    if (!isWorking) return;
-
-    // Check if device clock is at or after 17:00 (5 PM)
-    if (now.hour >= 17 && !_alertShownToday) {
-      _alertShownToday = true;
-      if (context.mounted) {
-        showShiftEndDialog(context);
-      }
-    }
+    if (isWorking && context.mounted) showShiftEndDialog(context);
   }
 
   static Future<void> showShiftEndDialog(BuildContext context) async {

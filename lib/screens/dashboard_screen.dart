@@ -33,6 +33,7 @@ import '../widgets/force_login_dialog.dart';
 import '../widgets/dynamic_pickup_map_widget.dart';
 import '../services/update_service.dart';
 import '../services/location_tracking_service.dart';
+import '../services/fake_gps_alert_service.dart';
 import '../services/driver_tracking_service.dart';
 import '../services/emergency_shake_service.dart';
 import '../services/proximity_wa_service.dart';
@@ -41,6 +42,7 @@ import '../services/local_notify_service.dart';
 import '../widgets/working_mode_header_widget.dart';
 import '../services/role_management_service.dart';
 import '../services/impersonation_service.dart';
+import 'tracking_system_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -64,6 +66,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       LocalNotifyService.instance.ensurePermission();
       _startLocationTracking();
       _loadDriverAccess();
+      FakeGpsAlertService.instance.start(context);
     });
   }
 
@@ -517,7 +520,12 @@ class _HomeScreenState extends State<_HomeScreen> {
 
   void _startConnectivityMonitoring() {
     _checkConnectivityStatus();
-    _connectivityTimer = Timer.periodic(const Duration(seconds: 4), (_) {
+    _connectivityTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      // Jangan bangunkan radio saat app di background.
+      if (WidgetsBinding.instance.lifecycleState !=
+          AppLifecycleState.resumed) {
+        return;
+      }
       _checkConnectivityStatus();
     });
   }
@@ -1518,6 +1526,20 @@ class _HomeScreenState extends State<_HomeScreen> {
                 label: 'Cek Pembaruan Aplikasi',
                 onTap: () {
                   UpdateService.instance.checkNow(context);
+                },
+              ),
+              const SizedBox(width: 8),
+              _buildQuickActionButton(
+                icon: Icons.timeline_rounded,
+                color: AppColors.primaryGreen,
+                label: 'Tracking System',
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const TrackingSystemScreen(),
+                    ),
+                  );
                 },
               ),
               if (_canImpersonate) ...[
