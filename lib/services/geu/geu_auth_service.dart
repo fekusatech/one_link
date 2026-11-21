@@ -7,6 +7,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../persistent_auth_service.dart';
 import '../user_storage.dart';
 import 'geu_api_client.dart';
+import 'device_identity_service.dart';
 import 'push_notification_service.dart';
 
 /// One entry in the account switcher — every account ever successfully
@@ -94,10 +95,14 @@ class GeuAuthService {
     // cached profile to survive that transition.
     await GeuApiClient.clearSession();
     await _clearCachedProfile();
+    final deviceId = await DeviceIdentityService.getDeviceId();
     final dio = await GeuApiClient.instance;
     final res = await dio.post(
       '/api-auth/login',
       data: {'email': email, 'password': password},
+      options: Options(
+        headers: {'X-Client-Type': 'mobile', 'X-Device-ID': deviceId},
+      ),
     );
 
     final body = res.data as Map<String, dynamic>;
@@ -118,9 +123,15 @@ class GeuAuthService {
     await _saveProfile(user);
 
     // Extract auth_token JWT from Set-Cookie header if present
-    String jwtToken = '';
+    final responseTokens = data['tokens'];
+    String jwtToken = responseTokens is Map
+        ? (responseTokens['access'] is Map
+              ? (responseTokens['access']['token']?.toString() ?? '')
+              : '')
+        : '';
     final rawCookies = res.headers['set-cookie'] ?? [];
-    for (var header in rawCookies) {
+    for (final header in rawCookies) {
+      if (jwtToken.isNotEmpty) break;
       if (header.contains('auth_token=')) {
         final match = RegExp(r'auth_token=([^;]+)').firstMatch(header);
         if (match != null) {
@@ -203,8 +214,7 @@ class GeuAuthService {
     final accounts = await getSavedAccounts();
     final account = accounts.firstWhere(
       (a) => a.email.toLowerCase() == email.toLowerCase(),
-      orElse: () =>
-          throw Exception('Akun tidak ditemukan di perangkat ini.'),
+      orElse: () => throw Exception('Akun tidak ditemukan di perangkat ini.'),
     );
     return login(account.email, account.password);
   }
@@ -299,11 +309,14 @@ class GeuAuthService {
 
     await GeuApiClient.clearSession();
     await _clearCachedProfile();
+    final deviceId = await DeviceIdentityService.getDeviceId();
     final dio = await GeuApiClient.instance;
     final res = await dio.post(
       '/api-auth/sso/exchange',
       data: {'code': code},
-      options: Options(headers: {'X-Client-Type': 'mobile'}),
+      options: Options(
+        headers: {'X-Client-Type': 'mobile', 'X-Device-ID': deviceId},
+      ),
     );
 
     final body = res.data as Map<String, dynamic>;

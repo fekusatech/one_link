@@ -1,0 +1,278 @@
+{
+  "colorProfile": "srgb",
+  "currentPage": 1,
+  "dirty": false,
+  "history": {
+    "redo": 0,
+    "undo": [
+      "Rename page",
+      "One Link mobile redesign"
+    ]
+  },
+  "id": 12,
+  "images": 0,
+  "kind": "design",
+  "name": "One Link \u00b7 Mobile redesign",
+  "pages": [
+    {
+      "background": "#1E1E1E",
+      "children": [
+        {
+          "absoluteBounds": {
+            "height": 844.0,
+            "width": 390.0,
+            "x": 0.0,
+            "y": 0.0
+          },
+          "childCount": 32,
+          "clip": true,
+          "cornerRadius": 24.0,
+          "fills": [
+            {
+              "color": "#FAFAFA",
+              "type": "solid"
+            }
+          ],
+          "height": 844.0,
+          "id": 2,
+          "name": "Siap untuk hari ini.",
+          "type": "FRAME",
+          "width": 390.0,
+          "x": 0.0,
+          "y": 0.0
+        },
+        {
+          "absoluteBounds": {
+            "height": 844.0,
+            "width": 390.0,
+            "x": 446.0,
+            "y": 0.0
+          },
+          "childCount": 37,
+          "clip": true,
+          "cornerRadius": 24.0,
+          "fills": [
+            {
+              "color": "#FAFAFA",
+              "type": "solid"
+            }
+          ],
+          "height": 844.0,
+          "id": 53,
+          "name": "Visit hari ini",
+          "type": "FRAME",
+          "width": 390.0,
+          "x": 446.0,
+          "y": 0.0
+        },
+        {
+          "absoluteBounds": {
+            "height": 844.0,
+            "width": 390.0,
+            "x": 892.0,
+            "y": 0.0
+          },
+          "childCount": 23,
+          "clip": true,
+          "cornerRadius": 24.0,
+          "fills": [
+            {
+              "color": "#FAFAFA",
+              "type": "solid"
+            }
+          ],
+          "height": 844.0,
+          "id": 103,
+          "name": "Tugas",
+          "type": "FRAME",
+          "width": 390.0,
+          "x": 892.0,
+          "y": 0.0
+        },
+        {
+          "absoluteBounds": {
+            "height": 844.0,
+            "width": 390.0,
+            "x": 1338.0,
+            "y": 0.0
+          },
+          "childCount": 23,
+          "clip": true,
+          "cornerRadius": 24.0,
+          "fills": [
+            {
+              "color": "#FAFAFA",
+              "type": "solid"
+            }
+          ],
+          "height": 844.0,
+          "id": 150,
+          "name": "Supplier",
+          "type": "FRAME",
+          "width": 390.0,
+          "x": 1338.0,
+          "y": 0.0
+        },
+        {
+          "absoluteBounds": {
+            "height": 844.0,
+            "width": 390.0,
+            "x": 0.0,
+            "y": 940.0
+          },
+          "childCount": 30,
+          "clip": true,
+          "cornerRadius": 24.0,
+          "fills": [
+            {
+              "color": "#FAFAFA",
+              "type": "solid"
+            }
+          ],
+          "height": 844.0,
+          "id": 201,
+          "name": "Detail kunjungan",
+          "type": "FRAME",
+          "width": 390.0,
+          "x": 0.0,
+          "y": 940.0
+        },
+        {
+          "absoluteBounds": {
+            "height": 844.0,
+            "width": 390.0,
+            "x": 446.0,
+            "y": 940.0
+          },
+          "childCount": 20,
+          "clip": true,
+          "cornerRadius": 24.0,
+          "fills": [
+            {
+              "color": "#FAFAFA",
+              "type": "solid"
+            }
+          ],
+          "height": 844.0,
+          "id": 245,
+          "name": "Work Order",
+          "type": "FRAME",
+          "width": 390.0,
+          "x": 446.0,
+          "y": 940.0
+        },
+        {
+          "absoluteBounds": {
+            "height": 844.0,
+            "width": 390.0,
+            "x": 892.0,
+            "y": 940.0
+          },
+          "childCount": 18,
+          "clip": true,
+          "cornerRadius": 24.0,
+          "fills": [
+            {
+              "color": "#FAFAFA",
+              "type": "solid"
+            }
+          ],
+          "height": 844.0,
+          "id": 292,
+          "name": "Profil",
+          "type": "FRAME",
+          "width": 390.0,
+          "x": 892.0,
+          "y": 940.0
+        },
+        {
+          "absoluteBounds": {
+            "height": 844.0,
+            "width": 390.0,
+            "x": 1338.0,
+            "y": 940.0
+          },
+          "childCount": 24,
+          "clip": true,
+          "cornerRadius": 24.0,
+          "fills": [
+            {
+              "color": "#FAFAFA",
+              "type": "solid"
+            }
+          ],
+          "height": 844.0,
+          "id": 328,
+          "name": "Riwayat kunjungan",
+          "type": "FRAME",
+          "width": 390.0,
+          "x": 1338.0,
+          "y": 940.0
+        },
+        {
+          "absoluteBounds": {
+            "height": 844.0,
+            "width": 390.0,
+            "x": 446.0,
+            "y": 1880.0
+          },
+          "childCount": 21,
+          "clip": true,
+          "cornerRadius": 24.0,
+          "fills": [
+            {
+              "color": "#FAFAFA",
+              "type": "solid"
+            }
+          ],
+          "height": 844.0,
+          "id": 365,
+          "name": "Kondisi & interaksi",
+          "type": "FRAME",
+          "width": 390.0,
+          "x": 446.0,
+          "y": 1880.0
+        },
+        {
+          "absoluteBounds": {
+            "height": 844.0,
+            "width": 390.0,
+            "x": 892.0,
+            "y": 1880.0
+          },
+          "childCount": 18,
+          "clip": true,
+          "cornerRadius": 24.0,
+          "fills": [
+            {
+              "color": "#FAFAFA",
+              "type": "solid"
+            }
+          ],
+          "height": 844.0,
+          "id": 391,
+          "name": "Fondasi desain",
+          "type": "FRAME",
+          "width": 390.0,
+          "x": 892.0,
+          "y": 1880.0
+        }
+      ],
+      "flows": [
+        {
+          "description": "",
+          "name": "Sales / CRO",
+          "start": 2
+        }
+      ],
+      "id": 1,
+      "name": "Mobile redesign \u00b7 Review 01",
+      "type": "PAGE"
+    }
+  ],
+  "path": "/Volumes/Fekusa/Project/crm-mobile/design/figcraft/one-link-redesign.figcraft",
+  "selection": [],
+  "styles": [],
+  "textEdit": null,
+  "variables": 0
+}

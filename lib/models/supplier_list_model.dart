@@ -1,15 +1,28 @@
+bool _isccFlag(dynamic value) {
+  if (value is bool) return value;
+  final normalized = value?.toString().trim().toLowerCase();
+  return normalized == '1' ||
+      normalized == 'true' ||
+      normalized == 'yes' ||
+      normalized == 'ya';
+}
+
 // Supplier List Response Model
 class SupplierListResponse {
   final List<SupplierListItem> data;
   final int total;
   final int currentPage;
   final int lastPage;
+  final int? nextCursor;
+  final bool hasNext;
 
   SupplierListResponse({
     required this.data,
     required this.total,
     required this.currentPage,
     required this.lastPage,
+    this.nextCursor,
+    this.hasNext = false,
   });
 
   factory SupplierListResponse.fromJson(Map<String, dynamic> json) {
@@ -21,9 +34,13 @@ class SupplierListResponse {
 
       return SupplierListResponse(
         data: supplierList,
-        total: supplierList.length,
+        total:
+            int.tryParse('${json['total_records'] ?? supplierList.length}') ??
+            supplierList.length,
         currentPage: 1,
-        lastPage: 1,
+        lastPage: json['has_next'] == true ? 2 : 1,
+        nextCursor: int.tryParse('${json['next_cursor'] ?? ''}'),
+        hasNext: json['has_next'] == true,
       );
     }
 
@@ -37,6 +54,8 @@ class SupplierListResponse {
       total: int.tryParse(json['total']?.toString() ?? '0') ?? 0,
       currentPage: int.tryParse(json['current_page']?.toString() ?? '1') ?? 1,
       lastPage: int.tryParse(json['last_page']?.toString() ?? '1') ?? 1,
+      nextCursor: int.tryParse('${json['next_cursor'] ?? ''}'),
+      hasNext: json['has_next'] == true,
     );
   }
 }
@@ -68,6 +87,7 @@ class SupplierListItem {
   final String? siklus;
   final int? poin;
   final String? status;
+  final bool isIsccCertified;
   final DateTime? createdAt;
   final DateTime? updatedAt;
 
@@ -97,6 +117,7 @@ class SupplierListItem {
     this.siklus,
     this.poin,
     this.status,
+    this.isIsccCertified = false,
     this.createdAt,
     this.updatedAt,
   });
@@ -130,6 +151,7 @@ class SupplierListItem {
       siklus: json['siklus']?.toString(),
       poin: json['poin'] != null ? int.tryParse(json['poin'].toString()) : null,
       status: json['status']?.toString(),
+      isIsccCertified: _isccFlag(json['is_iscc_certified']),
       createdAt: json['created_at'] != null
           ? DateTime.tryParse(json['created_at'].toString())
           : null,

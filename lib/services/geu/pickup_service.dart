@@ -1,4 +1,5 @@
 import 'geu_api_client.dart';
+import 'settings_service.dart';
 import 'dart:convert';
 import 'dart:io';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -55,12 +56,21 @@ class PickupSummary {
 }
 
 class PickupService {
-  static const String mediaBaseUrl = 'https://geu.fekusa.com/';
+  static const String mediaBaseUrl = 'https://erp.greenenergiutama.co.id/';
+  static String? _r2PublicUrl;
+
+  static Future<void> warmMediaConfig() async {
+    if (_r2PublicUrl != null) return;
+    _r2PublicUrl = await SettingsService.getByKey('r2_public_url');
+  }
 
   static String resolveMediaUrl(dynamic value) {
     final raw = '${value ?? ''}'.trim();
     if (raw.isEmpty) return '';
     if (raw.startsWith('http://') || raw.startsWith('https://')) return raw;
+    if (raw.startsWith('r2/') && (_r2PublicUrl ?? '').trim().isNotEmpty) {
+      return '${_r2PublicUrl!.replaceFirst(RegExp(r'/+$'), '')}/public/${raw.substring(3)}';
+    }
     return '$mediaBaseUrl${raw.startsWith('/') ? raw.substring(1) : raw}';
   }
 
@@ -88,6 +98,44 @@ class PickupService {
             data['warning'] ??
             'Data rekening supplier belum lengkap.')
         .toString();
+  }
+
+  static Future<Map<String, dynamic>> supplierDetail(int supplierId) async {
+    final response = await (await GeuApiClient.instance).get(
+      '/api/suppliers/$supplierId',
+    );
+    final body = response.data;
+    final data = body is Map && body['data'] is Map
+        ? body['data'] as Map
+        : body;
+    if (response.statusCode != 200 || data is! Map) {
+      throw Exception('Detail supplier tidak dapat dimuat.');
+    }
+    return Map<String, dynamic>.from(data);
+  }
+
+  static Future<Map<String, List<Map<String, dynamic>>>>
+  createDropdowns() async {
+    final response = await (await GeuApiClient.instance).get(
+      '/api/suppliers/dropdowns',
+    );
+    final body = response.data;
+    final data = body is Map && body['data'] is Map
+        ? body['data'] as Map
+        : body;
+    if (response.statusCode != 200 || data is! Map) {
+      throw Exception('Pilihan rute, gudang, dan kemasan tidak dapat dimuat.');
+    }
+    List<Map<String, dynamic>> rows(String key) =>
+        (data[key] as List? ?? const [])
+            .whereType<Map>()
+            .map((item) => Map<String, dynamic>.from(item))
+            .toList();
+    return {
+      'provinces': rows('provinces'),
+      'gudang': rows('gudang'),
+      'kemasan': rows('kemasan'),
+    };
   }
 
   static Future<List<Map<String, dynamic>>> warehouses() async {
@@ -131,7 +179,7 @@ class PickupService {
     String search,
   ) async {
     final response = await (await GeuApiClient.instance).get(
-      '/api-tms/pickups/work-orders',
+      '/api-crm/pickups/work-orders',
       queryParameters: {'search': search},
     );
     final data = GeuApiClient.unwrapData(response.data);
@@ -156,23 +204,37 @@ class PickupService {
   static Future<void> create({
     required String date,
     required int warehouseId,
+    required String type,
+    int? routeProvinceId,
     required int workOrderId,
     required int supplierId,
+    required int unitId,
+    required double quantity,
+    double price = 0,
+    bool tick = false,
+    String? notes,
+    Map<String, dynamic>? paymentPlan,
   }) async {
     final response = await (await GeuApiClient.instance).post(
       '/api-crm/pickups/',
       data: {
         'tgl': date,
         'gudang_id': warehouseId,
-        'type': 'pickup',
+        'type': type,
+        if (routeProvinceId != null) 'rute_provinsi_id': routeProvinceId,
         'details': [
           {
             'work_order_id': workOrderId,
             'supplier_id': supplierId,
-            'satuan_id': 1,
-            'qty': 1,
+            'satuan_id': unitId,
+            'qty': quantity,
+            'harga': price,
+            'tick': tick,
+            if (notes != null && notes.trim().isNotEmpty)
+              'keterangan': notes.trim(),
           },
         ],
+        if (paymentPlan != null) 'payment_plan': paymentPlan,
       },
     );
     if (response.statusCode != 200 && response.statusCode != 201)
@@ -180,6 +242,7 @@ class PickupService {
   }
 
   static Future<Map<String, dynamic>> detail(int id) async {
+    await warmMediaConfig();
     final response = await (await GeuApiClient.instance).get(
       '/api-crm/pickups/$id',
     );
@@ -238,12 +301,24 @@ class PickupService {
     }
   }
 
-  static Future<List<PickupSummary>> list({String status = ''}) async {
+  static Future<List<PickupSummary>> list({
+    String status = '',
+    String? dateFrom,
+    String? dateTo,
+  }) async {
     final r = await (await GeuApiClient.instance).get(
       '/api-crm/pickups',
       queryParameters: {
         'page': 1,
         'limit': 20,
+        // Scope is decided server-side (crm-read-pickup-all permission) -
+        // sending mine:true here would force self-scope even for an admin
+        // who's allowed to see everyone's pickups, so this is omitted and
+        // the backend picks the right default per caller.
+        'sort_by': 'tgl_plan',
+        'sort_dir': 'desc',
+        if (dateFrom != null && dateFrom.isNotEmpty) 'date_from': dateFrom,
+        if (dateTo != null && dateTo.isNotEmpty) 'date_to': dateTo,
         if (status.isNotEmpty) 'status': status,
       },
     );

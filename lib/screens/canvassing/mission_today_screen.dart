@@ -3,6 +3,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../constants/app_colors.dart';
 import '../../constants/app_text_styles.dart';
 import '../../models/geu/visit_planner_models.dart';
+import '../../models/geu/visit_sync_models.dart';
 import '../../services/geu/visit_planner_service.dart';
 import '../../services/geu/visit_sync_service.dart';
 import '../../services/geu/gps_service.dart';
@@ -36,6 +37,15 @@ class _MissionTodayScreenState extends State<MissionTodayScreen> {
   String? _error;
   bool _isLoading = true;
   final List<int> _activeWorkOrderIds = [];
+
+  List<int> _workOrderIdsFor(MissionItem item) {
+    if (_activeWorkOrderIds.isNotEmpty) {
+      return List<int>.unmodifiable(_activeWorkOrderIds);
+    }
+    final persistedId = item.workOrderId;
+    return persistedId != null && persistedId > 0 ? [persistedId] : const [];
+  }
+
   bool _manualOffline = false;
 
   // shrinkWrap tap target so wrapped action rows don't get Material's
@@ -415,7 +425,9 @@ class _MissionTodayScreenState extends State<MissionTodayScreen> {
                     state.isActive && state.supplierId == item.supplierId
                     ? TextButton.icon(
                         style: _actionButtonStyle,
-                        onPressed: () => _checkout(item),
+                        onPressed: _workOrderIdsFor(item).isNotEmpty
+                            ? () => _checkout(item)
+                            : null,
                         icon: const Icon(Icons.logout, size: 16),
                         label: const Text('Check-out'),
                       )
@@ -483,6 +495,18 @@ class _MissionTodayScreenState extends State<MissionTodayScreen> {
   Future<void> _checkin(MissionItem item) async {
     final draft = await showCheckinDialog(context, item);
     if (draft == null || !mounted) return;
+    if (!await VisitSyncService.hasInternet()) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Tidak ada koneksi internet. Silakan periksa jaringan Anda.',
+            ),
+          ),
+        );
+      }
+      return;
+    }
     final address = await ReverseGeocodingService.resolve(
       draft.fix.latitude,
       draft.fix.longitude,
@@ -493,12 +517,32 @@ class _MissionTodayScreenState extends State<MissionTodayScreen> {
       longitude: draft.fix.longitude,
       address: address,
       photoPath: draft.photo.file.path,
+      confirmFar: draft.confirmFar,
       gpsAccuracyMeters: draft.fix.accuracyMeters,
       isMockLocation: draft.fix.isMocked,
     );
-    ActiveVisitService.markPendingCheckin(item.supplierId);
     await VisitSyncService.syncNow();
     final delivered = await VisitSyncService.wasDelivered(queued.id);
+    final result = await VisitSyncService.getItem(queued.id);
+    if (result?.state == VisitSyncState.conflict) {
+      await ActiveVisitService.restore();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(result?.lastError ?? 'Check-in ditolak server.'),
+          ),
+        );
+      }
+      return;
+    }
+    if (delivered) {
+      ActiveVisitService.markConfirmedCheckin(
+        supplierId: item.supplierId,
+        supplierName: item.supplierName,
+      );
+    } else {
+      ActiveVisitService.markPendingCheckin(item.supplierId);
+    }
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -513,8 +557,29 @@ class _MissionTodayScreenState extends State<MissionTodayScreen> {
   }
 
   Future<void> _checkout(MissionItem item) async {
+    final workOrderIds = _workOrderIdsFor(item);
+    if (workOrderIds.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Buat Work Order dulu sebelum check-out.'),
+        ),
+      );
+      return;
+    }
     final draft = await showCheckoutDialog(context, item);
     if (draft == null || !mounted) return;
+    if (!await VisitSyncService.hasInternet()) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Tidak ada koneksi internet. Silakan periksa jaringan Anda.',
+            ),
+          ),
+        );
+      }
+      return;
+    }
     final address = await ReverseGeocodingService.resolve(
       draft.fix.latitude,
       draft.fix.longitude,
@@ -525,12 +590,27 @@ class _MissionTodayScreenState extends State<MissionTodayScreen> {
       address: address,
       notes: draft.notes,
       photoPath: draft.photo.file.path,
-      workOrderIds: _activeWorkOrderIds,
+      workOrderIds: workOrderIds,
       gpsAccuracyMeters: draft.fix.accuracyMeters,
       isMockLocation: draft.fix.isMocked,
     );
     await VisitSyncService.syncNow();
     final delivered = await VisitSyncService.wasDelivered(queued.id);
+    final result = await VisitSyncService.getItem(queued.id);
+    if (result?.state == VisitSyncState.conflict) {
+      ActiveVisitService.markCheckoutFailed(
+        supplierId: item.supplierId,
+        supplierName: item.supplierName,
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(result?.lastError ?? 'Check-out ditolak server.'),
+          ),
+        );
+      }
+      return;
+    }
     try {
       await VisitPlannerService.updateMissionStatus(
         planDetailId: item.planDetailId,

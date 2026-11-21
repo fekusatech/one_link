@@ -138,6 +138,7 @@ class GeuDriverTrackingService {
           'battery_level': await _getBatteryLevel(),
           'device_info': await _getDeviceInfo(),
           'app_version': '${packageInfo.version}+${packageInfo.buildNumber}',
+          'is_mock_location': position.isMocked,
         },
       );
       final data = res.data;

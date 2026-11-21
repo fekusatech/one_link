@@ -83,7 +83,9 @@ class VisitPlannerService {
         : const [];
     return rawList
         .whereType<Map>()
-        .map((item) => VisitHistoryItem.fromJson(Map<String, dynamic>.from(item)))
+        .map(
+          (item) => VisitHistoryItem.fromJson(Map<String, dynamic>.from(item)),
+        )
         .toList();
   }
 
@@ -370,6 +372,7 @@ class VisitPlannerService {
 
   static Future<int> registerProspect({
     required String name,
+    required String jenis,
     required String address,
     required String phone,
     required double latitude,
@@ -382,12 +385,14 @@ class VisitPlannerService {
     int? provinsiId,
     int? kotaId,
     int? kecamatanId,
+    bool isIsccCertified = false,
   }) async {
     final dio = await GeuApiClient.instance;
     final response = await dio.post(
       '/api/visit-planner/prospect/register',
       data: {
         'name': name,
+        'jenis': jenis,
         'alamat': address,
         'phone': phone,
         'lat': latitude,
@@ -397,19 +402,46 @@ class VisitPlannerService {
         if (accountName.isNotEmpty) 'nama_rek': accountName,
         if (accountNumber.isNotEmpty) 'nomor_rek': accountNumber,
         if (bankId != null) 'bank_rek_id': bankId,
+        'is_iscc_certified': isIsccCertified ? 1 : 0,
         if (provinsiId != null) 'provinsi_id': provinsiId,
         if (kotaId != null) 'kota_id': kotaId,
         if (kecamatanId != null) 'kecamatan_id': kecamatanId,
       },
     );
     final data = GeuApiClient.unwrapData(response.data);
-    if (response.statusCode != 200 || data is! Map) {
-      throw VisitPlannerException('Supplier tidak dapat didaftarkan.');
+    final apiMessage = GeuApiClient.responseMessage(response.data);
+    final isCreated = response.statusCode == 200 || response.statusCode == 201;
+    if (!isCreated || data is! Map) {
+      final message = (apiMessage ?? '')
+          .replaceAll(RegExp(r'[\r\n\t]+'), ' ')
+          .replaceAll(RegExp(r'\b(?:\+?62|0)8\d{7,12}\b'), '[PHONE]')
+          .replaceAll(
+            RegExp(
+              r'\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b',
+              caseSensitive: false,
+            ),
+            '[EMAIL]',
+          )
+          .trim();
+      final logMessage = message.length > 160
+          ? message.substring(0, 160)
+          : message;
+      debugPrint(
+        '[POO_CREATE_VISIT] failed http=${response.statusCode ?? 0} '
+        'message="${logMessage.isEmpty ? 'no API message' : logMessage}"',
+      );
+      throw VisitPlannerException(
+        message.isEmpty ? 'Supplier tidak dapat didaftarkan.' : message,
+      );
     }
     final id = int.tryParse(data['supplier_id']?.toString() ?? '');
     if (id == null || id <= 0) {
+      debugPrint(
+        '[POO_CREATE_VISIT] invalid_response http=${response.statusCode ?? 0} supplier_id_missing=true',
+      );
       throw VisitPlannerException('ID supplier hasil registrasi tidak valid.');
     }
+    debugPrint('[POO_CREATE_VISIT] success http=${response.statusCode}');
     return id;
   }
 
@@ -428,11 +460,15 @@ class VisitPlannerService {
       queryParameters: {'lat': latitude, 'lng': longitude},
     );
     final data = GeuApiClient.unwrapData(response.data);
-    if (response.statusCode != 200 || data is! Map) return const DetectedRegion();
+    if (response.statusCode != 200 || data is! Map)
+      return const DetectedRegion();
     return DetectedRegion(
       provinsiId: int.tryParse(data['provinsi_id']?.toString() ?? ''),
+      provinsiName: data['provinsi_name']?.toString(),
       kotaId: int.tryParse(data['kota_id']?.toString() ?? ''),
+      kotaName: data['kota_name']?.toString(),
       kecamatanId: int.tryParse(data['kecamatan_id']?.toString() ?? ''),
+      kecamatanName: data['kecamatan_name']?.toString(),
     );
   }
 
@@ -671,9 +707,19 @@ class ScannedProspect {
 
 class DetectedRegion {
   final int? provinsiId;
+  final String? provinsiName;
   final int? kotaId;
+  final String? kotaName;
   final int? kecamatanId;
-  const DetectedRegion({this.provinsiId, this.kotaId, this.kecamatanId});
+  final String? kecamatanName;
+  const DetectedRegion({
+    this.provinsiId,
+    this.provinsiName,
+    this.kotaId,
+    this.kotaName,
+    this.kecamatanId,
+    this.kecamatanName,
+  });
 }
 
 class BankOption {

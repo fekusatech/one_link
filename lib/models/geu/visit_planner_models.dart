@@ -158,6 +158,10 @@ class VisitHistoryPage {
 
 class VisitHistoryItem {
   final int id;
+  // Only populated when the caller has crm-read-visit-history-all (admin
+  // "view all" mode) - blank for a regular user's own history, since the
+  // API only joins s_users there.
+  final String userName;
   final String supplierName;
   final String status;
   final String checkedInAt;
@@ -176,9 +180,20 @@ class VisitHistoryItem {
   final double? distanceFromSupplier;
   final String workOrderIds;
   final String notes;
+  final bool checkinTimeAnomalous;
+  final bool checkoutTimeAnomalous;
+  final bool checkoutDurationAnomalous;
+  final bool isMockLocation;
+
+  bool get hasAnomaly =>
+      checkinTimeAnomalous ||
+      checkoutTimeAnomalous ||
+      checkoutDurationAnomalous ||
+      isMockLocation;
 
   const VisitHistoryItem({
     required this.id,
+    this.userName = '',
     required this.supplierName,
     required this.status,
     required this.checkedInAt,
@@ -197,11 +212,16 @@ class VisitHistoryItem {
     this.distanceFromSupplier,
     required this.workOrderIds,
     required this.notes,
+    this.checkinTimeAnomalous = false,
+    this.checkoutTimeAnomalous = false,
+    this.checkoutDurationAnomalous = false,
+    this.isMockLocation = false,
   });
 
   factory VisitHistoryItem.fromJson(Map<String, dynamic> json) =>
       VisitHistoryItem(
         id: _asInt(json['id'] ?? json['visit_id']),
+        userName: (json['user_name'] ?? '').toString(),
         supplierName: (json['supplier_name'] ?? json['name'] ?? '-').toString(),
         supplierId: _asInt(json['supplier_id']),
         supplierPhone: (json['supplier_phone'] ?? '').toString(),
@@ -216,6 +236,11 @@ class VisitHistoryItem {
         distanceFromSupplier: _asDouble(json['distance_from_supplier']),
         workOrderIds: (json['work_order_ids'] ?? '').toString(),
         notes: (json['notes'] ?? '').toString(),
+        checkinTimeAnomalous: json['checkin_time_anomalous'] == true,
+        checkoutTimeAnomalous: json['checkout_time_anomalous'] == true,
+        checkoutDurationAnomalous:
+            json['checkout_duration_anomalous'] == true,
+        isMockLocation: json['is_mock_location'] == true,
         status: (json['status'] ?? 'SELESAI').toString(),
         checkedInAt:
             (json['checked_in_at'] ??
@@ -225,11 +250,12 @@ class VisitHistoryItem {
                 .toString(),
         checkedOutAt: (json['checked_out_at'] ?? json['checkout_at'] ?? '')
             .toString(),
-        address: (json['address'] ?? '').toString(),
+        address: (json['address'] ?? json['checkin_address'] ?? '').toString(),
       );
 
   Map<String, dynamic> toJson() => {
     'id': id,
+    'user_name': userName,
     'supplier_name': supplierName,
     'status': status,
     'checked_in_at': checkedInAt,

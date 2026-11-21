@@ -41,6 +41,7 @@ class _CheckoutSheetState extends State<_CheckoutSheet> {
   CapturedVisitPhoto? _photo;
   String? _error;
   bool _loading = true, _capturing = false;
+  String _photoProgress = 'Membuka kamera...';
   double? _maxDistanceKm;
   @override
   void initState() {
@@ -67,10 +68,7 @@ class _CheckoutSheetState extends State<_CheckoutSheet> {
         SettingsService.getDouble('visit_checkin_max_distance_km'),
       ]);
       final fix = results[0] as GpsFix;
-      final maxDistance = results[1] as double?;
-      if (maxDistance == null) {
-        throw GpsException('Radius checkout belum tersedia dari server.');
-      }
+      final maxDistance = results[1] as double? ?? 0.5;
       if (mounted)
         setState(() {
           _fix = fix;
@@ -103,11 +101,22 @@ class _CheckoutSheetState extends State<_CheckoutSheet> {
       (_maxDistanceKm != null && _distanceKm! <= _maxDistanceKm!);
 
   Future<void> _capture() async {
-    setState(() => _capturing = true);
+    setState(() {
+      _capturing = true;
+      _photoProgress = 'Membuka kamera...';
+    });
     try {
       if (!await CrmPermissionService.ensureCamera(context))
         throw StateError('Izin kamera diperlukan untuk foto check-out.');
-      final photo = await CheckinPhotoService.capture(type: 'checkout');
+      final photo = await CheckinPhotoService.capture(
+        type: 'checkout',
+        supplierName: widget.item.supplierName,
+        latitude: _fix?.latitude,
+        longitude: _fix?.longitude,
+        onProgress: (message) {
+          if (mounted) setState(() => _photoProgress = message);
+        },
+      );
       if (mounted) setState(() => _photo = photo);
     } catch (error) {
       if (mounted)
@@ -129,104 +138,120 @@ class _CheckoutSheetState extends State<_CheckoutSheet> {
         20,
         MediaQuery.of(context).viewInsets.bottom + 20,
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Check-out — ${widget.item.supplierName}',
-            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
-          ),
-          const SizedBox(height: 12),
-          if (_loading)
-            const Center(
-              child: Padding(
-                padding: EdgeInsets.all(24),
-                child: CircularProgressIndicator(),
-              ),
-            )
-          else if (_error != null)
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(_error!, style: const TextStyle(color: AppColors.error)),
-                TextButton(
-                  onPressed: _loadLocation,
-                  child: const Text('Coba lagi'),
-                ),
-              ],
-            )
-          else ...[
-            Text(
-              'GPS: ±${_fix!.accuracyMeters.round()} m',
-              style: const TextStyle(color: AppColors.textSecondary),
-            ),
-            if (_distanceKm != null) ...[
-              const SizedBox(height: 4),
+      child: PopScope(
+        canPop: !_capturing,
+        child: AbsorbPointer(
+          absorbing: _capturing,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
               Text(
-                'Jarak dari supplier: ${(_distanceKm! * 1000).round()} m (maks. ${((_maxDistanceKm ?? 0) * 1000).round()} m)',
-                style: TextStyle(
-                  color: _withinRadius ? AppColors.success : AppColors.error,
+                'Check-out — ${widget.item.supplierName}',
+                style: const TextStyle(
+                  fontSize: 20,
                   fontWeight: FontWeight.w700,
                 ),
               ),
-            ],
-            if (!_withinRadius) ...[
-              const SizedBox(height: 8),
-              const Text(
-                'Anda berada di luar radius checkout. Mendekatlah ke lokasi supplier.',
-                style: TextStyle(color: AppColors.error),
-              ),
-            ],
-            const SizedBox(height: 12),
-            TextField(
-              controller: _notes,
-              maxLines: 3,
-              decoration: const InputDecoration(
-                labelText: 'Catatan kunjungan (opsional)',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 12),
-            OutlinedButton.icon(
-              onPressed: _capturing ? null : _capture,
-              icon: _capturing
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : Icon(
-                      _photo == null
-                          ? Icons.photo_camera_outlined
-                          : Icons.check_circle_outline,
+              const SizedBox(height: 12),
+              if (_loading)
+                const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(24),
+                    child: CircularProgressIndicator(),
+                  ),
+                )
+              else if (_error != null)
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _error!,
+                      style: const TextStyle(color: AppColors.error),
                     ),
-              label: Text(
-                _photo == null
-                    ? 'Ambil foto check-out *'
-                    : 'Foto siap (${(_photo!.bytes / 1024).ceil()} KB)',
-              ),
-            ),
-            const SizedBox(height: 16),
-            SizedBox(
-              width: double.infinity,
-              height: 48,
-              child: FilledButton(
-                onPressed: _photo == null || !_withinRadius
-                    ? null
-                    : () => Navigator.pop(
-                        context,
-                        CheckoutDraft(
-                          fix: _fix!,
-                          photo: _photo!,
-                          notes: _notes.text.trim(),
+                    TextButton(
+                      onPressed: _loadLocation,
+                      child: const Text('Coba lagi'),
+                    ),
+                  ],
+                )
+              else ...[
+                Text(
+                  'GPS: ±${_fix!.accuracyMeters.round()} m',
+                  style: const TextStyle(color: AppColors.textSecondary),
+                ),
+                if (_distanceKm != null) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    'Jarak dari supplier: ${(_distanceKm! * 1000).round()} m (maks. ${((_maxDistanceKm ?? 0) * 1000).round()} m)',
+                    style: TextStyle(
+                      color: _withinRadius
+                          ? AppColors.success
+                          : AppColors.error,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+                if (!_withinRadius) ...[
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Anda berada di luar radius checkout. Mendekatlah ke lokasi supplier.',
+                    style: TextStyle(color: AppColors.error),
+                  ),
+                ],
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _notes,
+                  maxLines: 3,
+                  decoration: const InputDecoration(
+                    labelText: 'Catatan kunjungan (opsional)',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                OutlinedButton.icon(
+                  onPressed: _capturing ? null : _capture,
+                  icon: _capturing
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : Icon(
+                          _photo == null
+                              ? Icons.photo_camera_outlined
+                              : Icons.check_circle_outline,
                         ),
-                      ),
-                child: const Text('Konfirmasi Check-out'),
-              ),
-            ),
-          ],
-        ],
+                  label: Text(
+                    _capturing
+                        ? _photoProgress
+                        : (_photo == null
+                              ? 'Ambil foto check-out *'
+                              : 'Foto siap (${(_photo!.bytes / 1024).ceil()} KB)'),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: FilledButton(
+                    onPressed: _photo == null || !_withinRadius
+                        ? null
+                        : () => Navigator.pop(
+                            context,
+                            CheckoutDraft(
+                              fix: _fix!,
+                              photo: _photo!,
+                              notes: _notes.text.trim(),
+                            ),
+                          ),
+                    child: const Text('Konfirmasi Check-out'),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
       ),
     ),
   );

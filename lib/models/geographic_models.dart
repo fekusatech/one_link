@@ -15,71 +15,74 @@ class Province {
   }
 }
 
-// City Model
 class City {
   final int id;
   final String name;
-  final int idProvinsi;
-  final int provinceId; // Add this for compatibility
+  final int? idProvinsi;
+  final int provinceId;
 
   City({
     required this.id,
     required this.name,
-    required this.idProvinsi,
+    this.idProvinsi,
     int? provinceId,
-  }) : provinceId = provinceId ?? idProvinsi;
+  }) : provinceId = provinceId ?? idProvinsi ?? 0;
 
   factory City.fromJson(Map<String, dynamic> json) {
     return City(
       id: int.parse(json['id'].toString()),
       name: json['name'] ?? '',
-      idProvinsi: int.parse(json['id_provinsi'].toString()),
+      idProvinsi: json['id_provinsi'] == null
+          ? null
+          : int.tryParse(json['id_provinsi'].toString()),
     );
   }
 }
 
-// District Model
 class District {
   final int id;
   final String name;
-  final int idKota;
-  final int cityId; // Add this for compatibility
+  final int? idKota;
+  final int cityId;
 
   District({
     required this.id,
     required this.name,
-    required this.idKota,
+    this.idKota,
     int? cityId,
-  }) : cityId = cityId ?? idKota;
+  }) : cityId = cityId ?? idKota ?? 0;
 
   factory District.fromJson(Map<String, dynamic> json) {
     return District(
       id: int.parse(json['id'].toString()),
       name: json['name'] ?? '',
-      idKota: int.parse(json['id_kota'].toString()),
+      idKota: json['id_kota'] == null
+          ? null
+          : int.tryParse(json['id_kota'].toString()),
     );
   }
 }
 
-// Village Model
 class Village {
   final int id;
   final String name;
-  final int idKecamatan;
-  final int districtId; // Add this for compatibility
+  final int? idKecamatan;
+  final int districtId;
 
   Village({
     required this.id,
     required this.name,
-    required this.idKecamatan,
+    this.idKecamatan,
     int? districtId,
-  }) : districtId = districtId ?? idKecamatan;
+  }) : districtId = districtId ?? idKecamatan ?? 0;
 
   factory Village.fromJson(Map<String, dynamic> json) {
     return Village(
       id: int.parse(json['id'].toString()),
       name: json['name'] ?? '',
-      idKecamatan: int.parse(json['id_kecamatan'].toString()),
+      idKecamatan: json['id_kecamatan'] == null
+          ? null
+          : int.tryParse(json['id_kecamatan'].toString()),
     );
   }
 }

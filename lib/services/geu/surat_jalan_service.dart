@@ -119,15 +119,34 @@ class GeuSuratJalanService {
     return [];
   }
 
+  /// One retry (500ms backoff) before giving up on a single surat jalan's
+  /// detail fetch — covers the transient network blips seen in the field
+  /// (driver on cellular) that were previously swallowed silently and left
+  /// the dashboard showing "0 titik" despite a non-empty surat jalan list.
+  static Future<SuratJalan> _getByIdWithRetry(SuratJalan listItem) async {
+    try {
+      return await getById(int.parse(listItem.suratJalanId));
+    } catch (e) {
+      print(
+        '⚠️ Dashboard: Hydrate surat jalan ${listItem.kode} gagal, retry sekali: $e',
+      );
+      await Future.delayed(const Duration(milliseconds: 500));
+      return getById(int.parse(listItem.suratJalanId));
+    }
+  }
+
   static Future<List<SuratJalan>> listTodayHydrated() async {
     try {
       final shallow = await listToday();
       final hydrated = await Future.wait(
         shallow.map((s) async {
           try {
-            final full = await getById(int.parse(s.suratJalanId));
+            final full = await _getByIdWithRetry(s);
             return mergeListFields(base: full, listItem: s);
-          } catch (_) {
+          } catch (e) {
+            print(
+              '⚠️ Dashboard: Hydrate surat jalan ${s.kode} gagal permanen, pakai data ringkas (tanpa detail/GPS): $e',
+            );
             return s;
           }
         }),

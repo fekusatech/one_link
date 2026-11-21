@@ -1,0 +1,16 @@
+{
+  "native_roundtrip": "PASS",
+  "artboards": 10,
+  "nodes": 408,
+  "navigation_destinations_valid": 71,
+  "missing_fonts": 0,
+  "text_contrast": {
+    "#FFFFFF on #1B4D3E": 9.64,
+    "#212121 on #E87C1E": 5.62,
+    "#424242 on #FAFAFA": 9.63,
+    "#1B4D3E on #F5F5F5": 8.85
+  },
+  "visual_review": "10 artboards exported; overview inspected",
+  "interactive_runtime": "Not verified: UI clicks did not show a stable destination change. Structural links only.",
+  "scope": "Design review, not Flutter implementation or functional prototype acceptance"
+}

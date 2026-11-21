@@ -13,6 +13,7 @@ import 'mandatory_gps_consent_screen.dart';
 import 'login_screen.dart';
 import '../widgets/force_login_dialog.dart';
 import '../widgets/impersonation_banner.dart';
+import '../widgets/account_switcher_sheet.dart';
 
 class RoleSelectionScreen extends StatefulWidget {
   const RoleSelectionScreen({super.key});
@@ -551,6 +552,11 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                                 ),
                               ],
                             ),
+                          ),
+                          IconButton(
+                            onPressed: () => AccountSwitcherSheet.show(context),
+                            icon: const Icon(Icons.switch_account_outlined, color: Colors.white),
+                            tooltip: 'Ganti Akun',
                           ),
                           IconButton(
                             onPressed: _handleLogout,

@@ -16,7 +16,9 @@ class SupplierListService {
       final response = await dio.get('/api/suppliers/$id');
       final body = response.data as Map<String, dynamic>;
       if (body['status'] != 'success' || body['data'] == null) return null;
-      return SupplierOrderSummary.fromJson(body['data'] as Map<String, dynamic>);
+      return SupplierOrderSummary.fromJson(
+        body['data'] as Map<String, dynamic>,
+      );
     } catch (e) {
       print('❌ Error fetching supplier order summary: $e');
       return null;
@@ -56,6 +58,7 @@ class SupplierListService {
   static Future<ApiResponse<SupplierListResponse>> getSupplierList({
     int page = 1,
     int limit = 10,
+    int? cursor,
     int? picId,
     String? search,
     String? date, // Format: YYYY-MM-DD
@@ -69,6 +72,9 @@ class SupplierListService {
       // go-rest-api's current supplier endpoint is cursor based. Keep this
       // service's page-shaped return type for existing mobile screens.
       final queryParams = <String, String>{'limit': limit.toString()};
+      if (cursor != null && cursor > 0) {
+        queryParams['cursor'] = cursor.toString();
+      }
 
       if (search != null && search.isNotEmpty) {
         queryParams['search'] = search;

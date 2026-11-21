@@ -1,7 +1,10 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/supplier_form_provider.dart';
+import '../models/dropdown_models.dart';
 import '../models/supplier_model.dart';
+import '../services/api/supplier_api_service.dart';
 import '../services/geu/gps_service.dart';
 
 class AddSupplierScreenSimple extends StatefulWidget {
@@ -37,6 +40,7 @@ class _AddSupplierScreenSimpleState extends State<AddSupplierScreenSimple> {
   double? _currentLatitude;
   double? _currentLongitude;
   bool _isGettingLocation = false;
+  bool _isIsccCertified = false;
 
   // Error tracking
   Set<String> _fieldErrors = {};
@@ -83,11 +87,34 @@ class _AddSupplierScreenSimpleState extends State<AddSupplierScreenSimple> {
       ),
       body: Consumer<SupplierFormProvider>(
         builder: (context, provider, child) {
+          if (provider.masterDataFailed) {
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.cloud_off, size: 48, color: Colors.grey[400]),
+                    const SizedBox(height: 16),
+                    Text(
+                      provider.errorMessage ?? 'Gagal memuat data.',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(fontSize: 14),
+                    ),
+                    const SizedBox(height: 16),
+                    ElevatedButton.icon(
+                      onPressed: () => provider.loadMasterData(),
+                      icon: const Icon(Icons.refresh),
+                      label: const Text('Coba Lagi'),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }
           return Column(
             children: [
-              // Progress indicator
               _buildProgressIndicator(),
-              // Page content
               Expanded(
                 child: PageView(
                   controller: _pageController,
@@ -173,23 +200,18 @@ class _AddSupplierScreenSimpleState extends State<AddSupplierScreenSimple> {
             isRequired: true,
           ),
 
+          const SizedBox(height: 8),
+          SwitchListTile.adaptive(
+            contentPadding: EdgeInsets.zero,
+            title: const Text('ISCC Certified'),
+            subtitle: Text(_isIsccCertified ? 'Ya' : 'Tidak'),
+            value: _isIsccCertified,
+            onChanged: (value) => setState(() => _isIsccCertified = value),
+          ),
+
           const SizedBox(height: 16),
 
-          _buildDropdown(
-            label: 'PIC RO',
-            value: provider.selectedPic,
-            items: provider.employees,
-            onChanged: (value) {
-              provider.selectedPic = value;
-              if (value != null) {
-                _karyawanController.text = value.name;
-                _jabatanController.text = value.jabatan ?? value.position ?? '';
-              }
-              provider.refreshSelection();
-            },
-            displayText: (item) => item.name,
-            hint: 'Pilih PIC RO',
-          ),
+          _buildPicPicker(provider),
 
           const SizedBox(height: 16),
 
@@ -712,6 +734,80 @@ class _AddSupplierScreenSimpleState extends State<AddSupplierScreenSimple> {
     );
   }
 
+  Widget _buildPicPicker(SupplierFormProvider provider) {
+    final hasError = _fieldErrors.contains('PIC RO');
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'PIC RO',
+          style: TextStyle(
+            fontWeight: FontWeight.w500,
+            color: hasError ? Colors.red : const Color(0xFF424242),
+            fontSize: 14,
+          ),
+        ),
+        const SizedBox(height: 8),
+        InkWell(
+          onTap: () => _showPicPickerSheet(provider),
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+            decoration: BoxDecoration(
+              border: Border.all(
+                color: hasError ? Colors.red : Colors.grey[300]!,
+              ),
+              borderRadius: BorderRadius.circular(8),
+              color: hasError ? Colors.red.withOpacity(0.05) : Colors.white,
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    provider.selectedPic?.name ?? 'Pilih PIC RO',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: provider.selectedPic != null
+                          ? const Color(0xFF212121)
+                          : Colors.grey[600],
+                    ),
+                  ),
+                ),
+                Icon(Icons.arrow_drop_down, color: Colors.grey[600]),
+              ],
+            ),
+          ),
+        ),
+        if (hasError) ...[
+          const SizedBox(height: 4),
+          const Text(
+            'Field ini wajib dipilih',
+            style: TextStyle(color: Colors.red, fontSize: 12),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Future<void> _showPicPickerSheet(SupplierFormProvider provider) async {
+    final result = await showModalBottomSheet<Employee>(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (_) => _PicPickerSheet(initialSelection: provider.selectedPic),
+    );
+
+    if (result != null && mounted) {
+      provider.selectedPic = result;
+      _karyawanController.text = result.name;
+      _jabatanController.text = result.jabatan ?? result.position ?? '';
+      provider.refreshSelection();
+    }
+  }
+
   void _handleNextButton() {
     // Clear previous errors for current page
     setState(() {
@@ -931,7 +1027,10 @@ class _AddSupplierScreenSimpleState extends State<AddSupplierScreenSimple> {
       // Create Supplier object with collected data
       final supplier = Supplier(
         jenis: provider.selectedJenis!.name,
-        picId: provider.selectedPic?.id ?? 0,
+        // PIC RO tidak wajib diisi. Kirim null (nanti dibuang toJson) alih-alih
+        // 0 — id 0 tidak menunjuk ke karyawan mana pun, jadi supplier akan
+        // tersimpan dengan foreign key yang menggantung.
+        picId: provider.selectedPic?.id,
         name: _namaController.text.trim(),
         karyawan: picName,
         phone: _noTelpController.text.trim(),
@@ -955,6 +1054,7 @@ class _AddSupplierScreenSimpleState extends State<AddSupplierScreenSimple> {
             ? _siklusController.text.trim()
             : null,
         poin: int.tryParse(_poinController.text.trim()),
+        isIsccCertified: _isIsccCertified,
       );
 
       final success = await provider.submitSupplier(supplier);
@@ -964,15 +1064,9 @@ class _AddSupplierScreenSimpleState extends State<AddSupplierScreenSimple> {
           _showSuccessToast();
           Navigator.of(context).pop(true);
         } else {
-          // Show detailed API validation errors
-          if (provider.errorMessage != null &&
-              provider.errorMessage!.contains('Validation Error')) {
-            _showApiValidationErrors();
-          } else {
-            _handleApiError(
-              provider.errorMessage ?? 'Gagal menambahkan supplier',
-            );
-          }
+          _handleApiError(
+            provider.errorMessage ?? 'Gagal menambahkan supplier',
+          );
         }
       }
     } catch (e) {
@@ -980,83 +1074,6 @@ class _AddSupplierScreenSimpleState extends State<AddSupplierScreenSimple> {
         _showErrorToast('Error: $e');
       }
     }
-  }
-
-  void _showApiValidationErrors() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text(
-          '🚨 MASALAH BACKEND TERDETEKSI',
-          style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
-        ),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.red.shade50,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.red.shade200),
-                ),
-                child: const Text(
-                  '📊 ANALISA FRONTEND:\n✅ Data dikirim dengan benar\n✅ Format JSON sudah sesuai\n✅ Semua field required terisi',
-                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
-                ),
-              ),
-              const SizedBox(height: 16),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.orange.shade50,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.orange.shade200),
-                ),
-                child: const Text(
-                  '💡 POST BODY YANG DIKIRIM:\n{"jenis":"POO RETAIL","pic":89,"name":"test pak hari","karyawan":"Test Saja"...}\n\nSemua field sudah terisi dengan benar!',
-                  style: TextStyle(fontSize: 12),
-                ),
-              ),
-              const SizedBox(height: 16),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.red.shade100,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.red.shade300),
-                ),
-                child: const Text(
-                  '❌ MASALAH DI BACKEND:\n\n1. STATUS 400: Validation error padahal data sudah benar\n\n2. STATUS 500: Call to undefined method M_supplier::get_last_code()\n\n3. STATUS 500: Database Error\n\n→ Backend tidak bisa parse request body\n→ Missing method di PHP model\n→ Database configuration error',
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
-                ),
-              ),
-              const SizedBox(height: 16),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.blue.shade50,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.blue.shade200),
-                ),
-                child: const Text(
-                  '🔧 SOLUSI:\nHubungi Backend Developer untuk:\n• Fix validation logic di Api_supplier.php\n• Tambah method get_last_code() di M_supplier model\n• Check database connection & struktur table',
-                  style: TextStyle(fontSize: 12),
-                ),
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Mengerti'),
-          ),
-        ],
-      ),
-    );
   }
 
   Future<void> _getCurrentLocation() async {
@@ -1094,5 +1111,221 @@ class _AddSupplierScreenSimpleState extends State<AddSupplierScreenSimple> {
         _isGettingLocation = false;
       });
     }
+  }
+}
+
+/// Pencarian PIC dengan scroll tak terbatas + debounce. Sengaja StatefulWidget
+/// sendiri (bukan closure + StatefulBuilder di dalam showModalBottomSheet)
+/// karena versi closure sebelumnya membuat Timer debounce dan network call
+/// yang masih tertunda saat sheet ditutup memanggil setSheetState()/mengakses
+/// TextEditingController & ScrollController SETELAH keduanya di-dispose() —
+/// muncul persis sebagai "A TextEditingController/ScrollController was used
+/// after being disposed" di log. StatefulWidget punya dispose() resmi yang
+/// dipanggil framework saat widget benar-benar unmount, jadi guard `mounted`
+/// di setiap callback async menutup celah race tersebut.
+class _PicPickerSheet extends StatefulWidget {
+  final Employee? initialSelection;
+  const _PicPickerSheet({this.initialSelection});
+
+  @override
+  State<_PicPickerSheet> createState() => _PicPickerSheetState();
+}
+
+class _PicPickerSheetState extends State<_PicPickerSheet> {
+  final _searchController = TextEditingController();
+  final _scrollController = ScrollController();
+  Timer? _debounce;
+
+  List<Employee> _employees = [];
+  bool _loading = true;
+  bool _loadingMore = false;
+  bool _hasMore = true;
+  bool _error = false;
+  String _errorMsg = '';
+  int _currentPage = 1;
+  Employee? _selection;
+
+  @override
+  void initState() {
+    super.initState();
+    _selection = widget.initialSelection;
+    _scrollController.addListener(_onScroll);
+    _loadPage();
+  }
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    _searchController.dispose();
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (!_hasMore || _loading || _loadingMore) return;
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent - 100) {
+      setState(() => _loadingMore = true);
+      _loadPage();
+    }
+  }
+
+  Future<void> _loadPage({bool reset = false}) async {
+    if (reset) {
+      _currentPage = 1;
+      _employees = [];
+      _hasMore = true;
+      _error = false;
+      _loading = true;
+    }
+    if (mounted) setState(() {});
+
+    try {
+      final res = await SupplierApiService.getEmployees(
+        search: _searchController.text.trim(),
+        page: _currentPage,
+        limit: 20,
+      );
+      if (!mounted) return;
+
+      if (res.status && res.data != null) {
+        final data = res.data!;
+        final list = (data['data'] as List? ?? [])
+            .map((e) => Employee.fromJson(e as Map<String, dynamic>))
+            .toList();
+        final pagination = data['pagination'] as Map<String, dynamic>?;
+        setState(() {
+          _employees.addAll(list);
+          _hasMore = pagination?['has_next'] as bool? ?? false;
+          _currentPage++;
+        });
+      } else {
+        setState(() {
+          _error = true;
+          _errorMsg = res.message.isNotEmpty
+              ? res.message
+              : 'Gagal memuat data';
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = true;
+          _errorMsg = 'Gagal memuat data. Coba lagi.';
+        });
+      }
+    } finally {
+      if (mounted) setState(() => _loading = _loadingMore = false);
+    }
+  }
+
+  void _onSearchChanged(String _) {
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 400), () {
+      if (mounted) _loadPage(reset: true);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return DraggableScrollableSheet(
+      initialChildSize: 0.7,
+      maxChildSize: 0.9,
+      minChildSize: 0.4,
+      expand: false,
+      builder: (context, _) {
+        return Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+              child: Row(
+                children: [
+                  const Text(
+                    'Pilih PIC',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  const Spacer(),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: TextField(
+                controller: _searchController,
+                decoration: InputDecoration(
+                  hintText: 'Cari nama karyawan...',
+                  prefixIcon: const Icon(Icons.search),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
+                ),
+                onChanged: _onSearchChanged,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Expanded(
+              child: _error
+                  ? Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(_errorMsg),
+                          const SizedBox(height: 8),
+                          ElevatedButton(
+                            onPressed: () => _loadPage(reset: true),
+                            child: const Text('Coba Lagi'),
+                          ),
+                        ],
+                      ),
+                    )
+                  : _employees.isEmpty && !_loading
+                  ? const Center(child: Text('Karyawan tidak ditemukan.'))
+                  : ListView.builder(
+                      controller: _scrollController,
+                      itemCount: _employees.length + (_hasMore ? 1 : 0),
+                      itemBuilder: (context, i) {
+                        if (i >= _employees.length) {
+                          return const Padding(
+                            padding: EdgeInsets.all(16),
+                            child: Center(
+                              child: SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              ),
+                            ),
+                          );
+                        }
+                        final emp = _employees[i];
+                        final selected = _selection?.id == emp.id;
+                        return ListTile(
+                          leading: Icon(
+                            selected
+                                ? Icons.radio_button_checked
+                                : Icons.radio_button_off,
+                            color: selected
+                                ? const Color(0xFF1976D2)
+                                : Colors.grey,
+                          ),
+                          title: Text(emp.name),
+                          onTap: () => Navigator.pop(context, emp),
+                        );
+                      },
+                    ),
+            ),
+          ],
+        );
+      },
+    );
   }
 }

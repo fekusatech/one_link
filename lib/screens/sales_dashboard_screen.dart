@@ -1,4 +1,10 @@
+import 'dart:async';
+import 'dart:convert';
+
+import 'package:geolocator/geolocator.dart';
+import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../constants/app_colors.dart';
 import '../constants/app_text_styles.dart';
@@ -34,6 +40,7 @@ import '../models/geu/visit_planner_models.dart';
 import '../services/geu/visit_planner_service.dart';
 import '../services/geu/my_statistic_service.dart';
 import '../services/geu/geu_auth_service.dart';
+import '../services/geu/reverse_geocoding_service.dart';
 
 class SalesDashboardScreen extends StatefulWidget {
   const SalesDashboardScreen({super.key});
@@ -60,6 +67,11 @@ class _SalesDashboardScreenState extends State<SalesDashboardScreen> {
   TodaysMission? _todaysMission;
   AssignmentStats? _myStats;
   GeuUser? _geuUser;
+  int? _weatherCode;
+  double? _temperatureC;
+  int? _relativeHumidity;
+  double? _windSpeedKmh;
+  String _locationLabel = 'Mencari lokasi…';
 
   @override
   void initState() {
@@ -70,6 +82,7 @@ class _SalesDashboardScreenState extends State<SalesDashboardScreen> {
     _loadMyStatistics();
     _loadPermissions();
     _loadSwitchDashboardPermission();
+    _loadWeather();
 
     // CRO/RO can land here directly on app open (not just via Driver
     // dashboard), so the update/maintenance check needs to fire from here
@@ -109,6 +122,7 @@ class _SalesDashboardScreenState extends State<SalesDashboardScreen> {
         debugPrint('⚠️ Sales/CRO location tracking could not be started');
       }
     }
+    await _loadWeather();
   }
 
   Future<void> _loadPermissions() async {
@@ -136,6 +150,65 @@ class _SalesDashboardScreenState extends State<SalesDashboardScreen> {
   }
 
   bool _has(String slug) => _geuUser?.hasPermission(slug) ?? false;
+
+  Future<void> _loadWeather() async {
+    try {
+      Position? location = await Geolocator.getLastKnownPosition();
+      location ??= await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.low,
+          timeLimit: Duration(seconds: 8),
+        ),
+      );
+      final addressFuture = ReverseGeocodingService.resolveLocality(
+        location.latitude,
+        location.longitude,
+      );
+      final uri = Uri.https('api.open-meteo.com', '/v1/forecast', {
+        'latitude': location.latitude.toStringAsFixed(2),
+        'longitude': location.longitude.toStringAsFixed(2),
+        'current':
+            'temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m',
+        'timezone': 'auto',
+      });
+      final responseFuture = http.get(uri).timeout(const Duration(seconds: 5));
+      final address = await addressFuture;
+      if (mounted) {
+        setState(() => _locationLabel = address);
+      }
+      final response = await responseFuture;
+      if (response.statusCode != 200 || !mounted) return;
+      final current =
+          (jsonDecode(response.body) as Map<String, dynamic>)['current']
+              as Map<String, dynamic>?;
+      final code = current?['weather_code'] as int?;
+      if (code != null) {
+        setState(() {
+          _weatherCode = code;
+          _temperatureC = (current?['temperature_2m'] as num?)?.toDouble();
+          _relativeHumidity = (current?['relative_humidity_2m'] as num?)
+              ?.toInt();
+          _windSpeedKmh = (current?['wind_speed_10m'] as num?)?.toDouble();
+        });
+      }
+    } catch (_) {
+      // Weather is decorative; keep the branded neutral background offline.
+      if (mounted && _locationLabel == 'Mencari lokasi…') {
+        setState(() => _locationLabel = 'Lokasi belum tersedia');
+      }
+    }
+  }
+
+  _WeatherMood get _weatherMood {
+    final code = _weatherCode;
+    if (code == null) return _WeatherMood.clear;
+    if (code == 0) return _WeatherMood.clear;
+    if (code <= 3) return _WeatherMood.cloudy;
+    if (code <= 48) return _WeatherMood.fog;
+    if (code <= 67 || (code >= 80 && code <= 82)) return _WeatherMood.rain;
+    if (code >= 95) return _WeatherMood.storm;
+    return _WeatherMood.cloudy;
+  }
 
   Future<void> _loadUserName() async {
     final name = await UserStorage.getUserName();
@@ -220,88 +293,47 @@ class _SalesDashboardScreenState extends State<SalesDashboardScreen> {
       const ProfileScreen(role: ProfileRole.cro),
     ];
 
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      drawer: _buildDrawer(),
-      appBar: _selectedIndex == 0 ? _buildSalesAppBar() : null,
-      body: _selectedIndex == 0
-          ? _buildMainDashboard()
-          : screens[_selectedIndex],
-      bottomNavigationBar: _SalesBottomBar(
-        currentIndex: _selectedIndex,
-        onTap: _onItemTapped,
-        showVisitPlan: hasVisitPlanner,
-        showTasks: showTasksTab,
-        showHistory: hasVisitPlanner,
+    final lightStatusSurface = _weatherMood.background.computeLuminance() > .5;
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: lightStatusSurface
+            ? Brightness.dark
+            : Brightness.light,
+        statusBarBrightness: lightStatusSurface
+            ? Brightness.light
+            : Brightness.dark,
       ),
-    );
-  }
-
-  PreferredSizeWidget _buildSalesAppBar() {
-    return AppBar(
-      backgroundColor: AppColors.background,
-      surfaceTintColor: Colors.transparent,
-      elevation: 0,
-      toolbarHeight: 72,
-      titleSpacing: 0,
-      title: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'ONE LINK',
-            style: AppTextStyles.overline.copyWith(
-              color: AppColors.accentOrange,
-              fontWeight: FontWeight.w800,
-              letterSpacing: 1.8,
+      child: Scaffold(
+        backgroundColor: _weatherMood.background,
+        drawer: _buildDrawer(),
+        body: Stack(
+          children: [
+            Positioned.fill(child: _WeatherBackdrop(mood: _weatherMood)),
+            SafeArea(
+              child: _selectedIndex == 0
+                  ? _buildMainDashboard()
+                  : screens[_selectedIndex],
             ),
-          ),
-          Text(
-            'Sales workspace',
-            style: AppTextStyles.h6.copyWith(
-              color: AppColors.primaryGreen,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-        ],
-      ),
-      actions: [
-        Semantics(
-          label: 'Buka notifikasi',
-          button: true,
-          child: IconButton(
-            constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const NotificationScreen()),
-            ),
-            icon: const Icon(Icons.notifications_none_rounded),
-            color: AppColors.primaryGreen,
-            tooltip: 'Notifikasi',
+          ],
+        ),
+        bottomNavigationBar: _SalesBottomBar(
+          currentIndex: _selectedIndex,
+          onTap: _onItemTapped,
+          showVisitPlan: hasVisitPlanner,
+          showTasks: showTasksTab,
+          showHistory: hasVisitPlanner,
+          onNotifications: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const NotificationScreen()),
           ),
         ),
-        if (_canSwitchDashboard)
-          Semantics(
-            label: 'Pindah ke dashboard Driver',
-            button: true,
-            child: IconButton(
-              constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
-              onPressed: () =>
-                  Navigator.pushReplacementNamed(context, '/driver-dashboard'),
-              icon: const Icon(Icons.swap_horiz_rounded),
-              color: AppColors.primaryGreen,
-              tooltip: 'Pindah ke Dashboard Driver',
-            ),
-          ),
-        const SizedBox(width: 8),
-      ],
+      ),
     );
   }
 
-  /// Reachable from Beranda's app bar hamburger (auto-added by Scaffold once
-  /// `drawer` is set). Holds everything from the Menu section on Beranda
-  /// plus items that don't have room on Beranda's scroll or the bottom
-  /// nav — currently just Daftar Work Order — so it's the overflow surface
-  /// for secondary CRO/RO navigation without crowding the 5-slot bottom nav.
+  /// Reachable from the compact menu button beside the greeting. The drawer
+  /// holds secondary CRO/RO navigation without crowding the bottom nav.
   Widget _buildDrawer() {
     final items = [
       ..._menuItems(),
@@ -328,35 +360,62 @@ class _SalesDashboardScreenState extends State<SalesDashboardScreen> {
 
     return Drawer(
       child: SafeArea(
-        child: ListView(
-          padding: EdgeInsets.zero,
+        child: Column(
           children: [
-            Container(
-              padding: const EdgeInsets.all(20),
-              color: AppColors.primaryGreen,
-              child: Text(
-                'Menu',
-                style: AppTextStyles.h4.copyWith(
-                  color: AppColors.white,
-                  fontWeight: FontWeight.bold,
-                ),
+            Expanded(
+              child: ListView(
+                padding: EdgeInsets.zero,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(20),
+                    color: AppColors.primaryGreen,
+                    child: Text(
+                      'Menu',
+                      style: AppTextStyles.h4.copyWith(
+                        color: AppColors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  for (final item in visible)
+                    ListTile(
+                      leading: Icon(item.icon, color: item.color),
+                      title: Text(item.title),
+                      subtitle: Text(
+                        item.subtitle,
+                        style: AppTextStyles.caption.copyWith(
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                      onTap: () {
+                        Navigator.pop(context);
+                        item.onTap();
+                      },
+                    ),
+                ],
               ),
             ),
-            for (final item in visible)
+            if (_canSwitchDashboard) ...[
+              const Divider(height: 1),
               ListTile(
-                leading: Icon(item.icon, color: item.color),
-                title: Text(item.title),
+                minVerticalPadding: 12,
+                leading: const Icon(
+                  Icons.swap_horiz_rounded,
+                  color: AppColors.primaryGreen,
+                ),
+                title: const Text('Pindah ke Driver'),
                 subtitle: Text(
-                  item.subtitle,
+                  'Ganti workspace',
                   style: AppTextStyles.caption.copyWith(
                     color: AppColors.textSecondary,
                   ),
                 ),
-                onTap: () {
-                  Navigator.pop(context);
-                  item.onTap();
-                },
+                onTap: () => Navigator.pushReplacementNamed(
+                  context,
+                  '/driver-dashboard',
+                ),
               ),
+            ],
           ],
         ),
       ),
@@ -366,174 +425,101 @@ class _SalesDashboardScreenState extends State<SalesDashboardScreen> {
   Widget _buildMainDashboard() {
     final hasVisitPlanner = _has('crm-read-visit-planner');
     return ListView(
-      padding: const EdgeInsets.fromLTRB(20, 8, 20, 118),
+      padding: const EdgeInsets.fromLTRB(20, 4, 20, 118),
       children: [
         _buildCroGreeting(),
-        const SizedBox(height: 12),
+        const SizedBox(height: 16),
         const ActiveVisitWarningBanner(),
-        const SizedBox(height: 12),
         if (hasVisitPlanner) ...[
+          const SizedBox(height: 16),
           _buildMissionSummary(),
-          const SizedBox(height: 24),
         ],
-        _sectionHeading(
-          'Ringkasan hari ini',
-          'Pantau pipeline dan prioritas lapangan dalam sekali lihat.',
-        ),
-        const SizedBox(height: 14),
+        const SizedBox(height: 28),
         _buildStatisticsSection(),
-        const SizedBox(height: 24),
-        _buildMyStatistics(),
         const SizedBox(height: 28),
         _buildQuickActions(),
+        const SizedBox(height: 28),
+        _buildMyStatistics(),
       ],
     );
   }
 
-  Widget _sectionHeading(String title, String subtitle) => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Text(
-        title,
-        style: AppTextStyles.h5.copyWith(
-          color: AppColors.textPrimary,
-          fontWeight: FontWeight.w800,
-        ),
-      ),
-      const SizedBox(height: 4),
-      Text(
-        subtitle,
-        style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary),
-      ),
-    ],
-  );
-
   Widget _buildCroGreeting() {
-    final stats = _dashboardStats;
-    final now = DateTime.now();
-    final dateLabel =
-        '${now.day.toString().padLeft(2, '0')}/${now.month.toString().padLeft(2, '0')}/${now.year}';
+    final weatherDetails = [
+      if (_temperatureC != null) '${_temperatureC!.round()}°C',
+      if (_relativeHumidity != null) 'Kelembapan $_relativeHumidity%',
+      if (_windSpeedKmh != null) 'Angin ${_windSpeedKmh!.round()} km/j',
+    ].join('  ·  ');
 
-    return Container(
-      padding: const EdgeInsets.fromLTRB(20, 22, 20, 20),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFF1B4D3E), Color(0xFF2E7D5B)],
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Text(
+              _greeting(),
+              style: AppTextStyles.bodyMedium.copyWith(
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ],
         ),
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.primaryGreen.withValues(alpha: .25),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
+        const SizedBox(height: 2),
+        Text(
+          _userName,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: AppTextStyles.h3.copyWith(
+            color: AppColors.primaryGreen,
+            fontWeight: FontWeight.w800,
           ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      _greeting(),
-                      style: AppTextStyles.bodySmall.copyWith(
-                        color: AppColors.white.withValues(alpha: .75),
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      _userName,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: AppTextStyles.h4.copyWith(
-                        color: AppColors.white,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            const Icon(
+              Icons.location_on_outlined,
+              size: 17,
+              color: AppColors.primaryGreen,
+            ),
+            const SizedBox(width: 4),
+            Expanded(
+              child: Text(
+                _locationLabel,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppTextStyles.caption.copyWith(
+                  color: AppColors.textSecondary,
                 ),
               ),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 5,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.accentOrange,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      _has('crm-self-assign-cro') && _has('crm-self-assign-ro')
-                          ? 'CRO / RO'
-                          : _has('crm-self-assign-cro')
-                          ? 'CRO'
-                          : _has('crm-self-assign-ro')
-                          ? 'RO / ROE'
-                          : 'SALES',
-                      style: AppTextStyles.caption.copyWith(
-                        color: AppColors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 10.5,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 5,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.white.withValues(alpha: .15),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      dateLabel,
-                      style: AppTextStyles.caption.copyWith(
-                        color: AppColors.white,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 10.5,
-                      ),
-                    ),
-                  ),
-                ],
+            ),
+            const SizedBox(width: 12),
+            Icon(_weatherMood.icon, size: 17, color: AppColors.primaryGreen),
+            const SizedBox(width: 4),
+            Text(
+              _weatherCode == null ? 'Cuaca—' : _weatherMood.label,
+              style: AppTextStyles.caption.copyWith(
+                color: AppColors.textSecondary,
               ),
-            ],
-          ),
-          const SizedBox(height: 24),
-          Row(
-            children: [
-              _buildCroStat(
-                Icons.storefront_outlined,
-                stats?.totalSuppliers ?? 0,
-                'Supplier',
+            ),
+          ],
+        ),
+        if (weatherDetails.isNotEmpty) ...[
+          const SizedBox(height: 3),
+          Padding(
+            padding: const EdgeInsets.only(left: 21),
+            child: Text(
+              weatherDetails,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AppTextStyles.caption.copyWith(
+                color: AppColors.textSecondary,
+                fontSize: 10,
               ),
-              _croDivider(),
-              _buildCroStat(
-                Icons.verified_outlined,
-                stats?.activeSuppliers ?? 0,
-                'Aktif',
-              ),
-              _croDivider(),
-              _buildCroStat(
-                Icons.add_business_outlined,
-                stats?.newThisMonth ?? 0,
-                'Baru hari ini',
-              ),
-            ],
+            ),
           ),
         ],
-      ),
+      ],
     );
   }
 
@@ -541,152 +527,107 @@ class _SalesDashboardScreenState extends State<SalesDashboardScreen> {
     return ValueListenableBuilder<MissionNavigationState>(
       valueListenable: MissionNavigationStateService.current,
       builder: (context, mission, _) {
-        final active = mission.isActive;
-        final destination = mission.destination?.trim();
         final plannedItems = _todaysMission?.items ?? const <MissionItem>[];
-        final plannedCompleted = plannedItems
-            .where((item) => item.status.toUpperCase() == 'VISITED')
-            .length;
-        final totalVisits = active ? mission.totalVisits : plannedItems.length;
-        final completedVisits = active
+        final total = mission.isActive
+            ? mission.totalVisits
+            : plannedItems.length;
+        final completed = mission.isActive
             ? mission.completedVisits
-            : plannedCompleted;
-        return InkWell(
-          onTap: () => setState(() => _selectedIndex = 1),
-          borderRadius: BorderRadius.circular(16),
-          child: Ink(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: active ? const Color(0xFFEAF6F0) : AppColors.white,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: active
-                    ? AppColors.primaryGreen.withValues(alpha: .28)
-                    : AppColors.borderColor,
+            : plannedItems
+                  .where((item) => item.status.toUpperCase() == 'VISITED')
+                  .length;
+        final destination = mission.destination?.trim();
+        return Material(
+          color: AppColors.primaryGreen,
+          borderRadius: BorderRadius.circular(18),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(18),
+            onTap: () => setState(() => _selectedIndex = 1),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 18),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Kunjungan hari ini',
+                    style: AppTextStyles.bodyMedium.copyWith(
+                      color: AppColors.white,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    total > 0
+                        ? '$completed dari $total selesai'
+                        : 'Belum ada kunjungan',
+                    style: AppTextStyles.h3.copyWith(
+                      color: AppColors.white,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  if (total > 0) ...[
+                    const SizedBox(height: 16),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(3),
+                      child: LinearProgressIndicator(
+                        value: (completed / total).clamp(0.0, 1.0),
+                        minHeight: 4,
+                        backgroundColor: AppColors.white.withValues(alpha: .5),
+                        valueColor: const AlwaysStoppedAnimation(
+                          AppColors.accentOrange,
+                        ),
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 18),
+                  Text(
+                    destination != null && destination.isNotEmpty
+                        ? 'TUJUAN BERIKUTNYA'
+                        : 'RENCANA KUNJUNGAN',
+                    style: AppTextStyles.caption.copyWith(
+                      color: AppColors.white,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    destination != null && destination.isNotEmpty
+                        ? destination
+                        : 'Buka Visit untuk melihat rute hari ini',
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTextStyles.h5.copyWith(
+                      color: AppColors.white,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  Container(
+                    width: double.infinity,
+                    constraints: const BoxConstraints(minHeight: 48),
+                    alignment: Alignment.centerLeft,
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    decoration: BoxDecoration(
+                      color: AppColors.accentOrange,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      mission.isActive
+                          ? 'Lanjutkan kunjungan'
+                          : 'Buka Visit Plan',
+                      style: AppTextStyles.bodyMedium.copyWith(
+                        color: AppColors.textPrimary,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: active
-                        ? AppColors.primaryGreen
-                        : AppColors.backgroundGrey,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(
-                    active ? Icons.navigation_rounded : Icons.map_outlined,
-                    color: active ? AppColors.white : AppColors.primaryGreen,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Text(
-                            active
-                                ? 'Mission sedang berjalan'
-                                : 'Mission hari ini',
-                            style: AppTextStyles.bodyMedium.copyWith(
-                              color: AppColors.textPrimary,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          const Spacer(),
-                          Icon(
-                            Icons.chevron_right_rounded,
-                            color: AppColors.textSecondary,
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        '$completedVisits/$totalVisits kunjungan selesai',
-                        style: AppTextStyles.caption.copyWith(
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                      if (active &&
-                          destination != null &&
-                          destination.isNotEmpty) ...[
-                        const SizedBox(height: 8),
-                        Row(
-                          children: [
-                            const Icon(
-                              Icons.near_me_outlined,
-                              size: 15,
-                              color: AppColors.primaryGreen,
-                            ),
-                            const SizedBox(width: 5),
-                            Expanded(
-                              child: Text(
-                                'Menuju $destination',
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: AppTextStyles.bodySmall.copyWith(
-                                  color: AppColors.primaryGreen,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ] else ...[
-                        const SizedBox(height: 8),
-                        Text(
-                          'Buka Visit Plan untuk mulai kunjungan.',
-                          style: AppTextStyles.bodySmall.copyWith(
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-              ],
             ),
           ),
         );
       },
     );
   }
-
-  Widget _buildCroStat(IconData icon, int value, String label) => Expanded(
-    child: Column(
-      children: [
-        Icon(icon, size: 20, color: AppColors.white),
-        const SizedBox(height: 8),
-        Text(
-          '$value',
-          style: AppTextStyles.h6.copyWith(
-            color: AppColors.white,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 2),
-        Text(
-          label,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: AppTextStyles.caption.copyWith(
-            color: AppColors.white.withValues(alpha: .75),
-            fontSize: 11,
-          ),
-        ),
-      ],
-    ),
-  );
-
-  Widget _croDivider() => Container(
-    height: 44,
-    width: 1,
-    color: AppColors.white.withValues(alpha: .2),
-  );
 
   String _greeting() {
     final hour = DateTime.now().hour;
@@ -697,212 +638,107 @@ class _SalesDashboardScreenState extends State<SalesDashboardScreen> {
   }
 
   Widget _buildStatisticsSection() {
-    if (_isLoading) {
-      return const Center(
-        child: CircularProgressIndicator(color: AppColors.primaryGreen),
-      );
-    }
-
-    if (_errorMessage != null) {
-      return Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: AppColors.white,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              spreadRadius: 0,
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Column(
-          children: [
-            Icon(Icons.error_outline, size: 48, color: Colors.red[400]),
-            const SizedBox(height: 12),
-            Text(
-              'Gagal memuat statistik',
-              style: AppTextStyles.h6.copyWith(
-                fontWeight: FontWeight.bold,
-                color: AppColors.textPrimary,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              _errorMessage!,
-              style: const TextStyle(
-                color: AppColors.textSecondary,
-                fontSize: 14,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: _loadSalesData,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primaryGreen,
-                foregroundColor: AppColors.white,
-              ),
-              child: const Text('Coba Lagi'),
-            ),
-          ],
-        ),
-      );
-    }
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Align(
-          alignment: Alignment.centerRight,
-          child: TextButton.icon(
-            onPressed: _loadSalesData,
-            icon: const Icon(Icons.refresh_rounded, size: 18),
-            label: const Text('Perbarui'),
-            style: TextButton.styleFrom(
-              foregroundColor: AppColors.primaryGreen,
-              minimumSize: const Size(48, 44),
-            ),
-          ),
-        ),
-        const SizedBox(height: 4),
-
-        // Top Row - Main Stats
         Row(
           children: [
             Expanded(
-              child: _buildStatCard(
-                title: 'Total supplier',
-                value: _dashboardStats?.totalSuppliers.toString() ?? '0',
-                subtitle: 'Terdaftar',
-                icon: Icons.store,
-                color: AppColors.primaryGreen,
-                percentage:
-                    _dashboardStats != null &&
-                        _dashboardStats!.totalSuppliers > 0
-                    ? '+${((_dashboardStats!.newThisMonth / _dashboardStats!.totalSuppliers) * 100).toStringAsFixed(1)}%'
-                    : '0%',
-                isPositive: true,
+              child: Text(
+                'Ringkasan supplier',
+                style: AppTextStyles.h5.copyWith(
+                  color: AppColors.textPrimary,
+                  fontWeight: FontWeight.w800,
+                ),
               ),
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _buildStatCard(
-                title: 'Supplier aktif',
-                value: _dashboardStats?.activeSuppliers.toString() ?? '0',
-                subtitle: 'Beroperasi',
-                icon: Icons.check_circle,
-                color: AppColors.accentOrange,
-                percentage:
-                    _dashboardStats != null &&
-                        _dashboardStats!.totalSuppliers > 0
-                    ? '${((_dashboardStats!.activeSuppliers / _dashboardStats!.totalSuppliers) * 100).toStringAsFixed(0)}%'
-                    : '0%',
-                isPositive: true,
-              ),
+            TextButton(
+              onPressed: _loadSalesData,
+              child: const Text('Perbarui'),
             ),
           ],
         ),
         const SizedBox(height: 12),
-
-        // // Location Tracking Widget
-        // const LocationTrackingWidget(),
-        // const SizedBox(height: 12),
-        const SizedBox(height: 12),
-        _buildStatCard(
-          title: 'Supplier baru hari ini',
-          value: _dashboardStats?.newThisMonth.toString() ?? '0',
-          subtitle: 'Akuisisi baru',
-          icon: Icons.person_add_alt_1_outlined,
-          color: Colors.blue,
-          percentage: 'Hari ini',
-          isPositive: true,
-        ),
+        if (_isLoading)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 16),
+            child: Center(
+              child: CircularProgressIndicator(color: AppColors.primaryGreen),
+            ),
+          )
+        else if (_errorMessage != null)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppColors.white,
+              border: Border.all(color: AppColors.borderColor),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Gagal memuat statistik',
+                  style: AppTextStyles.h6.copyWith(
+                    color: AppColors.primaryGreen,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  _errorMessage!,
+                  style: AppTextStyles.bodySmall.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+                TextButton(
+                  onPressed: _loadSalesData,
+                  child: const Text('Coba lagi'),
+                ),
+              ],
+            ),
+          )
+        else
+          Row(
+            children: [
+              _supplierMetric(
+                '${_dashboardStats?.totalSuppliers ?? 0}',
+                'Terdaftar',
+              ),
+              _supplierMetric(
+                '${_dashboardStats?.activeSuppliers ?? 0}',
+                'Aktif',
+              ),
+              _supplierMetric(
+                '${_dashboardStats?.newThisMonth ?? 0}',
+                'Baru bulan ini',
+              ),
+            ],
+          ),
       ],
     );
   }
 
-  Widget _buildStatCard({
-    required String title,
-    required String value,
-    required String subtitle,
-    required IconData icon,
-    required Color color,
-    required String percentage,
-    required bool isPositive,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 5),
+  Widget _supplierMetric(String value, String label) => Expanded(
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          value,
+          style: AppTextStyles.h3.copyWith(
+            color: AppColors.primaryGreen,
+            fontWeight: FontWeight.w800,
           ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(icon, color: color, size: 20),
-              ),
-              const Spacer(),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: isPositive
-                      ? Colors.green.withOpacity(0.1)
-                      : Colors.red.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: Text(
-                  percentage,
-                  style: AppTextStyles.caption.copyWith(
-                    color: isPositive ? Colors.green : Colors.red,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Text(
-            value,
-            style: AppTextStyles.h4.copyWith(
-              color: AppColors.textPrimary,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            title,
-            style: AppTextStyles.bodyMedium.copyWith(
-              color: AppColors.textSecondary,
-            ),
-          ),
-          Text(
-            subtitle,
-            style: AppTextStyles.caption.copyWith(
-              color: AppColors.textSecondary,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+        ),
+        const SizedBox(height: 2),
+        Text(
+          label,
+          maxLines: 2,
+          style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary),
+        ),
+      ],
+    ),
+  );
 
   Widget _buildMyStatistics() {
     final stats = _myStats;
@@ -1234,131 +1070,173 @@ class _SalesDashboardScreenState extends State<SalesDashboardScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              'Menu Layanan',
-              style: AppTextStyles.h6.copyWith(
-                fontWeight: FontWeight.bold,
-                color: AppColors.textPrimary,
-              ),
+        Text(
+          'Akses kerja',
+          style: AppTextStyles.h5.copyWith(
+            color: AppColors.textPrimary,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        const SizedBox(height: 14),
+        for (final item in visible) ...[
+          Material(
+            color: AppColors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+              side: const BorderSide(color: AppColors.borderColor),
             ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(
-                color: AppColors.primaryGreen.withValues(alpha: .1),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Text(
-                '${visible.length} Fitur',
-                style: AppTextStyles.caption.copyWith(
-                  color: AppColors.primaryGreen,
-                  fontWeight: FontWeight.bold,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(10),
+              onTap: item.onTap,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(minHeight: 64),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 10,
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(item.icon, size: 22, color: AppColors.primaryGreen),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              item.title,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppTextStyles.bodyMedium.copyWith(
+                                color: AppColors.textPrimary,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            Text(
+                              item.subtitle,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppTextStyles.caption.copyWith(
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Icon(
+                        Icons.chevron_right_rounded,
+                        color: AppColors.primaryGreen,
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
-          ],
-        ),
-        const SizedBox(height: 14),
-        GridView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 2,
-            crossAxisSpacing: 12,
-            mainAxisSpacing: 12,
-            childAspectRatio: 1.35,
           ),
-          itemCount: visible.length,
-          itemBuilder: (context, index) {
-            final item = visible[index];
-            return _buildGridActionCard(
-              title: item.title,
-              subtitle: item.subtitle,
-              icon: item.icon,
-              color: item.color,
-              onTap: item.onTap,
-            );
-          },
-        ),
+          const SizedBox(height: 10),
+        ],
       ],
     );
   }
+}
 
-  Widget _buildGridActionCard({
-    required String title,
-    required String subtitle,
-    required IconData icon,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
-    return Material(
-      color: AppColors.white,
-      borderRadius: BorderRadius.circular(16),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(16),
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: color.withValues(alpha: .16)),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(9),
-                    decoration: BoxDecoration(
-                      color: color.withValues(alpha: .12),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Icon(icon, color: color, size: 22),
-                  ),
-                  Icon(
-                    Icons.arrow_forward_ios_rounded,
-                    size: 13,
-                    color: AppColors.textSecondary.withValues(alpha: .5),
-                  ),
-                ],
+enum _WeatherMood { clear, cloudy, fog, rain, storm }
+
+extension on _WeatherMood {
+  Color get background => switch (this) {
+    _WeatherMood.clear => AppColors.background,
+    _WeatherMood.cloudy => const Color(0xFFE8EFED),
+    _WeatherMood.fog => const Color(0xFFEDF0F0),
+    _WeatherMood.rain => const Color(0xFFD9E6EC),
+    _WeatherMood.storm => const Color(0xFFCFDCE3),
+  };
+
+  IconData get icon => switch (this) {
+    _WeatherMood.clear => Icons.wb_sunny_outlined,
+    _WeatherMood.cloudy => Icons.cloud_outlined,
+    _WeatherMood.fog => Icons.foggy,
+    _WeatherMood.rain => Icons.water_drop_outlined,
+    _WeatherMood.storm => Icons.thunderstorm_outlined,
+  };
+
+  String get label => switch (this) {
+    _WeatherMood.clear => 'Cerah',
+    _WeatherMood.cloudy => 'Berawan',
+    _WeatherMood.fog => 'Berkabut',
+    _WeatherMood.rain => 'Hujan',
+    _WeatherMood.storm => 'Hujan lebat',
+  };
+}
+
+class _WeatherBackdrop extends StatelessWidget {
+  const _WeatherBackdrop({required this.mood});
+  final _WeatherMood mood;
+
+  @override
+  Widget build(BuildContext context) {
+    final isWet = mood == _WeatherMood.rain || mood == _WeatherMood.storm;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: mood.background,
+        gradient: mood == _WeatherMood.clear
+            ? null
+            : LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [mood.background, AppColors.background],
               ),
-              const SizedBox(height: 8),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppTextStyles.bodyMedium.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.textPrimary,
-                      fontSize: 13.5,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    subtitle,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppTextStyles.caption.copyWith(
-                      color: AppColors.textSecondary,
-                      fontSize: 11,
-                    ),
-                  ),
-                ],
+      ),
+      child: Stack(
+        children: [
+          if (mood != _WeatherMood.clear)
+            Positioned(
+              top: -30,
+              right: -24,
+              child: Icon(
+                isWet ? Icons.cloud : Icons.cloud_outlined,
+                size: 190,
+                color: const Color(0xFF879A9B).withValues(alpha: .08),
               ),
-            ],
-          ),
-        ),
+            ),
+          if (isWet)
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              height: 270,
+              child: IgnorePointer(
+                child: CustomPaint(
+                  painter: _RainPainter(mood == _WeatherMood.storm),
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }
+}
+
+class _RainPainter extends CustomPainter {
+  const _RainPainter(this.heavy);
+  final bool heavy;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = const Color(0xFF587987).withValues(alpha: heavy ? .20 : .13)
+      ..strokeWidth = heavy ? 1.7 : 1.4
+      ..strokeCap = StrokeCap.round;
+    final step = heavy ? 28.0 : 40.0;
+    for (double x = 8; x < size.width; x += step) {
+      for (double y = 30 + (x % 61); y < size.height; y += step * 1.7) {
+        canvas.drawLine(Offset(x, y), Offset(x - 4, y + 12), paint);
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _RainPainter oldDelegate) =>
+      heavy != oldDelegate.heavy;
 }
 
 class _CroMenuItem {
@@ -1385,6 +1263,7 @@ class _SalesBottomBar extends StatelessWidget {
   final bool showVisitPlan;
   final bool showTasks;
   final bool showHistory;
+  final VoidCallback onNotifications;
 
   const _SalesBottomBar({
     required this.currentIndex,
@@ -1392,6 +1271,7 @@ class _SalesBottomBar extends StatelessWidget {
     required this.showVisitPlan,
     required this.showTasks,
     required this.showHistory,
+    required this.onNotifications,
   });
 
   @override
@@ -1425,80 +1305,69 @@ class _SalesBottomBar extends StatelessWidget {
         activeIcon: Icons.person_rounded,
         label: 'Profil',
       ),
+      (
+        icon: Icons.notifications_none_rounded,
+        activeIcon: Icons.notifications_rounded,
+        label: 'Notifikasi',
+      ),
     ];
 
     return SafeArea(
       top: false,
       child: Container(
-        margin: const EdgeInsets.fromLTRB(12, 0, 12, 10),
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
-        decoration: BoxDecoration(
+        decoration: const BoxDecoration(
           color: AppColors.white,
-          borderRadius: BorderRadius.circular(22),
-          border: Border.all(
-            color: AppColors.primaryGreen.withValues(alpha: .1),
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.primaryGreen.withValues(alpha: .12),
-              blurRadius: 24,
-              offset: const Offset(0, 8),
-            ),
-          ],
+          border: Border(top: BorderSide(color: AppColors.borderColor)),
         ),
         child: Row(
           children: List.generate(items.length, (index) {
             final item = items[index];
-            final selected = index == currentIndex;
+            final isNotifications = item.label == 'Notifikasi';
+            final selected = !isNotifications && index == currentIndex;
             return Expanded(
               child: Semantics(
                 button: true,
                 selected: selected,
                 label: 'Navigasi ${item.label}',
-                child: Material(
-                  color: Colors.transparent,
-                  borderRadius: BorderRadius.circular(16),
-                  child: InkWell(
-                    onTap: () => onTap(index),
-                    borderRadius: BorderRadius.circular(16),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 180),
-                      curve: Curves.easeOut,
-                      constraints: const BoxConstraints(minHeight: 52),
-                      padding: const EdgeInsets.symmetric(vertical: 6),
-                      decoration: BoxDecoration(
-                        color: selected
-                            ? AppColors.primaryGreen.withValues(alpha: .1)
-                            : Colors.transparent,
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            selected ? item.activeIcon : item.icon,
-                            size: 22,
+                child: InkWell(
+                  onTap: isNotifications ? onNotifications : () => onTap(index),
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(minHeight: 64),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      mainAxisAlignment: MainAxisAlignment.start,
+                      children: [
+                        Container(
+                          height: 3,
+                          width: 32,
+                          color: selected
+                              ? AppColors.accentOrange
+                              : Colors.transparent,
+                        ),
+                        const SizedBox(height: 8),
+                        Icon(
+                          selected ? item.activeIcon : item.icon,
+                          size: 22,
+                          color: selected
+                              ? AppColors.primaryGreen
+                              : AppColors.textSecondary,
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          isNotifications ? 'Notif' : item.label,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppTextStyles.caption.copyWith(
+                            fontSize: 10,
+                            fontWeight: selected
+                                ? FontWeight.w800
+                                : FontWeight.w500,
                             color: selected
                                 ? AppColors.primaryGreen
                                 : AppColors.textSecondary,
                           ),
-                          const SizedBox(height: 2),
-                          Text(
-                            item.label,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: AppTextStyles.caption.copyWith(
-                              fontSize: 10,
-                              fontWeight: selected
-                                  ? FontWeight.w800
-                                  : FontWeight.w500,
-                              color: selected
-                                  ? AppColors.primaryGreen
-                                  : AppColors.textSecondary,
-                            ),
-                          ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
                   ),
                 ),

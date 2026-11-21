@@ -1,9 +1,17 @@
-// Supplier Model
+bool _isccFlag(dynamic value) {
+  if (value is bool) return value;
+  final normalized = value?.toString().trim().toLowerCase();
+  return normalized == '1' ||
+      normalized == 'true' ||
+      normalized == 'yes' ||
+      normalized == 'ya';
+}
+
 class Supplier {
   final int? id;
   final String? kodePoo;
   final String jenis;
-  final int picId;
+  final int? picId;
   final String name;
   final String karyawan;
   final String phone;
@@ -20,10 +28,13 @@ class Supplier {
   final String? gps;
   final String namaRek;
   final String nomorRek;
-  final int bankRekId;
+  final int? bankRekId;
   final String? siklus;
   final int? poin;
-  final String? status;
+  final int? statusId;
+  final int? gudangTerdekatId;
+  final bool isIsccCertified;
+  final int? active;
   final DateTime? createdAt;
   final DateTime? updatedAt;
 
@@ -31,7 +42,7 @@ class Supplier {
     this.id,
     this.kodePoo,
     required this.jenis,
-    required this.picId,
+    this.picId,
     required this.name,
     required this.karyawan,
     required this.phone,
@@ -48,54 +59,70 @@ class Supplier {
     this.gps,
     required this.namaRek,
     required this.nomorRek,
-    required this.bankRekId,
+    this.bankRekId,
     this.siklus,
     this.poin,
-    this.status,
+    this.statusId,
+    this.gudangTerdekatId,
+    this.isIsccCertified = false,
+    this.active,
     this.createdAt,
     this.updatedAt,
   });
 
   factory Supplier.fromJson(Map<String, dynamic> json) {
     return Supplier(
-      id: json['id'] != null ? int.parse(json['id'].toString()) : null,
-      kodePoo: json['kode_poo'],
-      jenis: json['jenis'] ?? '',
-      picId: int.parse(json['pic'].toString()),
-      name: json['name'] ?? '',
-      karyawan: json['karyawan'] ?? '',
-      phone: json['phone'] ?? '',
-      jabatan: json['jabatan'] ?? '',
-      kategoriId: json['kategori'] != null
-          ? int.parse(json['kategori'].toString())
+      id: json['id'] != null ? int.tryParse(json['id'].toString()) : null,
+      kodePoo: json['kode_poo']?.toString(),
+      jenis: json['jenis']?.toString() ?? '',
+      picId: json['pic_id'] != null
+          ? int.tryParse(json['pic_id'].toString())
           : null,
-      jenisUco: json['jenis_uco'],
+      name: json['name']?.toString() ?? '',
+      karyawan: json['karyawan']?.toString() ?? '',
+      phone: json['phone']?.toString() ?? '',
+      jabatan: json['jabatan']?.toString() ?? '',
+      kategoriId: json['kategori_id'] != null
+          ? int.tryParse(json['kategori_id'].toString())
+          : null,
+      jenisUco: json['jenis_uco']?.toString(),
       price: json['price'] != null
           ? double.tryParse(json['price'].toString())
           : null,
       priceSatuanId: json['price_satuan'] != null
-          ? int.parse(json['price_satuan'].toString())
+          ? int.tryParse(json['price_satuan'].toString())
           : null,
       provinsiId: json['provinsi_id'] != null
-          ? int.parse(json['provinsi_id'].toString())
+          ? int.tryParse(json['provinsi_id'].toString())
           : null,
       kotaId: json['kota_id'] != null
-          ? int.parse(json['kota_id'].toString())
+          ? int.tryParse(json['kota_id'].toString())
           : null,
       kecamatanId: json['kecamatan_id'] != null
-          ? int.parse(json['kecamatan_id'].toString())
+          ? int.tryParse(json['kecamatan_id'].toString())
           : null,
       desaId: json['desa_id'] != null
-          ? int.parse(json['desa_id'].toString())
+          ? int.tryParse(json['desa_id'].toString())
           : null,
-      alamat: json['alamat'],
-      gps: json['gps'],
-      namaRek: json['nama_rek'] ?? '',
-      nomorRek: json['nomor_rek'] ?? '',
-      bankRekId: int.parse(json['bank_rek'].toString()),
-      siklus: json['siklus'],
-      poin: json['poin'] != null ? int.parse(json['poin'].toString()) : null,
-      status: json['status'],
+      alamat: json['alamat']?.toString(),
+      gps: json['gps']?.toString(),
+      namaRek: json['nama_rek']?.toString() ?? '',
+      nomorRek: json['nomor_rek']?.toString() ?? '',
+      bankRekId: json['bank_rek_id'] != null
+          ? int.tryParse(json['bank_rek_id'].toString())
+          : null,
+      siklus: json['siklus']?.toString(),
+      poin: json['poin'] != null ? int.tryParse(json['poin'].toString()) : null,
+      statusId: json['status_id'] != null
+          ? int.tryParse(json['status_id'].toString())
+          : null,
+      gudangTerdekatId: json['gudang_terdekat_id'] != null
+          ? int.tryParse(json['gudang_terdekat_id'].toString())
+          : null,
+      isIsccCertified: _isccFlag(json['is_iscc_certified']),
+      active: json['active'] != null
+          ? int.tryParse(json['active'].toString())
+          : null,
       createdAt: json['created_at'] != null
           ? DateTime.tryParse(json['created_at'].toString())
           : null,
@@ -108,27 +135,59 @@ class Supplier {
   Map<String, dynamic> toJson() {
     return {
       'jenis': jenis,
-      'pic': picId,
       'name': name,
-      'karyawan': karyawan,
       'phone': phone,
       'jabatan': jabatan,
-      'kategori': kategoriId,
-      'jenis_uco': jenisUco,
-      'price': price?.toString(),
-      'price_satuan': priceSatuanId,
+      'karyawan': karyawan,
+      'nama_rek': namaRek,
+      'nomor_rek': nomorRek,
+      'pic_id': picId,
+      'kategori_id': kategoriId,
+      'bank_rek_id': bankRekId,
       'provinsi_id': provinsiId,
       'kota_id': kotaId,
       'kecamatan_id': kecamatanId,
       'desa_id': desaId,
       'alamat': alamat,
       'gps': gps,
-      'nama_rek': namaRek,
-      'nomor_rek': nomorRek,
-      'bank_rek': bankRekId,
+      'price': price,
+      'price_satuan': priceSatuanId,
+      'jenis_uco': jenisUco,
       'siklus': siklus,
       'poin': poin,
-    };
+      'status_id': statusId,
+      'gudang_terdekat_id': gudangTerdekatId,
+      'is_iscc_certified': isIsccCertified ? 1 : 0,
+    }..removeWhere((_, v) => v == null);
+  }
+
+  Map<String, dynamic> toUpdateJson() {
+    return {
+      'jenis': jenis,
+      'name': name,
+      'phone': phone,
+      'jabatan': jabatan,
+      'karyawan': karyawan,
+      'nama_rek': namaRek,
+      'nomor_rek': nomorRek,
+      'pic_id': picId,
+      'kategori_id': kategoriId,
+      'bank_rek_id': bankRekId,
+      'provinsi_id': provinsiId,
+      'kota_id': kotaId,
+      'kecamatan_id': kecamatanId,
+      'desa_id': desaId,
+      'alamat': alamat,
+      'gps': gps,
+      'price': price,
+      'price_satuan': priceSatuanId,
+      'jenis_uco': jenisUco,
+      'siklus': siklus,
+      'poin': poin,
+      'status_id': statusId,
+      'gudang_terdekat_id': gudangTerdekatId,
+      'is_iscc_certified': isIsccCertified ? 1 : 0,
+    }..removeWhere((_, v) => v == null);
   }
 }
 

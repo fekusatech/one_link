@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:app_links/app_links.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../constants/app_colors.dart';
 import '../constants/app_text_styles.dart';
@@ -9,6 +10,19 @@ import '../config/app_config.dart';
 import '../services/persistent_auth_service.dart';
 import '../services/geu/geu_auth_service.dart';
 import '../services/auth_debug_service.dart';
+import '../services/geu/nfc_recovery_service.dart';
+
+// Google's official multi-color "G" mark (Sign-In branding guidelines) -
+// Icons.g_mobiledata is Material's generic "g" glyph, not recognizable as
+// Google, so this is inlined instead of bundling a logo asset.
+const _googleLogoSvg = '''
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 18 18">
+  <path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z"/>
+  <path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z"/>
+  <path fill="#FBBC05" d="M3.964 10.71c-.18-.54-.282-1.117-.282-1.71s.102-1.17.282-1.71V4.958H.957C.347 6.173 0 7.548 0 9s.348 2.827.957 4.042l3.007-2.332z"/>
+  <path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z"/>
+</svg>
+''';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -17,31 +31,158 @@ class LoginScreen extends StatefulWidget {
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   final _appLinks = AppLinks();
   bool _isLoading = false;
   bool _isGoogleLoading = false;
+  bool _isNfcLoading = false;
+  bool _isNfcListening = false;
+  bool _isNfcSessionStarting = false;
+  bool _reportedNfcScanError = false;
   bool _obscurePassword = true;
   StreamSubscription<Uri>? _ssoLinkSubscription;
   final Set<String> _handledSsoCodes = {};
+  final Set<String> _attemptedNfcCardIds = {};
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     unawaited(_listenForSsoCallback());
+    unawaited(_startLoginNfcListener());
     // Update check hanya dilakukan di dashboard setelah login berhasil
     // Tidak perlu cek di sini karena belum ada token
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    unawaited(_stopLoginNfcListener());
     _ssoLinkSubscription?.cancel();
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      unawaited(_startLoginNfcListener());
+    } else {
+      unawaited(_stopLoginNfcListener());
+    }
+  }
+
+  Future<void> _startLoginNfcListener() async {
+    if (!mounted || _isNfcListening || _isNfcSessionStarting) return;
+    _isNfcSessionStarting = true;
+    try {
+      await NfcRecoveryService.startRecoveryListener(
+        onCard: _handleNfcCard,
+        onError: _handleNfcScanError,
+      );
+      if (!mounted) {
+        await NfcRecoveryService.stopRecoveryListener();
+        return;
+      }
+      _isNfcListening = true;
+    } catch (error) {
+      debugPrint('[NFC_RECOVERY] login listener unavailable error=$error');
+    } finally {
+      _isNfcSessionStarting = false;
+    }
+  }
+
+  Future<void> _stopLoginNfcListener() async {
+    if (!_isNfcListening) return;
+    _isNfcListening = false;
+    try {
+      await NfcRecoveryService.stopRecoveryListener();
+    } catch (error) {
+      debugPrint('[NFC_RECOVERY] login listener stop error=$error');
+    }
+  }
+
+  void _handleNfcScanError(Object error) {
+    if (!mounted) return;
+    // A tag can advertise NDEF while Android still fails to connect to it
+    // (for example an unformatted or unsupported card). Keep the reader
+    // session alive so the user can scan the recovery card after that.
+    if (_reportedNfcScanError) return;
+    _reportedNfcScanError = true;
+    final raw = error.toString().toLowerCase();
+    final message =
+        raw.contains('ioexception') ||
+            raw.contains('platformexception') ||
+            raw.contains('basic tag technology') ||
+            raw.contains('ndef.connect')
+        ? 'Kartu NFC tidak bisa dibaca. Pastikan kartu pemulihan sudah ditulis, lalu tempelkan kembali.'
+        : 'Kartu NFC tidak terbaca. Gunakan kartu pemulihan One Link yang sudah ditulis.';
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message, maxLines: 2, overflow: TextOverflow.ellipsis),
+        backgroundColor: AppColors.error,
+        duration: const Duration(seconds: 4),
+      ),
+    );
+  }
+
+  Future<void> _handleNfcCard(Map<String, String> card) async {
+    if (!mounted || _isLoading || _isGoogleLoading || _isNfcLoading) return;
+    _reportedNfcScanError = false;
+    final email = _emailController.text.trim();
+    final password = _passwordController.text;
+    if (email.isEmpty || !email.contains('@') || password.isEmpty) {
+      unawaited(_stopLoginNfcListener());
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Isi email dan password, lalu tempelkan kartu NFC kembali.',
+          ),
+        ),
+      );
+      return;
+    }
+
+    final cardId = card['card_id']!;
+    if (!_attemptedNfcCardIds.add(cardId)) return;
+    setState(() => _isNfcLoading = true);
+    try {
+      await NfcRecoveryService.recover(
+        email: email,
+        password: password,
+        cardId: cardId,
+        token: card['token']!,
+      );
+      if (!mounted) return;
+      await _stopLoginNfcListener();
+      setState(() => _isNfcLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Kartu valid. Device lock terbuka, login dilanjutkan.'),
+          backgroundColor: AppColors.success,
+        ),
+      );
+      await _handleLogin();
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _isNfcLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(error.toString().replaceFirst('Exception: ', '')),
+          backgroundColor: AppColors.error,
+        ),
+      );
+    }
+  }
+
+  void _onCredentialChanged(String _) {
+    _attemptedNfcCardIds.clear();
+    _reportedNfcScanError = false;
+    unawaited(_startLoginNfcListener());
   }
 
   Future<void> _listenForSsoCallback() async {
@@ -149,10 +290,18 @@ class _LoginScreenState extends State<LoginScreen> {
     if (raw.contains('invalid credentials')) {
       return 'Email atau password salah. Silakan periksa kembali.';
     }
+    if (raw.contains('perangkat ini sedang dipakai akun lain') ||
+        raw.contains('akun sedang aktif di perangkat lain')) {
+      // Preserve the API's device-lock message, including its unlock time
+      // and remaining duration. The generic fallback below used to hide it.
+      return e.toString().replaceFirst('Exception: ', '');
+    }
     if (raw.contains('account is banned') || raw.contains('banned')) {
       return 'Akun Anda dinonaktifkan. Hubungi admin untuk bantuan.';
     }
-    if (raw.contains('tidak ada koneksi') || raw.contains('connection') || raw.contains('socketexception')) {
+    if (raw.contains('tidak ada koneksi') ||
+        raw.contains('connection') ||
+        raw.contains('socketexception')) {
       return 'Tidak ada koneksi internet. Periksa jaringan Anda dan coba lagi.';
     }
     if (raw.contains('timeout')) {
@@ -203,7 +352,9 @@ class _LoginScreenState extends State<LoginScreen> {
         userName: user.name,
         userPhone: '',
         userEmail: user.email,
-        tokenExpiry: DateTime.now().add(const Duration(days: 30)).toIso8601String(),
+        tokenExpiry: DateTime.now()
+            .add(const Duration(days: 30))
+            .toIso8601String(),
       );
 
       if (!mounted) return;
@@ -302,6 +453,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         // Email Field
                         TextFormField(
                           controller: _emailController,
+                          onChanged: _onCredentialChanged,
                           keyboardType: TextInputType.emailAddress,
                           decoration: InputDecoration(
                             labelText: 'Email',
@@ -342,6 +494,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         // Password Field
                         TextFormField(
                           controller: _passwordController,
+                          onChanged: _onCredentialChanged,
                           obscureText: _obscurePassword,
                           decoration: InputDecoration(
                             labelText: 'Password',
@@ -391,6 +544,21 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
 
+                  const SizedBox(height: 12),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      _isNfcLoading
+                          ? 'Memvalidasi kartu NFC dan membuka device lock…'
+                          : '',
+                      style: AppTextStyles.caption.copyWith(
+                        color: _isNfcLoading
+                            ? AppColors.primaryGreen
+                            : AppColors.grey,
+                      ),
+                    ),
+                  ),
+
                   const SizedBox(height: 32),
 
                   // Login button
@@ -420,66 +588,74 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
 
-                  const SizedBox(height: 16),
+                  // const SizedBox(height: 16),
 
-                  // Divider "Atau"
-                  Row(
-                    children: [
-                      const Expanded(child: Divider(color: AppColors.lightGrey)),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: Text(
-                          'Atau masuk dengan',
-                          style: AppTextStyles.caption.copyWith(color: AppColors.grey),
-                        ),
-                      ),
-                      const Expanded(child: Divider(color: AppColors.lightGrey)),
-                    ],
-                  ),
+                  // // Divider "Atau"
+                  // Row(
+                  //   children: [
+                  //     const Expanded(
+                  //       child: Divider(color: AppColors.lightGrey),
+                  //     ),
+                  //     Padding(
+                  //       padding: const EdgeInsets.symmetric(horizontal: 16),
+                  //       child: Text(
+                  //         'Atau masuk dengan',
+                  //         style: AppTextStyles.caption.copyWith(
+                  //           color: AppColors.grey,
+                  //         ),
+                  //       ),
+                  //     ),
+                  //     const Expanded(
+                  //       child: Divider(color: AppColors.lightGrey),
+                  //     ),
+                  //   ],
+                  // ),
 
-                  const SizedBox(height: 16),
+                  // const SizedBox(height: 16),
 
                   // Tombol Google Login
-                  SizedBox(
-                    width: double.infinity,
-                    height: 56,
-                    child: OutlinedButton(
-                      onPressed: (_isLoading || _isGoogleLoading) ? null : _startGoogleLogin,
-                      style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: AppColors.borderColor),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                      ),
-                      child: _isGoogleLoading
-                          ? const SizedBox(
-                              width: 24,
-                              height: 24,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: AppColors.primaryGreen,
-                              ),
-                            )
-                          : Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                const Icon(
-                                  Icons.g_mobiledata,
-                                  size: 32,
-                                  color: AppColors.primaryGreen,
-                                ),
-                                const SizedBox(width: 8),
-                                Text(
-                                  'Masuk dengan Google',
-                                  style: AppTextStyles.button.copyWith(
-                                    color: AppColors.textPrimary,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ],
-                            ),
-                    ),
-                  ),
+                  // SizedBox(
+                  //   width: double.infinity,
+                  //   height: 56,
+                  //   child: OutlinedButton(
+                  //     onPressed: (_isLoading || _isGoogleLoading)
+                  //         ? null
+                  //         : _startGoogleLogin,
+                  //     style: OutlinedButton.styleFrom(
+                  //       side: const BorderSide(color: AppColors.borderColor),
+                  //       shape: RoundedRectangleBorder(
+                  //         borderRadius: BorderRadius.circular(16),
+                  //       ),
+                  //     ),
+                  //     child: _isGoogleLoading
+                  //         ? const SizedBox(
+                  //             width: 24,
+                  //             height: 24,
+                  //             child: CircularProgressIndicator(
+                  //               strokeWidth: 2,
+                  //               color: AppColors.primaryGreen,
+                  //             ),
+                  //           )
+                  //         : Row(
+                  //             mainAxisAlignment: MainAxisAlignment.center,
+                  //             children: [
+                  //               SvgPicture.string(
+                  //                 _googleLogoSvg,
+                  //                 width: 22,
+                  //                 height: 22,
+                  //               ),
+                  //               const SizedBox(width: 12),
+                  //               Text(
+                  //                 'Masuk dengan Google',
+                  //                 style: AppTextStyles.button.copyWith(
+                  //                   color: AppColors.textPrimary,
+                  //                   fontWeight: FontWeight.w600,
+                  //                 ),
+                  //               ),
+                  //             ],
+                  //           ),
+                  //   ),
+                  // ),
                   const Spacer(),
 
                   // Footer text

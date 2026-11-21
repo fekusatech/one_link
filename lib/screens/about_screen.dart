@@ -97,21 +97,23 @@ class AboutScreen extends StatelessWidget {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 12),
-                  OutlinedButton.icon(
-                    onPressed: () => UpdateService.instance.checkNow(context),
-                    icon: const Icon(Icons.system_update_outlined, size: 18),
-                    label: const Text('Cek Pembaruan'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: AppColors.primaryGreen,
-                      side: BorderSide(
-                        color: AppColors.primaryGreen.withOpacity(0.45),
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                  if (UpdateService.versionChecksEnabled) ...[
+                    const SizedBox(height: 12),
+                    OutlinedButton.icon(
+                      onPressed: () => UpdateService.instance.checkNow(context),
+                      icon: const Icon(Icons.system_update_outlined, size: 18),
+                      label: const Text('Cek Pembaruan'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.primaryGreen,
+                        side: BorderSide(
+                          color: AppColors.primaryGreen.withOpacity(0.45),
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
                     ),
-                  ),
+                  ],
                 ],
               ),
             ),

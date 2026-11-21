@@ -4,6 +4,7 @@ import 'package:cookie_jar/cookie_jar.dart';
 import 'package:dio_cookie_manager/dio_cookie_manager.dart';
 import 'package:path_provider/path_provider.dart';
 import '../user_storage.dart';
+import 'device_identity_service.dart';
 
 /// Shared Dio client for the new Go REST API (apipi.greenenergiutama.co.id).
 /// Auth is httpOnly JWT cookies (auth_token/refresh_token), not Bearer —
@@ -36,10 +37,14 @@ class GeuApiClient {
     );
     _cookieJar = cookieJar;
 
+    final deviceDescription = await DeviceIdentityService.getDeviceDescription();
     final dio = Dio(
       BaseOptions(
         baseUrl: baseUrl,
-        headers: {'Content-Type': 'application/json'},
+        headers: {
+          'Content-Type': 'application/json',
+          'User-Agent': deviceDescription,
+        },
       ),
     );
     dio.interceptors.add(CookieManager(cookieJar));

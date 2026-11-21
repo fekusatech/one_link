@@ -73,6 +73,7 @@ class _CheckinSheetState extends State<_CheckinSheet> {
   bool _lowAccuracyAcknowledged = false;
   CapturedVisitPhoto? _photo;
   bool _capturingPhoto = false;
+  String _photoProgress = 'Membuka kamera...';
   bool _photoHandedOff = false;
 
   @override
@@ -107,10 +108,7 @@ class _CheckinSheetState extends State<_CheckinSheet> {
         GeuAuthService.getCachedUser(),
       ]);
       final fix = results[0] as GpsFix;
-      final maxDistance = results[1] as double?;
-      if (maxDistance == null) {
-        throw GpsException('Radius check-in belum tersedia dari server.');
-      }
+      final maxDistance = results[1] as double? ?? 0.5;
       final user = results[2] as GeuUser?;
       final privileged = (user?.roles ?? []).any(
         (role) =>
@@ -164,19 +162,22 @@ class _CheckinSheetState extends State<_CheckinSheet> {
         top: 20,
         bottom: MediaQuery.of(context).viewInsets.bottom + 20,
       ),
-      child: SafeArea(
-        top: false,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Check-in — ${widget.item.supplierName}',
-              style: AppTextStyles.h5.copyWith(fontWeight: FontWeight.w700),
-            ),
-            const SizedBox(height: 16),
-            _buildBody(),
-          ],
+      child: PopScope(
+        canPop: !_capturingPhoto,
+        child: SafeArea(
+          top: false,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Check-in — ${widget.item.supplierName}',
+                style: AppTextStyles.h5.copyWith(fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 16),
+              AbsorbPointer(absorbing: _capturingPhoto, child: _buildBody()),
+            ],
+          ),
         ),
       ),
     );
@@ -298,9 +299,21 @@ class _CheckinSheetState extends State<_CheckinSheet> {
               style: AppTextStyles.bodyMedium,
             ),
           ),
+          if (_capturingPhoto) ...[
+            const SizedBox(width: 8),
+            const SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+          ],
           TextButton(
             onPressed: _capturingPhoto ? null : _capturePhoto,
-            child: Text(photo == null ? 'Ambil Foto' : 'Ulangi'),
+            child: Text(
+              _capturingPhoto
+                  ? _photoProgress
+                  : (photo == null ? 'Ambil Foto' : 'Ulangi'),
+            ),
           ),
         ],
       ),
@@ -308,12 +321,22 @@ class _CheckinSheetState extends State<_CheckinSheet> {
   }
 
   Future<void> _capturePhoto() async {
-    setState(() => _capturingPhoto = true);
+    setState(() {
+      _capturingPhoto = true;
+      _photoProgress = 'Membuka kamera...';
+    });
     try {
       if (!await CrmPermissionService.ensureCamera(context)) {
         throw StateError('Izin kamera diperlukan untuk foto check-in.');
       }
-      final photo = await CheckinPhotoService.capture();
+      final photo = await CheckinPhotoService.capture(
+        supplierName: widget.item.supplierName,
+        latitude: _fix?.latitude,
+        longitude: _fix?.longitude,
+        onProgress: (message) {
+          if (mounted) setState(() => _photoProgress = message);
+        },
+      );
       if (!mounted) return;
       final previous = _photo;
       if (previous != null) {

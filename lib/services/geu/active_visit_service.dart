@@ -29,7 +29,12 @@ class ActiveVisitService {
   static Future<ActiveVisitState> restore() async {
     final local = await VisitSyncService.pendingItems();
     final queued = local
-        .where((item) => item.action == VisitSyncAction.checkin)
+        .where(
+          (item) =>
+              item.action == VisitSyncAction.checkin &&
+              (item.state == VisitSyncState.pending ||
+                  item.state == VisitSyncState.retrying),
+        )
         .firstOrNull;
     if (queued != null) {
       return _set(
@@ -69,6 +74,17 @@ class ActiveVisitService {
       isActive: true,
       isPendingLocal: true,
       supplierId: supplierId,
+    ),
+  );
+
+  static void markConfirmedCheckin({
+    required int supplierId,
+    required String supplierName,
+  }) => _set(
+    ActiveVisitState(
+      isActive: true,
+      supplierId: supplierId,
+      supplierName: supplierName,
     ),
   );
 

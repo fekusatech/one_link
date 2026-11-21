@@ -9,6 +9,7 @@ import 'package:intl/intl.dart';
 
 import '../../constants/app_colors.dart';
 import '../../models/geu/visit_planner_models.dart';
+import '../../models/geu/visit_sync_models.dart';
 import '../../models/supplier_order_history.dart';
 import '../../services/supplier_list_service.dart';
 import '../../widgets/order_history_widgets.dart';
@@ -623,10 +624,8 @@ class _VisitPlanScreenState extends State<VisitPlanScreen>
                         padding: const EdgeInsets.fromLTRB(14, 8, 14, 14),
                         decoration: BoxDecoration(
                           color: Colors.white,
-                          borderRadius: BorderRadius.circular(18),
-                          boxShadow: const [
-                            BoxShadow(color: Color(0x33000000), blurRadius: 12),
-                          ],
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: AppColors.borderColor),
                         ),
                         child: Column(
                           children: [
@@ -642,7 +641,7 @@ class _VisitPlanScreenState extends State<VisitPlanScreen>
                             Row(
                               children: [
                                 const CircleAvatar(
-                                  backgroundColor: Colors.black,
+                                  backgroundColor: AppColors.primaryGreen,
                                   child: Icon(
                                     Icons.location_on_outlined,
                                     color: Colors.white,
@@ -657,7 +656,7 @@ class _VisitPlanScreenState extends State<VisitPlanScreen>
                                       Text(
                                         remaining == 0
                                             ? 'Kunjungan hari ini selesai'
-                                            : "Today's Visits",
+                                            : 'Kunjungan hari ini',
                                         style: TextStyle(
                                           fontSize: 12,
                                           color: AppColors.textSecondary,
@@ -666,7 +665,7 @@ class _VisitPlanScreenState extends State<VisitPlanScreen>
                                       Text(
                                         remaining == 0
                                             ? '$visited selesai${skipped > 0 ? ' • $skipped dilewati' : ''}'
-                                            : '$visited / $visibleVisitCount visits',
+                                            : '$visited dari $visibleVisitCount kunjungan',
                                         style: const TextStyle(
                                           fontWeight: FontWeight.w800,
                                           fontSize: 16,
@@ -707,7 +706,7 @@ class _VisitPlanScreenState extends State<VisitPlanScreen>
               heroTag: 'scan-prospect-map',
               tooltip: 'Scan prospek di sekitar',
               onPressed: _openScanCenterSheet,
-              backgroundColor: const Color(0xFF287EF0),
+              backgroundColor: AppColors.primaryGreen,
               foregroundColor: Colors.white,
               shape: const CircleBorder(),
               child: const Icon(Icons.radar_rounded, size: 24),
@@ -875,7 +874,10 @@ class _VisitPlanScreenState extends State<VisitPlanScreen>
               ?.status
               .toUpperCase();
     final targetDone =
-        target == null || targetStatus == null || targetStatus == 'VISITED' || targetStatus == 'SKIPPED';
+        target == null ||
+        targetStatus == null ||
+        targetStatus == 'VISITED' ||
+        targetStatus == 'SKIPPED';
     if (!targetDone) return;
 
     MissionItem? next;
@@ -1319,7 +1321,12 @@ class _VisitPlanScreenState extends State<VisitPlanScreen>
 
   Future<void> _showMissionItemDetails(MissionItem item) async {
     final distanceKm = (_user != null && item.hasCoordinates)
-        ? haversineDistanceKm(_user!.latitude, _user!.longitude, item.lat!, item.lng!)
+        ? haversineDistanceKm(
+            _user!.latitude,
+            _user!.longitude,
+            item.lat!,
+            item.lng!,
+          )
         : null;
     await showModalBottomSheet<void>(
       context: context,
@@ -1364,7 +1371,8 @@ class _VisitPlanScreenState extends State<VisitPlanScreen>
             SizedBox(
               width: double.infinity,
               child: FilledButton.icon(
-                onPressed: item.status.toUpperCase() == 'VISITED' ||
+                onPressed:
+                    item.status.toUpperCase() == 'VISITED' ||
                         item.status.toUpperCase() == 'SKIPPED'
                     ? null
                     : () {
@@ -1770,12 +1778,32 @@ class _TodayVisitsSheetState extends State<_TodayVisitsSheet> {
       item.workOrderId != null ||
       _workOrderSupplierIds.contains(item.supplierId);
 
+  List<int> _workOrderIdsFor(MissionItem item) {
+    if (_activeWorkOrderIds.isNotEmpty) {
+      return List<int>.unmodifiable(_activeWorkOrderIds);
+    }
+    final persistedId = item.workOrderId;
+    return persistedId != null && persistedId > 0 ? [persistedId] : const [];
+  }
+
   bool _isCheckedInAt(MissionItem item) =>
       _checkedInSupplierId == item.supplierId;
 
   Future<void> _checkIn(MissionItem item) async {
     final draft = await showCheckinDialog(context, item);
     if (draft == null || !mounted) return;
+    if (!await VisitSyncService.hasInternet()) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Tidak ada koneksi internet. Silakan periksa jaringan Anda.',
+            ),
+          ),
+        );
+      }
+      return;
+    }
     try {
       final address = await ReverseGeocodingService.resolve(
         draft.fix.latitude,
@@ -1787,12 +1815,32 @@ class _TodayVisitsSheetState extends State<_TodayVisitsSheet> {
         longitude: draft.fix.longitude,
         address: address,
         photoPath: draft.photo.file.path,
+        confirmFar: draft.confirmFar,
         gpsAccuracyMeters: draft.fix.accuracyMeters,
         isMockLocation: draft.fix.isMocked,
       );
-      ActiveVisitService.markPendingCheckin(item.supplierId);
       await VisitSyncService.syncNow();
       final delivered = await VisitSyncService.wasDelivered(queued.id);
+      final result = await VisitSyncService.getItem(queued.id);
+      if (result?.state == VisitSyncState.conflict) {
+        await ActiveVisitService.restore();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(result?.lastError ?? 'Check-in ditolak server.'),
+            ),
+          );
+        }
+        return;
+      }
+      if (delivered) {
+        ActiveVisitService.markConfirmedCheckin(
+          supplierId: item.supplierId,
+          supplierName: item.supplierName,
+        );
+      } else {
+        ActiveVisitService.markPendingCheckin(item.supplierId);
+      }
       if (!mounted) return;
       setState(() => _checkedInSupplierId = item.supplierId);
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1814,8 +1862,29 @@ class _TodayVisitsSheetState extends State<_TodayVisitsSheet> {
   }
 
   Future<void> _checkOut(MissionItem item) async {
+    final workOrderIds = _workOrderIdsFor(item);
+    if (workOrderIds.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Buat Work Order dulu sebelum check-out.'),
+        ),
+      );
+      return;
+    }
     final draft = await showCheckoutDialog(context, item);
     if (draft == null || !mounted) return;
+    if (!await VisitSyncService.hasInternet()) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Tidak ada koneksi internet. Silakan periksa jaringan Anda.',
+            ),
+          ),
+        );
+      }
+      return;
+    }
     try {
       final address = await ReverseGeocodingService.resolve(
         draft.fix.latitude,
@@ -1827,12 +1896,27 @@ class _TodayVisitsSheetState extends State<_TodayVisitsSheet> {
         address: address,
         notes: draft.notes,
         photoPath: draft.photo.file.path,
-        workOrderIds: _activeWorkOrderIds,
+        workOrderIds: workOrderIds,
         gpsAccuracyMeters: draft.fix.accuracyMeters,
         isMockLocation: draft.fix.isMocked,
       );
       await VisitSyncService.syncNow();
       final delivered = await VisitSyncService.wasDelivered(queued.id);
+      final result = await VisitSyncService.getItem(queued.id);
+      if (result?.state == VisitSyncState.conflict) {
+        ActiveVisitService.markCheckoutFailed(
+          supplierId: item.supplierId,
+          supplierName: item.supplierName,
+        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(result?.lastError ?? 'Check-out ditolak server.'),
+            ),
+          );
+        }
+        return;
+      }
       // The RO has physically finished here regardless of connectivity, so
       // the mission still advances — queued data keeps retrying in the
       // background. Only the message below is honest about delivery.
@@ -2091,7 +2175,7 @@ class _TodayVisitsSheetState extends State<_TodayVisitsSheet> {
                                 child: Text(
                                   _missionStarted
                                       ? 'Mission Aktif'
-                                      : "Today's Visits",
+                                      : 'Kunjungan hari ini',
                                   style: TextStyle(
                                     fontSize: 19,
                                     fontWeight: FontWeight.w800,
@@ -2106,7 +2190,7 @@ class _TodayVisitsSheetState extends State<_TodayVisitsSheet> {
                           ),
                         ),
                         Text(
-                          '$visited / ${_items.length} visits${_missionStarted ? ' • sedang berjalan' : ''}',
+                          '$visited dari ${_items.length} kunjungan${_missionStarted ? ' • sedang berjalan' : ''}',
                           style: const TextStyle(
                             color: AppColors.textSecondary,
                           ),
@@ -2119,7 +2203,7 @@ class _TodayVisitsSheetState extends State<_TodayVisitsSheet> {
                               Expanded(
                                 child: FilledButton.icon(
                                   style: FilledButton.styleFrom(
-                                    backgroundColor: Colors.black87,
+                                    backgroundColor: AppColors.primaryGreen,
                                   ),
                                   onPressed: _missionStarted
                                       ? _endMission
@@ -2182,7 +2266,7 @@ class _TodayVisitsSheetState extends State<_TodayVisitsSheet> {
                                   children: [
                                     CircleAvatar(
                                       radius: 12,
-                                      backgroundColor: Colors.black,
+                                      backgroundColor: AppColors.primaryGreen,
                                       child: Text(
                                         '${index + 1}',
                                         style: const TextStyle(
@@ -2213,9 +2297,7 @@ class _TodayVisitsSheetState extends State<_TodayVisitsSheet> {
                                                 if (isNext && !isRegistered)
                                                   FilledButton.icon(
                                                     onPressed: () =>
-                                                        _registerSupplier(
-                                                          item,
-                                                        ),
+                                                        _registerSupplier(item),
                                                     icon: const Icon(
                                                       Icons
                                                           .person_add_alt_1_outlined,
@@ -2242,8 +2324,12 @@ class _TodayVisitsSheetState extends State<_TodayVisitsSheet> {
                                                   ),
                                                 if (isCheckedIn)
                                                   FilledButton.icon(
-                                                    onPressed: () =>
-                                                        _checkOut(item),
+                                                    onPressed:
+                                                        _workOrderIdsFor(
+                                                          item,
+                                                        ).isNotEmpty
+                                                        ? () => _checkOut(item)
+                                                        : null,
                                                     icon: const Icon(
                                                       Icons.logout,
                                                       size: 16,
@@ -2279,13 +2365,10 @@ class _TodayVisitsSheetState extends State<_TodayVisitsSheet> {
                                                     item.hasCoordinates &&
                                                     !isNext)
                                                   OutlinedButton.icon(
-                                                    onPressed: () =>
-                                                        widget.onStartDriving(
-                                                          item,
-                                                        ),
+                                                    onPressed: () => widget
+                                                        .onStartDriving(item),
                                                     icon: const Icon(
-                                                      Icons
-                                                          .navigation_outlined,
+                                                      Icons.navigation_outlined,
                                                       size: 16,
                                                     ),
                                                     label: const Text(

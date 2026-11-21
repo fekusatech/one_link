@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 
 import '../../constants/app_colors.dart';
@@ -5,6 +7,8 @@ import '../../models/geu/visit_planner_models.dart';
 import '../../services/geu/geu_api_client.dart';
 import '../../services/geu/visit_planner_service.dart';
 import '../../services/geu/visit_sync_service.dart';
+import '../../widgets/gps_map_preview.dart';
+import 'work_order_detail_sheet.dart';
 
 class VisitHistoryScreen extends StatefulWidget {
   const VisitHistoryScreen({super.key});
@@ -28,7 +32,7 @@ class _VisitHistoryScreenState extends State<VisitHistoryScreen> {
     super.initState();
     final today = DateUtils.dateOnly(DateTime.now());
     _range = DateTimeRange(
-      start: today.subtract(const Duration(days: 6)),
+      start: DateTime(today.year, today.month, 1),
       end: today,
     );
     _load();
@@ -206,6 +210,17 @@ class _VisitHistoryScreenState extends State<VisitHistoryScreen> {
                     item.supplierName,
                     style: const TextStyle(fontWeight: FontWeight.w700),
                   ),
+                  if (item.userName.isNotEmpty) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      item.userName,
+                      style: const TextStyle(
+                        color: AppColors.primaryGreen,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 3),
                   Text(
                     '${_statusLabel(item.status)} • ${_formatText(item.checkedInAt)}',
@@ -230,7 +245,16 @@ class _VisitHistoryScreenState extends State<VisitHistoryScreen> {
         context: context,
         isScrollControlled: true,
         backgroundColor: Colors.transparent,
-        builder: (_) => _VisitDetailSheet(item: item),
+        builder: (sheetContext) => _VisitDetailSheet(
+          item: item,
+          onOpenWorkOrder: (id) async {
+            Navigator.of(sheetContext).pop();
+            await Future<void>.delayed(Duration.zero);
+            if (mounted) {
+              await showWorkOrderDetailSheet(context, id);
+            }
+          },
+        ),
       );
 
   Widget _workOrderChip(String ids) => Container(
@@ -265,8 +289,9 @@ class _VisitHistoryScreenState extends State<VisitHistoryScreen> {
 }
 
 class _VisitDetailSheet extends StatelessWidget {
-  const _VisitDetailSheet({required this.item});
+  const _VisitDetailSheet({required this.item, required this.onOpenWorkOrder});
   final VisitHistoryItem item;
+  final ValueChanged<int> onOpenWorkOrder;
 
   @override
   Widget build(BuildContext context) => DraggableScrollableSheet(
@@ -317,6 +342,8 @@ class _VisitDetailSheet extends StatelessWidget {
               ),
             ),
           const SizedBox(height: 18),
+          if (item.userName.isNotEmpty)
+            _detailRow('Sales/Driver', item.userName),
           _section('Check-in'),
           _detailRow('Waktu', _formatText(item.checkedInAt)),
           _detailRow('Alamat', item.address),
@@ -324,6 +351,15 @@ class _VisitDetailSheet extends StatelessWidget {
             'Koordinat',
             _coordinates(item.checkinLat, item.checkinLng),
           ),
+          if (item.checkinLat != null && item.checkinLng != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: GpsMapPreview(
+                latitude: item.checkinLat!,
+                longitude: item.checkinLng!,
+                markerColor: AppColors.primaryGreen,
+              ),
+            ),
           if (item.checkoutAtOrEmpty.isNotEmpty) ...[
             const SizedBox(height: 14),
             _section('Check-out'),
@@ -333,6 +369,15 @@ class _VisitDetailSheet extends StatelessWidget {
               'Koordinat',
               _coordinates(item.checkoutLat, item.checkoutLng),
             ),
+            if (item.checkoutLat != null && item.checkoutLng != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: GpsMapPreview(
+                  latitude: item.checkoutLat!,
+                  longitude: item.checkoutLng!,
+                  markerColor: AppColors.accentOrange,
+                ),
+              ),
             if (item.durationMinutes != null)
               _detailRow('Durasi', '${item.durationMinutes} menit'),
           ],
@@ -345,7 +390,16 @@ class _VisitDetailSheet extends StatelessWidget {
               children: item.workOrderIds
                   .split(',')
                   .where((id) => id.trim().isNotEmpty)
-                  .map((id) => Chip(label: Text('WO #${id.trim()}')))
+                  .map((id) {
+                    final workOrderId = int.tryParse(id.trim());
+                    return ActionChip(
+                      avatar: const Icon(Icons.open_in_new_rounded, size: 16),
+                      label: Text('WO #${id.trim()}'),
+                      onPressed: workOrderId == null
+                          ? null
+                          : () => onOpenWorkOrder(workOrderId),
+                    );
+                  })
                   .toList(),
             ),
           ],
@@ -360,9 +414,11 @@ class _VisitDetailSheet extends StatelessWidget {
             const SizedBox(height: 8),
             Row(
               children: [
-                Expanded(child: _photo('Check-in', item.checkinPhoto)),
+                Expanded(child: _photo(context, 'Check-in', item.checkinPhoto)),
                 const SizedBox(width: 10),
-                Expanded(child: _photo('Check-out', item.checkoutPhoto)),
+                Expanded(
+                  child: _photo(context, 'Check-out', item.checkoutPhoto),
+                ),
               ],
             ),
           ],
@@ -396,35 +452,72 @@ class _VisitDetailSheet extends StatelessWidget {
     ),
   );
 
-  Widget _photo(String label, String? path) => Column(
+  Widget _photo(BuildContext context, String label, String? path) => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
       Text(label, style: const TextStyle(fontWeight: FontWeight.w700)),
       const SizedBox(height: 6),
-      AspectRatio(
-        aspectRatio: 1,
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(10),
-          child: path == null
-              ? Container(
-                  color: AppColors.backgroundGrey,
-                  child: const Icon(
-                    Icons.photo_outlined,
-                    color: AppColors.grey,
-                  ),
-                )
-              : Image.network(
-                  _photoUrl(path),
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => Container(
+      GestureDetector(
+        onTap: path == null ? null : () => _previewPhoto(context, path),
+        child: AspectRatio(
+          aspectRatio: 1,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(10),
+            child: path == null
+                ? Container(
                     color: AppColors.backgroundGrey,
-                    child: const Icon(Icons.broken_image_outlined),
+                    child: const Icon(
+                      Icons.photo_outlined,
+                      color: AppColors.grey,
+                    ),
+                  )
+                : Image(
+                    image: _photoImage(path),
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, _, _) => Container(
+                      color: AppColors.backgroundGrey,
+                      child: const Icon(Icons.broken_image_outlined),
+                    ),
                   ),
-                ),
+          ),
         ),
       ),
     ],
   );
+
+  void _previewPhoto(BuildContext context, String path) {
+    showDialog(
+      context: context,
+      builder: (_) => Dialog(
+        child: InteractiveViewer(
+          child: Image(
+            image: _photoImage(path),
+            errorBuilder: (_, _, _) => const Padding(
+              padding: EdgeInsets.all(24),
+              child: Icon(Icons.broken_image_outlined, size: 40),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Checkin/checkout photos come back either as an R2 URL, a legacy
+  /// relative path, or (when R2 isn't configured server-side) an inline
+  /// base64 blob — `data:...;base64,` prefixed or bare. Image.network can't
+  /// fetch a data/base64 string as if it were an HTTP URL, so that case needs
+  /// Image.memory instead.
+  ImageProvider _photoImage(String path) {
+    if (path.startsWith('http')) return NetworkImage(path);
+    final base64Part = path.startsWith('data:') && path.contains(',')
+        ? path.substring(path.indexOf(',') + 1)
+        : path;
+    try {
+      return MemoryImage(base64Decode(base64Part));
+    } catch (_) {
+      return NetworkImage(_photoUrl(path));
+    }
+  }
 
   String _photoUrl(String path) => path.startsWith('http')
       ? path

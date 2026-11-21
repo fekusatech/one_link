@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:permission_handler/permission_handler.dart';
 import '../constants/app_colors.dart';
 import '../constants/app_text_styles.dart';
 import '../services/location_tracking_service.dart';
@@ -51,7 +52,7 @@ class _MandatoryGpsConsentScreenState extends State<MandatoryGpsConsentScreen> {
 
                 // Title
                 Text(
-                  'Izin Lokasi Diperlukan',
+                  'Izin Lokasi & Aktivitas Latar Belakang Diperlukan',
                   style: AppTextStyles.h4.copyWith(
                     color: AppColors.textPrimary,
                     fontWeight: FontWeight.bold,
@@ -63,7 +64,7 @@ class _MandatoryGpsConsentScreenState extends State<MandatoryGpsConsentScreen> {
 
                 // Description
                 Text(
-                  'Aplikasi One Link memerlukan akses lokasi untuk:',
+                  'Aplikasi One Link memerlukan izin berikut agar pengiriman lokasi dan versi APK tetap berjalan:',
                   style: AppTextStyles.bodyLarge.copyWith(
                     color: AppColors.textSecondary,
                   ),
@@ -88,6 +89,14 @@ class _MandatoryGpsConsentScreenState extends State<MandatoryGpsConsentScreen> {
                 _buildFeatureItem(
                   Icons.analytics,
                   'Laporan perjalanan dan analisis',
+                ),
+                _buildFeatureItem(
+                  Icons.battery_saver_outlined,
+                  'Baterai: pilih No restrictions agar tracking tidak dihentikan sistem',
+                ),
+                _buildFeatureItem(
+                  Icons.autorenew,
+                  'Izinkan aktivitas latar belakang/autostart aplikasi',
                 ),
 
                 const SizedBox(height: 32),
@@ -169,7 +178,7 @@ class _MandatoryGpsConsentScreenState extends State<MandatoryGpsConsentScreen> {
                       const SizedBox(width: 12),
                       Expanded(
                         child: Text(
-                          'Akses lokasi wajib untuk menggunakan aplikasi ini. Tanpa persetujuan, aplikasi tidak dapat berfungsi.',
+                          'Semua izin wajib. Jika tidak diizinkan, aplikasi tidak dapat digunakan dan lokasi tidak akan masuk ke sistem.',
                           style: AppTextStyles.caption.copyWith(
                             color: Colors.orange.shade700,
                             fontWeight: FontWeight.w500,
@@ -292,6 +301,33 @@ class _MandatoryGpsConsentScreenState extends State<MandatoryGpsConsentScreen> {
       bool hasPermissions = await LocationTrackingService.instance
           .requestPermissions(context);
 
+      if (hasPermissions &&
+          !await LocationTrackingService.instance.hasBackgroundPermission()) {
+        if (mounted) {
+          await showDialog<void>(
+            context: context,
+            barrierDismissible: false,
+            builder: (dialogContext) => AlertDialog(
+              title: const Text('Izin lokasi belum lengkap'),
+              content: const Text(
+                'Pilih "Izinkan sepanjang waktu" pada pengaturan lokasi Android agar aplikasi dapat mengirim lokasi saat berjalan di latar belakang.',
+              ),
+              actions: [
+                FilledButton.icon(
+                  onPressed: () async {
+                    await openAppSettings();
+                    if (dialogContext.mounted) Navigator.pop(dialogContext);
+                  },
+                  icon: const Icon(Icons.settings_outlined),
+                  label: const Text('Buka Pengaturan'),
+                ),
+              ],
+            ),
+          );
+        }
+        return;
+      }
+
       if (hasPermissions) {
         // Save consent
         await UserStorage.setLocationTrackingConsent(true);
@@ -313,8 +349,19 @@ class _MandatoryGpsConsentScreenState extends State<MandatoryGpsConsentScreen> {
             if (user != null) {
               final groups = user['groups'] as List<dynamic>?;
               if (groups != null && groups.isNotEmpty) {
-                final role = groups.first.toString().toLowerCase();
-                if (role.contains('sales') || role.contains('sal')) {
+                final role = groups
+                    .map(
+                      (group) => group is Map
+                          ? '${group['name'] ?? ''}'
+                          : group.toString(),
+                    )
+                    .join(' ')
+                    .toLowerCase();
+                if (role.contains('sales') ||
+                    role.contains('sal') ||
+                    role.contains('cro') ||
+                    role.contains('roe') ||
+                    role.contains('ro')) {
                   routeToPush = '/sales-dashboard';
                 } else if (role.contains('drv') || role.contains('driver')) {
                   routeToPush = '/driver-dashboard';

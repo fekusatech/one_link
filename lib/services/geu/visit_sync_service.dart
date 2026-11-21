@@ -27,12 +27,28 @@ class VisitSyncService {
     Duration(minutes: 60),
   ];
 
+  /// Real connectivity check (DNS lookup), not just "has a network interface"
+  /// — a phone can be associated with wifi/cellular with no actual internet.
+  /// Callers use this to refuse check-in/check-out outright instead of
+  /// silently queuing offline, per product decision to require being online.
+  static Future<bool> hasInternet() async {
+    try {
+      final result = await InternetAddress.lookup(
+        'apipi.greenenergiutama.co.id',
+      ).timeout(const Duration(seconds: 5));
+      return result.isNotEmpty && result.first.rawAddress.isNotEmpty;
+    } catch (_) {
+      return false;
+    }
+  }
+
   static Future<VisitSyncItem> enqueueCheckin({
     required int supplierId,
     required double latitude,
     required double longitude,
     String address = '',
     required String photoPath,
+    bool confirmFar = false,
     double? gpsAccuracyMeters,
     bool? isMockLocation,
   }) => _enqueue(VisitSyncAction.checkin, {
@@ -40,6 +56,7 @@ class VisitSyncService {
     'latitude': latitude,
     'longitude': longitude,
     'address': address,
+    'confirm_far': confirmFar,
     'photo_path': photoPath,
     if (gpsAccuracyMeters != null) 'gps_accuracy_m': gpsAccuracyMeters,
     if (isMockLocation != null) 'is_mock_location': isMockLocation,
@@ -87,9 +104,9 @@ class VisitSyncService {
       'latitude': latitude,
       'longitude': longitude,
       'address': address,
-      'notes': notes,
+      if (notes.trim().isNotEmpty) 'notes': notes.trim(),
       'photo_path': photoPath,
-      'work_order_ids': workOrderIds,
+      if (workOrderIds.isNotEmpty) 'work_order_ids': workOrderIds,
       if (gpsAccuracyMeters != null) 'gps_accuracy_m': gpsAccuracyMeters,
       if (isMockLocation != null) 'is_mock_location': isMockLocation,
     }, dependsOnId: dependency?.id);
@@ -100,6 +117,9 @@ class VisitSyncService {
       .toList();
 
   static Future<List<VisitSyncItem>> allItems() => _read();
+
+  static Future<VisitSyncItem?> getItem(String id) async =>
+      (await _read()).where((item) => item.id == id).firstOrNull;
 
   /// Whether [id] (the id returned by an enqueueCheckin/enqueueCheckout call)
   /// actually reached the server. Callers must check this after `syncNow()`
@@ -195,7 +215,7 @@ class VisitSyncService {
         options: Options(headers: {'Idempotency-Key': item.id}),
       );
       final status = response.statusCode ?? 0;
-      if ((status >= 200 && status < 300) || status == 409) {
+      if (status >= 200 && status < 300) {
         await _deletePhoto(item);
         return item.copyWith(state: VisitSyncState.succeeded, lastError: null);
       }
@@ -268,10 +288,16 @@ class VisitSyncService {
     String? dependsOnId,
   }) async {
     final now = DateTime.now();
+    final request = Map<String, dynamic>.from(payload);
+    request[action == VisitSyncAction.checkin
+        ? 'client_checkin_at'
+        : 'client_checkout_at'] = now
+        .toUtc()
+        .toIso8601String();
     final item = VisitSyncItem(
       id: '${now.microsecondsSinceEpoch}-${Random.secure().nextInt(1 << 32)}',
       action: action,
-      payload: payload,
+      payload: request,
       dependsOnId: dependsOnId,
       createdAt: now,
       nextAttemptAt: now,

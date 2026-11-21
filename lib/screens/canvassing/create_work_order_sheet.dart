@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../constants/app_colors.dart';
 import '../../services/geu/visit_planner_service.dart' show WorkOrderStatus;
 import '../../services/geu/work_order_service.dart';
+import 'work_order_attachment_picker.dart';
 
 /// Generic "create WO for this supplier" sheet, usable anywhere a supplier
 /// id/name is known (e.g. My Claims) — unlike add_work_order_sheet.dart,
@@ -34,9 +35,11 @@ class _CreateWorkOrderSheetState extends State<_CreateWorkOrderSheet> {
   DateTime _tgl = DateTime.now();
   int? _statusId;
   List<WorkOrderStatus> _statuses = const [];
+  List<StagedAttachment> _attachments = const [];
   String? _error;
   bool _loading = true;
   bool _saving = false;
+  String? _savingStep;
 
   @override
   void initState() {
@@ -73,19 +76,52 @@ class _CreateWorkOrderSheetState extends State<_CreateWorkOrderSheet> {
     setState(() {
       _saving = true;
       _error = null;
+      _savingStep = null;
     });
     try {
-      final kode = await WorkOrderService.create(
+      final created = await WorkOrderService.create(
         supplierId: widget.supplierId,
         tgl: _tgl,
         statusId: _statusId,
       );
+      // WO is already saved at this point - an attachment upload failing
+      // shouldn't look like the whole WO creation failed, so this loop is
+      // best-effort and just warns instead of throwing.
+      var failedUploads = 0;
+      for (var i = 0; i < _attachments.length; i++) {
+        if (mounted) {
+          setState(() => _savingStep = 'Mengunggah bukti ${i + 1}/${_attachments.length}...');
+        }
+        try {
+          await WorkOrderService.uploadAttachment(
+            workOrderId: created.id,
+            type: _attachments[i].type,
+            photoBase64: _attachments[i].base64DataUri,
+          );
+        } catch (_) {
+          failedUploads++;
+        }
+      }
       if (!mounted) return;
-      Navigator.pop(context, kode);
+      if (failedUploads > 0) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'WO ${created.kode} tersimpan, tapi $failedUploads bukti gagal diunggah.',
+            ),
+          ),
+        );
+      }
+      Navigator.pop(context, created.kode);
     } catch (error) {
       if (mounted) setState(() => _error = error.toString());
     } finally {
-      if (mounted) setState(() => _saving = false);
+      if (mounted) {
+        setState(() {
+          _saving = false;
+          _savingStep = null;
+        });
+      }
     }
   }
 
@@ -152,6 +188,18 @@ class _CreateWorkOrderSheetState extends State<_CreateWorkOrderSheet> {
               onChanged: _saving
                   ? null
                   : (value) => setState(() => _statusId = value),
+            ),
+          const SizedBox(height: 16),
+          WorkOrderAttachmentPicker(
+            onChanged: (staged) => _attachments = staged,
+          ),
+          if (_saving && _savingStep != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 12),
+              child: Text(
+                _savingStep!,
+                style: const TextStyle(color: AppColors.textSecondary),
+              ),
             ),
           if (_error != null)
             Padding(

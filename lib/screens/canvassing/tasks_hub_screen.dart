@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../constants/app_colors.dart';
 import '../../services/geu/geu_auth_service.dart';
 import 'tasks_screen.dart';
 import 'self_assign_screen.dart';
@@ -37,9 +38,16 @@ class _TasksHubScreenState extends State<TasksHubScreen> {
       return DefaultTabController(
         length: 2,
         child: Scaffold(
+          backgroundColor: AppColors.background,
           appBar: AppBar(
+            backgroundColor: AppColors.background,
+            foregroundColor: AppColors.primaryGreen,
             title: const Text('Tugas'),
             bottom: const TabBar(
+              labelColor: AppColors.primaryGreen,
+              unselectedLabelColor: AppColors.textSecondary,
+              indicatorColor: AppColors.accentOrange,
+              indicatorSize: TabBarIndicatorSize.label,
               tabs: [
                 Tab(text: 'Tugas Saya'),
                 Tab(text: 'Self Assign'),
@@ -58,14 +66,24 @@ class _TasksHubScreenState extends State<TasksHubScreen> {
 
     if (hasTasks) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Tugas Saya')),
+        backgroundColor: AppColors.background,
+        appBar: AppBar(
+          backgroundColor: AppColors.background,
+          foregroundColor: AppColors.primaryGreen,
+          title: const Text('Tugas Saya'),
+        ),
         body: const TasksScreen(embedded: true),
       );
     }
 
     if (hasSelfAssign) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Self Assign')),
+        backgroundColor: AppColors.background,
+        appBar: AppBar(
+          backgroundColor: AppColors.background,
+          foregroundColor: AppColors.primaryGreen,
+          title: const Text('Self Assign'),
+        ),
         body: const SelfAssignScreen(embedded: true),
       );
     }

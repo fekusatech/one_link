@@ -12,6 +12,8 @@ import '../constants/app_colors.dart';
 import 'geu/geu_api_client.dart';
 
 class UpdateService {
+  static const bool versionChecksEnabled = true;
+
   static final UpdateService _instance = UpdateService._internal();
   static UpdateService get instance => _instance;
   UpdateService._internal();
@@ -21,6 +23,8 @@ class UpdateService {
   bool _hasCheckedOnThisLoad = false;
 
   void startMonitoring(BuildContext context) {
+    if (!versionChecksEnabled) return;
+
     // Only check once per app load (not spam)
     // Flag hanya di-reset dari luar (misal: saat splash screen), bukan di sini
     if (_hasCheckedOnThisLoad) {
@@ -46,8 +50,19 @@ class UpdateService {
   /// gives feedback either way (update dialog, maintenance dialog, or a
   /// "already latest" / error snackbar) since a user who explicitly asked
   /// shouldn't get silence as the answer.
-  Future<void> checkNow(BuildContext context) =>
-      _checkForUpdate(context, manual: true);
+  Future<void> checkNow(BuildContext context) async {
+    if (!versionChecksEnabled) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Cek versi dinonaktifkan sementara selama uji coba.'),
+          ),
+        );
+      }
+      return;
+    }
+    await _checkForUpdate(context, manual: true);
+  }
 
   Future<void> _checkForUpdate(
     BuildContext context, {
@@ -118,12 +133,21 @@ class UpdateService {
               data['force_update'] == 1;
           final String releaseNotes =
               data['release_notes'] ?? 'Versi baru tersedia';
-          final noUpdate = data['no_update'] == '1' || data['no_update'] == 1;
-
+          final noUpdate =
+              data['no_update'] == true ||
+              data['no_update'] == '1' ||
+              data['no_update'] == 1;
           final hasNewerVersion =
-              noUpdate == false || serverVersion != currentVersion;
+              serverVersion != null &&
+              _isNewerVersion(currentVersion, serverVersion.toString());
 
-          if (hasNewerVersion || isForceUpdate) {
+          debugPrint(
+            'Update check result: current=$currentVersion, '
+            'server=$serverVersion, noUpdate=$noUpdate, '
+            'hasNewerVersion=$hasNewerVersion',
+          );
+
+          if (hasNewerVersion && (!noUpdate || isForceUpdate)) {
             hasServerUpdate = true;
             _showUpdateDialog(
               context,
@@ -138,7 +162,10 @@ class UpdateService {
       } catch (_) {}
 
       if (manual && !hasServerUpdate) {
-        _showSnackBar(context, 'Aplikasi sudah versi terbaru (v$currentVersion).');
+        _showSnackBar(
+          context,
+          'Aplikasi sudah versi terbaru (v$currentVersion).',
+        );
       }
     } catch (e) {
       if (manual) {
@@ -446,7 +473,9 @@ class _DownloadProgressDialogState extends State<_DownloadProgressDialog> {
       if (!await file.exists()) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Berkas APK tidak ditemukan. Silakan unduh ulang.')),
+            const SnackBar(
+              content: Text('Berkas APK tidak ditemukan. Silakan unduh ulang.'),
+            ),
           );
         }
         return;
@@ -522,13 +551,22 @@ class _DownloadProgressDialogState extends State<_DownloadProgressDialog> {
             const SizedBox(height: 16),
             const Text(
               'Mengunduh Pembaruan',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17, color: AppColors.textPrimary),
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 17,
+                color: AppColors.textPrimary,
+              ),
             ),
             const SizedBox(height: 6),
             Text(
-              _status.isNotEmpty ? _status : 'Sedang mengunduh berkas aplikasi...',
+              _status.isNotEmpty
+                  ? _status
+                  : 'Sedang mengunduh berkas aplikasi...',
               textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+              style: const TextStyle(
+                fontSize: 12,
+                color: AppColors.textSecondary,
+              ),
             ),
             const SizedBox(height: 20),
             // Progress Bar
@@ -538,7 +576,9 @@ class _DownloadProgressDialogState extends State<_DownloadProgressDialog> {
                 value: _progress > 0 ? _progress : null,
                 minHeight: 10,
                 backgroundColor: AppColors.lightGrey,
-                valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primaryGreen),
+                valueColor: const AlwaysStoppedAnimation<Color>(
+                  AppColors.primaryGreen,
+                ),
               ),
             ),
             const SizedBox(height: 10),
@@ -547,11 +587,18 @@ class _DownloadProgressDialogState extends State<_DownloadProgressDialog> {
               children: [
                 const Text(
                   'Mohon tunggu sebentar',
-                  style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: AppColors.textSecondary,
+                  ),
                 ),
                 Text(
                   '${(_progress * 100).toStringAsFixed(0)}%',
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.primaryGreen),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                    color: AppColors.primaryGreen,
+                  ),
                 ),
               ],
             ),
@@ -572,7 +619,11 @@ class _DownloadProgressDialogState extends State<_DownloadProgressDialog> {
             const SizedBox(height: 16),
             const Text(
               'Pembaruan Siap Dipasang',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17, color: AppColors.textPrimary),
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 17,
+                color: AppColors.textPrimary,
+              ),
             ),
             const SizedBox(height: 6),
             Text(
@@ -580,7 +631,10 @@ class _DownloadProgressDialogState extends State<_DownloadProgressDialog> {
                   ? 'Membuka paket instalasi Android...'
                   : 'Versi terbaru berhasil diunduh. Tekan "Install Sekarang" untuk memasang.',
               textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+              style: const TextStyle(
+                fontSize: 12,
+                color: AppColors.textSecondary,
+              ),
             ),
           ],
         ],
@@ -590,7 +644,10 @@ class _DownloadProgressDialogState extends State<_DownloadProgressDialog> {
         if (!_isComplete)
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Batalkan', style: TextStyle(color: AppColors.grey)),
+            child: const Text(
+              'Batalkan',
+              style: TextStyle(color: AppColors.grey),
+            ),
           )
         else ...[
           TextButton(
@@ -602,12 +659,20 @@ class _DownloadProgressDialogState extends State<_DownloadProgressDialog> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primaryGreen,
                 foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 18,
+                  vertical: 12,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
               onPressed: _installApk,
               icon: const Icon(Icons.system_update, size: 18),
-              label: const Text('Install Sekarang', style: TextStyle(fontWeight: FontWeight.bold)),
+              label: const Text(
+                'Install Sekarang',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
             ),
           if (_isInstalling)
             const Padding(
@@ -615,7 +680,10 @@ class _DownloadProgressDialogState extends State<_DownloadProgressDialog> {
               child: SizedBox(
                 width: 20,
                 height: 20,
-                child: CircularProgressIndicator(strokeWidth: 2.5, color: AppColors.primaryGreen),
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.5,
+                  color: AppColors.primaryGreen,
+                ),
               ),
             ),
         ],

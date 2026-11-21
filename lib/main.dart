@@ -41,6 +41,9 @@ Future<void> main() async {
       await _configureOrientation();
       await AppConfig.init();
       await FileLoggerService.instance.init();
+      FileLoggerService.instance.write(
+        '[APP_START] version=${AppConfig.appVersion} build=${AppConfig.buildNumber}',
+      );
       await Firebase.initializeApp();
       PushNotificationService.registerBackgroundHandler();
       runApp(const MyApp());

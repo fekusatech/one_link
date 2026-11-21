@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
+import 'dart:convert';
 import 'dart:async';
 import 'dart:math' as math;
+import 'package:http/http.dart' as http;
 import '../services/offline_sync_service.dart';
 import '../constants/app_colors.dart';
 import '../constants/app_text_styles.dart';
@@ -13,6 +15,7 @@ import '../services/geu/surat_jalan_service.dart';
 import '../services/geu/visit_navigation_service.dart';
 import '../services/location_service.dart';
 import '../services/driver_monitoring_service.dart';
+import '../services/geu/reverse_geocoding_service.dart';
 import 'surat_jalan_detail_screen.dart';
 import '../services/persistent_auth_service.dart';
 import '../services/user_storage.dart';
@@ -39,8 +42,6 @@ import '../services/emergency_shake_service.dart';
 import '../services/proximity_wa_service.dart';
 import '../services/dashboard_access_service.dart';
 import '../services/local_notify_service.dart';
-import '../widgets/working_mode_header_widget.dart';
-import '../services/role_management_service.dart';
 import '../services/impersonation_service.dart';
 import 'tracking_system_screen.dart';
 
@@ -54,6 +55,7 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen> {
   int _selectedIndex = 0;
   bool _showDriverMap = true;
+  bool _showSalesSwitch = false;
 
   @override
   void initState() {
@@ -75,6 +77,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     if (mounted) {
       setState(() {
         if (access != null) _showDriverMap = access.driver || access.admin;
+        if (access != null) _showSalesSwitch = access.sales || access.admin;
       });
     }
   }
@@ -129,23 +132,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget build(BuildContext context) {
     // List of screens
     final List<Widget> screens = [
-      const _HomeScreen(),
+      _HomeScreen(showSalesSwitch: _showSalesSwitch),
       const PickupHistoryScreen(),
       const ProfileScreen(),
     ];
 
     return Scaffold(
       backgroundColor: const Color(0xFFF4F7F5),
-      appBar: _selectedIndex == 0
-          ? _DriverAppBar(
-              onNotificationTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const NotificationScreen()),
-                );
-              },
-            )
-          : null,
       body: Column(
         children: [
           ValueListenableBuilder<String?>(
@@ -162,6 +155,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
         currentIndex: _selectedIndex,
         onTap: _onItemTapped,
         showMap: _showDriverMap,
+        onNotifications: () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const NotificationScreen()),
+        ),
         onMapTap: () => Navigator.push(
           context,
           MaterialPageRoute(builder: (_) => const DriverMapScreen()),
@@ -187,116 +184,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 }
 
-class _DriverAppBar extends StatefulWidget implements PreferredSizeWidget {
-  const _DriverAppBar({required this.onNotificationTap});
-
-  final VoidCallback onNotificationTap;
-
-  @override
-  State<_DriverAppBar> createState() => _DriverAppBarState();
-
-  @override
-  Size get preferredSize => const Size.fromHeight(72);
-}
-
-class _DriverAppBarState extends State<_DriverAppBar> {
-  bool _canSwitchDashboard = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadSwitchPermission();
-  }
-
-  Future<void> _loadSwitchPermission() async {
-    var allowed = RoleManagementService.isAdmin();
-    if (!allowed) {
-      final user = await UserStorage.getUser();
-      final groups = user?['groups'] as List<dynamic>? ?? const [];
-      final roles = user?['roles'] as List<dynamic>? ?? const [];
-      final identity = [
-        ...groups,
-        ...roles,
-      ].map((role) => role.toString().toLowerCase()).join(' ');
-      allowed =
-          identity.contains('admin') ||
-          identity.contains('developer') ||
-          identity.contains('super');
-    }
-    if (!allowed) allowed = await ImpersonationService.canImpersonate();
-    if (mounted) setState(() => _canSwitchDashboard = allowed);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AppBar(
-      backgroundColor: const Color(0xFFF4F7F5),
-      surfaceTintColor: Colors.transparent,
-      elevation: 0,
-      toolbarHeight: 72,
-      titleSpacing: 20,
-      title: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'ONE LINK',
-            style: AppTextStyles.overline.copyWith(
-              color: AppColors.accentOrange,
-              fontWeight: FontWeight.w800,
-              letterSpacing: 1.8,
-            ),
-          ),
-          Text(
-            'Transport Management System',
-            style: AppTextStyles.h6.copyWith(
-              color: AppColors.primaryGreen,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-        ],
-      ),
-      actions: [
-        Semantics(
-          label: 'Buka notifikasi',
-          button: true,
-          child: IconButton(
-            constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
-            onPressed: widget.onNotificationTap,
-            icon: const Icon(Icons.notifications_none_rounded),
-            color: AppColors.primaryGreen,
-            tooltip: 'Notifikasi',
-          ),
-        ),
-        if (_canSwitchDashboard)
-          Semantics(
-            label: 'Pindah ke dashboard Sales',
-            button: true,
-            child: IconButton(
-              constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
-              onPressed: () =>
-                  Navigator.pushReplacementNamed(context, '/sales-dashboard'),
-              icon: const Icon(Icons.swap_horiz_rounded),
-              color: AppColors.primaryGreen,
-              tooltip: 'Pindah ke Dashboard Sales',
-            ),
-          ),
-        const SizedBox(width: 8),
-      ],
-    );
-  }
-}
-
 class _DriverBottomBar extends StatelessWidget {
   const _DriverBottomBar({
     required this.currentIndex,
     required this.onTap,
     required this.onMapTap,
+    required this.onNotifications,
     required this.showMap,
   });
 
   final int currentIndex;
   final ValueChanged<int> onTap;
   final VoidCallback onMapTap;
+  final VoidCallback onNotifications;
   final bool showMap;
 
   @override
@@ -327,6 +227,12 @@ class _DriverBottomBar extends StatelessWidget {
         label: 'Profil',
         tabIndex: 2,
       ),
+      _DriverNavItem(
+        icon: Icons.notifications_none_rounded,
+        activeIcon: Icons.notifications_rounded,
+        label: 'Notif',
+        onPressed: onNotifications,
+      ),
     ];
 
     return SafeArea(
@@ -352,7 +258,7 @@ class _DriverBottomBar extends StatelessWidget {
           children: List.generate(items.length, (index) {
             final item = items[index];
             final selected = item.tabIndex == currentIndex;
-            final isProfile = index == items.length - 1;
+            final isProfile = item.tabIndex == 2;
             final foreground = selected
                 ? AppColors.primaryGreen
                 : AppColors.textSecondary;
@@ -458,7 +364,9 @@ class _DriverNavItem {
 
 // Home Screen Widget
 class _HomeScreen extends StatefulWidget {
-  const _HomeScreen();
+  const _HomeScreen({required this.showSalesSwitch});
+
+  final bool showSalesSwitch;
 
   @override
   State<_HomeScreen> createState() => _HomeScreenState();
@@ -479,6 +387,11 @@ class _HomeScreenState extends State<_HomeScreen> {
   String _totalMinyak = '0L';
   int _completedTasks = 0;
   bool _canImpersonate = false;
+  int? _weatherCode;
+  double? _temperatureC;
+  int? _relativeHumidity;
+  double? _windSpeedKmh;
+  String _locationLabel = 'Mencari lokasi…';
 
   final MapController _mapController = MapController();
   LatLng? _driverPosition;
@@ -522,8 +435,7 @@ class _HomeScreenState extends State<_HomeScreen> {
     _checkConnectivityStatus();
     _connectivityTimer = Timer.periodic(const Duration(seconds: 30), (_) {
       // Jangan bangunkan radio saat app di background.
-      if (WidgetsBinding.instance.lifecycleState !=
-          AppLifecycleState.resumed) {
+      if (WidgetsBinding.instance.lifecycleState != AppLifecycleState.resumed) {
         return;
       }
       _checkConnectivityStatus();
@@ -706,7 +618,72 @@ class _HomeScreenState extends State<_HomeScreen> {
         _isLoading = false;
         _errorMessage = e.toString();
       });
+      if (e.toString().contains('Sesi login telah berakhir')) {
+        WidgetsBinding.instance.addPostFrameCallback(
+          (_) => _showSessionExpiredDialog(),
+        );
+      }
     }
+  }
+
+  bool _sessionExpiredDialogShown = false;
+
+  /// Session-expired is unrecoverable without logging in again — a "Coba
+  /// Lagi" retry would just hit the same 401 — so this blocks the whole
+  /// screen with a non-dismissible dialog instead of leaving the inline
+  /// error card (_buildErrorWidget) as the only cue, which the driver could
+  /// miss or ignore while the rest of the dashboard sits there unusable.
+  void _showSessionExpiredDialog() {
+    if (!mounted || _sessionExpiredDialogShown) return;
+    _sessionExpiredDialogShown = true;
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => PopScope(
+        canPop: false,
+        child: AlertDialog(
+          icon: Icon(
+            Icons.lock_clock_rounded,
+            color: AppColors.error,
+            size: 48,
+          ),
+          title: const Text('Sesi Berakhir'),
+          content: const Text(
+            'Sesi login Anda telah berakhir. Silakan masuk kembali ke akun Anda.',
+          ),
+          actions: [
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () async {
+                  await PersistentAuthService.instance.clearAuthData();
+                  await UserStorage.clearUser();
+                  if (mounted) {
+                    Navigator.pushNamedAndRemoveUntil(
+                      context,
+                      '/login',
+                      (route) => false,
+                    );
+                  }
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.error,
+                  foregroundColor: AppColors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  elevation: 0,
+                ),
+                child: const Text(
+                  'Login Ulang',
+                  style: TextStyle(fontWeight: FontWeight.w600),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   void _calculateStatistics() {
@@ -752,11 +729,162 @@ class _HomeScreenState extends State<_HomeScreen> {
 
   Future<void> _loadDriverPosition() async {
     final location = await LocationService.getCurrentLocation();
-    if (location == null || !mounted) return;
-    setState(
-      () => _driverPosition = LatLng(location.latitude, location.longitude),
+    final point = location == null
+        ? null
+        : LatLng(location.latitude, location.longitude);
+    if (point != null && mounted) {
+      setState(() => _driverPosition = point);
+      _reorderStops();
+    }
+    await _loadWeather(point);
+  }
+
+  Future<void> _loadWeather(LatLng? location) async {
+    try {
+      var point = location;
+      if (point == null) {
+        final lastKnown = await Geolocator.getLastKnownPosition();
+        if (lastKnown != null) {
+          point = LatLng(lastKnown.latitude, lastKnown.longitude);
+        }
+      }
+      if (point == null) throw StateError('Lokasi belum tersedia.');
+
+      final addressFuture = ReverseGeocodingService.resolveLocality(
+        point.latitude,
+        point.longitude,
+      );
+      final uri = Uri.https('api.open-meteo.com', '/v1/forecast', {
+        'latitude': point.latitude.toStringAsFixed(2),
+        'longitude': point.longitude.toStringAsFixed(2),
+        'current':
+            'temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m',
+        'timezone': 'auto',
+      });
+      final responseFuture = http.get(uri).timeout(const Duration(seconds: 5));
+      final address = await addressFuture;
+      if (!mounted) return;
+      setState(() => _locationLabel = address);
+
+      final response = await responseFuture;
+      if (response.statusCode != 200 || !mounted) return;
+      final current =
+          (jsonDecode(response.body) as Map<String, dynamic>)['current']
+              as Map<String, dynamic>?;
+      final code = (current?['weather_code'] as num?)?.toInt();
+      setState(() {
+        _weatherCode = code;
+        _temperatureC = (current?['temperature_2m'] as num?)?.toDouble();
+        _relativeHumidity = (current?['relative_humidity_2m'] as num?)?.toInt();
+        _windSpeedKmh = (current?['wind_speed_10m'] as num?)?.toDouble();
+      });
+    } catch (_) {
+      if (mounted && _locationLabel == 'Mencari lokasi…') {
+        setState(() => _locationLabel = 'Lokasi belum tersedia');
+      }
+    }
+  }
+
+  _DriverWeatherMood get _weatherMood {
+    final code = _weatherCode;
+    if (code == null || code == 0) return _DriverWeatherMood.clear;
+    if (code <= 3) return _DriverWeatherMood.cloudy;
+    if (code <= 48) return _DriverWeatherMood.fog;
+    if (code <= 67 || (code >= 80 && code <= 82)) {
+      return _DriverWeatherMood.rain;
+    }
+    if (code >= 95) return _DriverWeatherMood.storm;
+    return _DriverWeatherMood.cloudy;
+  }
+
+  Widget _buildDriverGreeting() {
+    final details = [
+      if (_temperatureC != null) '${_temperatureC!.round()}°C',
+      if (_relativeHumidity != null) 'Kelembapan $_relativeHumidity%',
+      if (_windSpeedKmh != null) 'Angin ${_windSpeedKmh!.round()} km/j',
+    ].join('  ·  ');
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                _greeting(),
+                style: AppTextStyles.bodyMedium.copyWith(
+                  color: AppColors.textSecondary,
+                ),
+              ),
+            ),
+            if (widget.showSalesSwitch)
+              IconButton(
+                tooltip: 'Pindah ke dashboard Sales',
+                visualDensity: VisualDensity.compact,
+                color: AppColors.primaryGreen,
+                onPressed: () =>
+                    Navigator.pushReplacementNamed(context, '/sales-dashboard'),
+                icon: const Icon(Icons.swap_horiz_rounded),
+              ),
+          ],
+        ),
+        const SizedBox(height: 2),
+        Text(
+          _userName,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: AppTextStyles.h3.copyWith(
+            color: AppColors.primaryGreen,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            const Icon(
+              Icons.location_on_outlined,
+              size: 17,
+              color: AppColors.primaryGreen,
+            ),
+            const SizedBox(width: 4),
+            Expanded(
+              child: Text(
+                _locationLabel,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppTextStyles.caption.copyWith(
+                  color: AppColors.textSecondary,
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Icon(_weatherMood.icon, size: 17, color: AppColors.primaryGreen),
+            const SizedBox(width: 4),
+            Text(
+              _weatherCode == null ? 'Cuaca' : _weatherMood.label,
+              style: AppTextStyles.caption.copyWith(
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ],
+        ),
+        if (details.isNotEmpty) ...[
+          const SizedBox(height: 3),
+          Padding(
+            padding: const EdgeInsets.only(left: 21),
+            child: Text(
+              details,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AppTextStyles.caption.copyWith(
+                color: AppColors.textSecondary,
+                fontSize: 10,
+              ),
+            ),
+          ),
+        ],
+      ],
     );
-    _reorderStops();
   }
 
   void _setupMapData() {
@@ -954,235 +1082,245 @@ class _HomeScreenState extends State<_HomeScreen> {
   Widget build(BuildContext context) {
     final progress = _totalTasks == 0 ? 0.0 : _completedTasks / _totalTasks;
 
-    return Column(
+    return Stack(
       children: [
-        _buildConnectivityBanner(),
-        // const WorkingModeHeaderWidget(),
-        Expanded(
-          child: RefreshIndicator(
-            color: AppColors.primaryGreen,
-            onRefresh: _loadSuratJalanData,
-            child: NotificationListener<ScrollNotification>(
-              onNotification: _handleDashboardScroll,
-              child: SingleChildScrollView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 20, 16, 32),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      // Hero card: greeting + daily progress + stats
-                      _buildHeroCard(progress),
+        Positioned.fill(child: _DriverWeatherBackdrop(mood: _weatherMood)),
+        SafeArea(
+          bottom: false,
+          child: Column(
+          children: [
+            _buildConnectivityBanner(),
+            Expanded(
+              child: RefreshIndicator(
+                color: AppColors.primaryGreen,
+                onRefresh: _loadSuratJalanData,
+                child: NotificationListener<ScrollNotification>(
+                  onNotification: _handleDashboardScroll,
+                  child: SingleChildScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 14, 20, 32),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          _buildDriverGreeting(),
+                          const SizedBox(height: 18),
+                          _buildHeroCard(progress),
 
-                      const SizedBox(height: 16),
+                          const SizedBox(height: 16),
 
-                      // TMS Quick Action Menu for Driver
-                      _buildTmsQuickActions(),
+                          // TMS Quick Action Menu for Driver
+                          _buildTmsQuickActions(),
 
-                      const SizedBox(height: 24),
+                          const SizedBox(height: 24),
 
-                      // Loading indicator
-                      if (_isLoading) ...[
-                        const Center(
-                          child: Padding(
-                            padding: EdgeInsets.all(32.0),
-                            child: CircularProgressIndicator(
-                              valueColor: AlwaysStoppedAnimation<Color>(
-                                AppColors.primaryGreen,
+                          // Loading indicator
+                          if (_isLoading) ...[
+                            const Center(
+                              child: Padding(
+                                padding: EdgeInsets.all(32.0),
+                                child: CircularProgressIndicator(
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    AppColors.primaryGreen,
+                                  ),
+                                ),
                               ),
                             ),
-                          ),
-                        ),
-                      ] else if (_errorMessage != null) ...[
-                        // Error state
-                        _buildErrorWidget(),
-                      ] else if (_suratJalanList.isNotEmpty) ...[
-                        const SizedBox(height: 24),
+                          ] else if (_errorMessage != null) ...[
+                            // Error state
+                            _buildErrorWidget(),
+                          ] else if (_suratJalanList.isNotEmpty) ...[
+                            const SizedBox(height: 24),
 
-                        // Surat jalan list header
-                        _buildSectionHeader(
-                          'Surat Jalan Hari Ini',
-                          icon: Icons.receipt_long_outlined,
-                          trailing: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color: AppColors.primaryGreen.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: Text(
-                              '${_optimizedStops.length} titik',
-                              style: AppTextStyles.caption.copyWith(
-                                color: AppColors.primaryGreen,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-
-                        // Search Bar Input
-                        TextField(
-                          controller: _sjSearchController,
-                          decoration: InputDecoration(
-                            hintText: 'Cari nama supplier / alamat...',
-                            hintStyle: AppTextStyles.caption.copyWith(
-                              color: AppColors.grey,
-                            ),
-                            prefixIcon: const Icon(
-                              Icons.search,
-                              size: 20,
-                              color: AppColors.primaryGreen,
-                            ),
-                            suffixIcon: _sjSearchQuery.isNotEmpty
-                                ? IconButton(
-                                    icon: const Icon(
-                                      Icons.clear,
-                                      size: 18,
-                                      color: AppColors.grey,
-                                    ),
-                                    onPressed: () {
-                                      setState(() {
-                                        _sjSearchController.clear();
-                                        _sjSearchQuery = '';
-                                        _sjCurrentPage = 1;
-                                      });
-                                    },
-                                  )
-                                : null,
-                            isDense: true,
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 10,
-                            ),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(16),
-                              borderSide: const BorderSide(
-                                color: AppColors.borderColor,
-                              ),
-                            ),
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(16),
-                              borderSide: const BorderSide(
-                                color: AppColors.borderColor,
-                              ),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(16),
-                              borderSide: const BorderSide(
-                                color: AppColors.primaryGreen,
-                                width: 2,
-                              ),
-                            ),
-                          ),
-                          onChanged: (val) {
-                            setState(() {
-                              _sjSearchQuery = val.trim().toLowerCase();
-                              _sjCurrentPage = 1;
-                            });
-                          },
-                        ),
-                        const SizedBox(height: 12),
-
-                        // Status filter
-                        Wrap(
-                          spacing: 8,
-                          children: [
-                            _buildFilterChip('semua', 'Semua'),
-                            _buildFilterChip('proses', 'Proses'),
-                            _buildFilterChip('selesai', 'Selesai'),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-
-                        // Surat jalan list — flattened per supplier stop with search & pagination
-                        Builder(
-                          builder: (context) {
-                            final filtered = _filteredStopsForList;
-
-                            if (filtered.isEmpty) {
-                              return Padding(
+                            // Surat jalan list header
+                            _buildSectionHeader(
+                              'Surat Jalan Hari Ini',
+                              icon: Icons.receipt_long_outlined,
+                              trailing: Container(
                                 padding: const EdgeInsets.symmetric(
-                                  vertical: 24,
+                                  horizontal: 10,
+                                  vertical: 4,
                                 ),
-                                child: Center(
-                                  child: Text(
-                                    _sjSearchQuery.isNotEmpty
-                                        ? 'Tidak ada titik yang cocok dengan pencarian "$_sjSearchQuery".'
-                                        : 'Tidak ada titik pada filter ini.',
-                                    style: AppTextStyles.bodyMedium.copyWith(
-                                      color: AppColors.grey,
-                                    ),
+                                decoration: BoxDecoration(
+                                  color: AppColors.primaryGreen.withOpacity(
+                                    0.1,
+                                  ),
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: Text(
+                                  '${_optimizedStops.length} titik',
+                                  style: AppTextStyles.caption.copyWith(
+                                    color: AppColors.primaryGreen,
+                                    fontWeight: FontWeight.w600,
                                   ),
                                 ),
-                              );
-                            }
+                              ),
+                            ),
+                            const SizedBox(height: 12),
 
-                            // Pagination Math
-                            final totalItems = filtered.length;
-                            final totalPages = (totalItems / _sjPageSize)
-                                .ceil();
-                            final safePage = _sjCurrentPage.clamp(
-                              1,
-                              totalPages,
-                            );
-                            const startIndex = 0;
-                            final endIndex =
-                                (safePage * _sjPageSize > totalItems)
-                                ? totalItems
-                                : safePage * _sjPageSize;
-                            final paginatedList = filtered.sublist(
-                              startIndex,
-                              endIndex,
-                            );
+                            // Search Bar Input
+                            TextField(
+                              controller: _sjSearchController,
+                              decoration: InputDecoration(
+                                hintText: 'Cari nama supplier / alamat...',
+                                hintStyle: AppTextStyles.caption.copyWith(
+                                  color: AppColors.grey,
+                                ),
+                                prefixIcon: const Icon(
+                                  Icons.search,
+                                  size: 20,
+                                  color: AppColors.primaryGreen,
+                                ),
+                                suffixIcon: _sjSearchQuery.isNotEmpty
+                                    ? IconButton(
+                                        icon: const Icon(
+                                          Icons.clear,
+                                          size: 18,
+                                          color: AppColors.grey,
+                                        ),
+                                        onPressed: () {
+                                          setState(() {
+                                            _sjSearchController.clear();
+                                            _sjSearchQuery = '';
+                                            _sjCurrentPage = 1;
+                                          });
+                                        },
+                                      )
+                                    : null,
+                                isDense: true,
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 10,
+                                ),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                  borderSide: const BorderSide(
+                                    color: AppColors.borderColor,
+                                  ),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                  borderSide: const BorderSide(
+                                    color: AppColors.borderColor,
+                                  ),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                  borderSide: const BorderSide(
+                                    color: AppColors.primaryGreen,
+                                    width: 2,
+                                  ),
+                                ),
+                              ),
+                              onChanged: (val) {
+                                setState(() {
+                                  _sjSearchQuery = val.trim().toLowerCase();
+                                  _sjCurrentPage = 1;
+                                });
+                              },
+                            ),
+                            const SizedBox(height: 12),
 
-                            return Column(
+                            // Status filter
+                            Wrap(
+                              spacing: 8,
                               children: [
-                                ListView.builder(
-                                  shrinkWrap: true,
-                                  physics: const NeverScrollableScrollPhysics(),
-                                  itemCount: paginatedList.length,
-                                  itemBuilder: (context, index) {
-                                    final stop = paginatedList[index];
-                                    return _buildStopCard(
-                                      stop,
-                                      _routeOrderNumber(stop),
-                                    );
-                                  },
-                                ),
-                                Padding(
-                                  padding: const EdgeInsets.only(
-                                    top: 4,
-                                    bottom: 8,
-                                  ),
-                                  child: Text(
-                                    safePage < totalPages
-                                        ? 'Geser ke bawah untuk memuat titik berikutnya'
-                                        : 'Semua titik sudah ditampilkan',
-                                    textAlign: TextAlign.center,
-                                    style: AppTextStyles.caption.copyWith(
-                                      color: AppColors.textSecondary,
-                                    ),
-                                  ),
-                                ),
+                                _buildFilterChip('semua', 'Semua'),
+                                _buildFilterChip('proses', 'Proses'),
+                                _buildFilterChip('selesai', 'Selesai'),
                               ],
-                            );
-                          },
-                        ),
-                      ] else ...[
-                        // No tasks today - show empty state
-                        _buildEmptyTasksWidget(),
-                      ],
-                    ],
+                            ),
+                            const SizedBox(height: 12),
+
+                            // Surat jalan list — flattened per supplier stop with search & pagination
+                            Builder(
+                              builder: (context) {
+                                final filtered = _filteredStopsForList;
+
+                                if (filtered.isEmpty) {
+                                  return Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 24,
+                                    ),
+                                    child: Center(
+                                      child: Text(
+                                        _sjSearchQuery.isNotEmpty
+                                            ? 'Tidak ada titik yang cocok dengan pencarian "$_sjSearchQuery".'
+                                            : 'Tidak ada titik pada filter ini.',
+                                        style: AppTextStyles.bodyMedium
+                                            .copyWith(color: AppColors.grey),
+                                      ),
+                                    ),
+                                  );
+                                }
+
+                                // Pagination Math
+                                final totalItems = filtered.length;
+                                final totalPages = (totalItems / _sjPageSize)
+                                    .ceil();
+                                final safePage = _sjCurrentPage.clamp(
+                                  1,
+                                  totalPages,
+                                );
+                                const startIndex = 0;
+                                final endIndex =
+                                    (safePage * _sjPageSize > totalItems)
+                                    ? totalItems
+                                    : safePage * _sjPageSize;
+                                final paginatedList = filtered.sublist(
+                                  startIndex,
+                                  endIndex,
+                                );
+
+                                return Column(
+                                  children: [
+                                    ListView.builder(
+                                      shrinkWrap: true,
+                                      physics:
+                                          const NeverScrollableScrollPhysics(),
+                                      itemCount: paginatedList.length,
+                                      itemBuilder: (context, index) {
+                                        final stop = paginatedList[index];
+                                        return _buildStopCard(
+                                          stop,
+                                          _routeOrderNumber(stop),
+                                        );
+                                      },
+                                    ),
+                                    Padding(
+                                      padding: const EdgeInsets.only(
+                                        top: 4,
+                                        bottom: 8,
+                                      ),
+                                      child: Text(
+                                        safePage < totalPages
+                                            ? 'Geser ke bawah untuk memuat titik berikutnya'
+                                            : 'Semua titik sudah ditampilkan',
+                                        textAlign: TextAlign.center,
+                                        style: AppTextStyles.caption.copyWith(
+                                          color: AppColors.textSecondary,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                );
+                              },
+                            ),
+                          ] else ...[
+                            // No tasks today - show empty state
+                            _buildEmptyTasksWidget(),
+                          ],
+                        ],
+                      ),
+                    ),
                   ),
                 ),
               ),
             ),
+            const ImpersonationFloatingBanner(),
+          ],
           ),
         ),
-        const ImpersonationFloatingBanner(),
       ],
     );
   }
@@ -1235,71 +1373,27 @@ class _HomeScreenState extends State<_HomeScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(
-                      color: AppColors.white.withOpacity(0.13),
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child: const Icon(
-                      Icons.local_shipping_outlined,
-                      color: AppColors.white,
-                    ),
+                  const Icon(
+                    Icons.local_shipping_outlined,
+                    color: AppColors.white,
+                    size: 22,
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 9),
                   Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          _greeting(),
-                          style: AppTextStyles.caption.copyWith(
-                            color: AppColors.white.withOpacity(0.72),
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          _userName,
-                          style: AppTextStyles.h5.copyWith(
-                            color: AppColors.white,
-                            fontWeight: FontWeight.w800,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
+                    child: Text(
+                      'Rute hari ini',
+                      style: AppTextStyles.bodyMedium.copyWith(
+                        color: AppColors.white,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 7,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.white.withOpacity(0.12),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(
-                          Icons.today_outlined,
-                          size: 14,
-                          color: AppColors.white,
-                        ),
-                        const SizedBox(width: 5),
-                        Text(
-                          dateLabel,
-                          style: AppTextStyles.caption.copyWith(
-                            color: AppColors.white,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ],
+                  Text(
+                    dateLabel,
+                    style: AppTextStyles.caption.copyWith(
+                      color: AppColors.white.withOpacity(0.82),
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ],
@@ -2186,6 +2280,108 @@ class _HomeScreenState extends State<_HomeScreen> {
       ),
     );
   }
+}
+
+enum _DriverWeatherMood { clear, cloudy, fog, rain, storm }
+
+extension on _DriverWeatherMood {
+  Color get background => switch (this) {
+    _DriverWeatherMood.clear => AppColors.background,
+    _DriverWeatherMood.cloudy => const Color(0xFFE8EFED),
+    _DriverWeatherMood.fog => const Color(0xFFEDF0F0),
+    _DriverWeatherMood.rain => const Color(0xFFD9E6EC),
+    _DriverWeatherMood.storm => const Color(0xFFCFDCE3),
+  };
+
+  IconData get icon => switch (this) {
+    _DriverWeatherMood.clear => Icons.wb_sunny_outlined,
+    _DriverWeatherMood.cloudy => Icons.cloud_outlined,
+    _DriverWeatherMood.fog => Icons.foggy,
+    _DriverWeatherMood.rain => Icons.water_drop_outlined,
+    _DriverWeatherMood.storm => Icons.thunderstorm_outlined,
+  };
+
+  String get label => switch (this) {
+    _DriverWeatherMood.clear => 'Cerah',
+    _DriverWeatherMood.cloudy => 'Berawan',
+    _DriverWeatherMood.fog => 'Berkabut',
+    _DriverWeatherMood.rain => 'Hujan',
+    _DriverWeatherMood.storm => 'Hujan lebat',
+  };
+}
+
+class _DriverWeatherBackdrop extends StatelessWidget {
+  const _DriverWeatherBackdrop({required this.mood});
+
+  final _DriverWeatherMood mood;
+
+  @override
+  Widget build(BuildContext context) {
+    final isWet =
+        mood == _DriverWeatherMood.rain || mood == _DriverWeatherMood.storm;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: mood.background,
+        gradient: mood == _DriverWeatherMood.clear
+            ? null
+            : LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [mood.background, AppColors.background],
+              ),
+      ),
+      child: Stack(
+        children: [
+          if (mood != _DriverWeatherMood.clear)
+            Positioned(
+              top: -30,
+              right: -24,
+              child: Icon(
+                isWet ? Icons.cloud : Icons.cloud_outlined,
+                size: 190,
+                color: const Color(0xFF879A9B).withValues(alpha: .08),
+              ),
+            ),
+          if (isWet)
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              height: 270,
+              child: IgnorePointer(
+                child: CustomPaint(
+                  painter: _DriverRainPainter(mood == _DriverWeatherMood.storm),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DriverRainPainter extends CustomPainter {
+  const _DriverRainPainter(this.heavy);
+
+  final bool heavy;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = const Color(0xFF587987).withValues(alpha: heavy ? .16 : .10)
+      ..strokeWidth = heavy ? 1.5 : 1.2
+      ..strokeCap = StrokeCap.round;
+    final step = heavy ? 30.0 : 44.0;
+    for (double x = 8; x < size.width; x += step) {
+      for (double y = 30 + (x % 61); y < size.height; y += step * 1.7) {
+        canvas.drawLine(Offset(x, y), Offset(x - 4, y + 12), paint);
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _DriverRainPainter oldDelegate) =>
+      heavy != oldDelegate.heavy;
 }
 
 /// A single supplier pickup point — one SuratJalanDetail plus the parent

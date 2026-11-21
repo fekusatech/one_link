@@ -28,17 +28,25 @@ class _SelfAssignScreenState extends State<SelfAssignScreen> {
 
   Future<void> _init() async {
     _user = await GeuAuthService.getCachedUser();
-    final canCro = _user?.hasPermission('crm-self-assign-cro') ?? false;
-    final canRo = _user?.hasPermission('crm-self-assign-ro') ?? false;
-    _mode = canCro && canRo
-        ? 'cro-ro'
-        : canCro
-        ? 'cro'
-        : canRo
-        ? 'ro'
-        : 'cro-ro';
+    final modes = _allowedModes;
+    _mode = modes.isEmpty ? '' : modes.first;
     await _load();
   }
+
+  bool get _canCro => _user?.hasPermission('crm-self-assign-cro') ?? false;
+  bool get _canCroRo => _user?.hasPermission('crm-self-assign-cro-ro') ?? false;
+  bool get _canRo =>
+      (_user?.hasPermission('crm-self-assign-tab-ro') ?? false) ||
+      (_user?.hasPermission('crm-self-assign-ro') ?? false);
+  bool get _canRevisit =>
+      _user?.hasPermission('crm-self-assign-revisit') ?? false;
+
+  List<String> get _allowedModes => [
+    if (_canCroRo) 'cro-ro',
+    if (_canCro) 'cro',
+    if (_canRo) 'ro',
+    if (_canRevisit) 'revisit',
+  ];
 
   Future<void> _load() async {
     setState(() {
@@ -46,6 +54,9 @@ class _SelfAssignScreenState extends State<SelfAssignScreen> {
       _error = null;
     });
     try {
+      if (_mode.isEmpty) {
+        throw Exception('Akun ini belum memiliki akses Self Assign.');
+      }
       final data = await SelfAssignService.suppliers(mode: _mode);
       if (mounted) setState(() => _items = data.suppliers);
     } catch (e) {
@@ -96,17 +107,10 @@ class _SelfAssignScreenState extends State<SelfAssignScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final canCro = _user?.hasPermission('crm-self-assign-cro') ?? false;
-    final canRo = _user?.hasPermission('crm-self-assign-ro') ?? false;
-    final modes = <String>[
-      'cro-ro',
-      if (canCro) 'cro',
-      if (canRo) 'ro',
-      if (canRo) 'revisit',
-    ];
+    final modes = _allowedModes;
     final body = Column(
       children: [
-        if (_user != null)
+        if (_user != null && modes.length > 1)
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.all(12),

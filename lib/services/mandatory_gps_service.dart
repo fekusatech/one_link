@@ -14,19 +14,19 @@ class MandatoryGpsService {
     bool isLoggedIn = await UserStorage.isLoggedIn();
     if (!isLoggedIn) return false;
 
-    // Check if user has already given mandatory consent
-    bool hasConsent = await UserStorage.hasMandatoryGpsConsent();
-    if (hasConsent) return false;
-
-    // Check if system location permissions are ALREADY granted on device (whileInUse or always)
-    bool systemGranted = await hasSystemLocationPermissions();
+    // Re-check the OS permission on every launch. A previously stored consent
+    // must not bypass a permission that the user later revoked.
+    bool systemGranted = await LocationTrackingService.instance
+        .hasBackgroundPermission();
     if (systemGranted) {
       await UserStorage.setLocationTrackingConsent(true);
       await UserStorage.setMandatoryGpsConsentGiven(true);
       return false; // Already granted in Android system, skip popup!
     }
 
-    return false; // Never block logged-in user on app launch after force stop!
+    // Location is required for all authenticated app flows. Keep the user on
+    // the consent screen until Android permission has actually been granted.
+    return true;
   }
 
   /// Check if app can proceed to main screens
@@ -37,10 +37,8 @@ class MandatoryGpsService {
       return false; // Must login first
     }
 
-    bool hasConsent = await UserStorage.hasMandatoryGpsConsent();
-    if (hasConsent) return true;
-
-    bool systemGranted = await hasSystemLocationPermissions();
+    bool systemGranted = await LocationTrackingService.instance
+        .hasBackgroundPermission();
     if (systemGranted) {
       await UserStorage.setLocationTrackingConsent(true);
       await UserStorage.setMandatoryGpsConsentGiven(true);
@@ -56,6 +54,20 @@ class MandatoryGpsService {
       // Request location permissions
       bool hasPermissions = await LocationTrackingService.instance
           .requestPermissions(context);
+
+      if (hasPermissions &&
+          !await LocationTrackingService.instance.hasBackgroundPermission()) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Pilih "Izinkan sepanjang waktu" pada pengaturan lokasi Android.',
+              ),
+            ),
+          );
+        }
+        return false;
+      }
 
       if (hasPermissions) {
         // Save consent

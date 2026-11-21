@@ -1,12 +1,16 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import '../constants/app_colors.dart';
 import '../constants/app_text_styles.dart';
-import 'add_supplier_screen_simple.dart';
-import '../providers/supplier_form_provider.dart';
 import '../services/supplier_list_service.dart';
 import '../models/supplier_list_model.dart';
+import '../models/supplier_model.dart';
+import '../models/dropdown_models.dart';
 import '../services/user_storage.dart';
+import '../services/api/supplier_api_service.dart';
+import 'supplier_detail_sheet.dart';
+import 'quick_add_supplier_sheet.dart';
 
 class SupplierListScreen extends StatefulWidget {
   const SupplierListScreen({super.key});
@@ -17,15 +21,32 @@ class SupplierListScreen extends StatefulWidget {
 
 class _SupplierListScreenState extends State<SupplierListScreen> {
   final _searchController = TextEditingController();
+  final _listScrollController = ScrollController();
+  Timer? _searchDebounce;
   String _selectedFilter = 'Semua';
   String _selectedCategory = 'Semua';
   bool _isLoading = false;
+  bool _isLoadingMore = false;
+  bool _hasNext = false;
+  int? _nextCursor;
 
   // Real supplier data
   List<SupplierListItem> _suppliers = [];
   List<SupplierListItem> _filteredSuppliers = [];
 
   int? _currentUserId;
+
+  Future<void> _addSupplier() async {
+    final created = await showQuickAddSupplierSheet(context);
+    if (created == true && mounted) {
+      await _loadSupplierData();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Supplier berhasil ditambahkan')),
+        );
+      }
+    }
+  }
 
   final List<String> _filterOptions = [
     'Semua',
@@ -55,13 +76,22 @@ class _SupplierListScreenState extends State<SupplierListScreen> {
   @override
   void dispose() {
     _searchController.dispose();
+    _searchDebounce?.cancel();
+    _listScrollController.dispose();
     super.dispose();
   }
 
-  Future<void> _loadSupplierData() async {
-    setState(() {
-      _isLoading = true;
-    });
+  Future<void> _loadSupplierData({bool loadMore = false}) async {
+    if (loadMore && (_isLoading || _isLoadingMore || !_hasNext)) return;
+    if (loadMore) {
+      setState(() => _isLoadingMore = true);
+    } else {
+      setState(() {
+        _isLoading = true;
+        _nextCursor = null;
+        _hasNext = false;
+      });
+    }
 
     try {
       // Get current user ID
@@ -72,21 +102,35 @@ class _SupplierListScreenState extends State<SupplierListScreen> {
       // every supplier not created on that exact day.
       final response = await SupplierListService.getSupplierList(
         page: 1,
-        limit: 100, // Get more data
+        limit: 100,
+        cursor: loadMore ? _nextCursor : null,
+        search: _searchController.text.trim(),
         picId: _currentUserId,
       );
 
       if (response.status && response.data != null) {
+        final page = response.data!;
         setState(() {
-          _suppliers = response.data!.data;
-          _filteredSuppliers = _suppliers;
+          if (loadMore) {
+            final seen = _suppliers.map((item) => item.id).toSet();
+            _suppliers.addAll(page.data.where((item) => seen.add(item.id)));
+          } else {
+            _suppliers = page.data;
+          }
+          _filteredSuppliers = List.of(_suppliers);
+          _nextCursor = page.nextCursor;
+          _hasNext = page.hasNext && page.nextCursor != null;
           _isLoading = false;
+          _isLoadingMore = false;
         });
       } else {
         setState(() {
-          _suppliers = [];
-          _filteredSuppliers = [];
+          if (!loadMore) {
+            _suppliers = [];
+            _filteredSuppliers = [];
+          }
           _isLoading = false;
+          _isLoadingMore = false;
         });
 
         if (mounted) {
@@ -100,9 +144,12 @@ class _SupplierListScreenState extends State<SupplierListScreen> {
       }
     } catch (e) {
       setState(() {
-        _suppliers = [];
-        _filteredSuppliers = [];
+        if (!loadMore) {
+          _suppliers = [];
+          _filteredSuppliers = [];
+        }
         _isLoading = false;
+        _isLoadingMore = false;
       });
 
       if (mounted) {
@@ -114,73 +161,291 @@ class _SupplierListScreenState extends State<SupplierListScreen> {
   }
 
   void _filterSuppliers() {
-    setState(() {
-      _filteredSuppliers = _suppliers.where((supplier) {
-        final matchesSearch =
-            supplier.name.toLowerCase().contains(
-              _searchController.text.toLowerCase(),
-            ) ||
-            (supplier.alamat?.toLowerCase().contains(
-                  _searchController.text.toLowerCase(),
-                ) ??
-                false);
-
-        // For now, keep simple filtering as supplier model doesn't have status/category yet
-        return matchesSearch;
-      }).toList();
-    });
-  }
-
-  void _editSupplier(SupplierListItem supplier) {
-    // TODO: Navigate to edit supplier screen
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Edit Supplier'),
-        content: Text(
-          'Fitur edit akan ditambahkan. Supplier: ${supplier.name}',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('OK'),
-          ),
-        ],
-      ),
+    _searchDebounce?.cancel();
+    _searchDebounce = Timer(
+      const Duration(milliseconds: 350),
+      () => _loadSupplierData(),
     );
   }
 
-  void _deleteSupplier(SupplierListItem supplier) {
-    showDialog(
+  Future<void> _editSupplier(SupplierListItem supplier) async {
+    final id = int.tryParse(supplier.id);
+    if (id == null) return;
+
+    final detailResponse = await SupplierApiService.getSupplierDetail(id);
+    if (!mounted) return;
+    final detail = detailResponse.data;
+    if (!detailResponse.status || detail == null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(detailResponse.message)));
+      return;
+    }
+
+    final name = TextEditingController(text: detail.name);
+    final contact = TextEditingController(text: detail.karyawan);
+    final position = TextEditingController(text: detail.jabatan);
+    final phone = TextEditingController(text: detail.phone);
+    final address = TextEditingController(text: detail.alamat ?? '');
+    final accountName = TextEditingController(text: detail.namaRek);
+    final accountNumber = TextEditingController(text: detail.nomorRek);
+    final dropdownResponse = await SupplierApiService.getDropdownOptions();
+    if (!mounted) {
+      name.dispose();
+      contact.dispose();
+      position.dispose();
+      phone.dispose();
+      address.dispose();
+      accountName.dispose();
+      accountNumber.dispose();
+      return;
+    }
+    final banks = (dropdownResponse.data?['banks'] as List? ?? const [])
+        .whereType<Map>()
+        .map((row) => Bank.fromJson(Map<String, dynamic>.from(row)))
+        .toList();
+    var selectedBankId = detail.bankRekId;
+    var isIsccCertified = detail.isIsccCertified;
+    String? error;
+    String? accountValidation;
+    String? successMessage;
+    var saving = false;
+    var validatingAccount = false;
+
+    final updated = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Hapus Supplier'),
-        content: Text('Apakah Anda yakin ingin menghapus ${supplier.name}?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Batal'),
-          ),
-          TextButton(
-            onPressed: () {
-              setState(() {
-                _suppliers.removeWhere((s) => s.id == supplier.id);
-                _filterSuppliers();
-              });
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('${supplier.name} berhasil dihapus'),
-                  backgroundColor: AppColors.primaryGreen,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) => AlertDialog(
+          title: const Text('Edit Supplier'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: name,
+                  decoration: const InputDecoration(labelText: 'Nama supplier'),
                 ),
-              );
-            },
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Hapus'),
+                TextField(
+                  controller: contact,
+                  decoration: const InputDecoration(labelText: 'Nama PIC'),
+                ),
+                TextField(
+                  controller: position,
+                  decoration: const InputDecoration(labelText: 'Jabatan PIC'),
+                ),
+                TextField(
+                  controller: phone,
+                  keyboardType: TextInputType.phone,
+                  decoration: const InputDecoration(labelText: 'Nomor telepon'),
+                ),
+                TextField(
+                  controller: address,
+                  maxLines: 2,
+                  decoration: const InputDecoration(labelText: 'Alamat'),
+                ),
+                SwitchListTile.adaptive(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('ISCC Certified'),
+                  subtitle: Text(isIsccCertified ? 'Ya' : 'Tidak'),
+                  value: isIsccCertified,
+                  onChanged: saving
+                      ? null
+                      : (value) => setDialogState(() {
+                          isIsccCertified = value;
+                        }),
+                ),
+                TextField(
+                  controller: accountName,
+                  decoration: const InputDecoration(
+                    labelText: 'Nama rekening *',
+                  ),
+                ),
+                TextField(
+                  controller: accountNumber,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                    labelText: 'Nomor rekening *',
+                  ),
+                ),
+                DropdownButtonFormField<int>(
+                  initialValue: banks.any((bank) => bank.id == selectedBankId)
+                      ? selectedBankId
+                      : null,
+                  isExpanded: true,
+                  decoration: const InputDecoration(labelText: 'Bank *'),
+                  hint: const Text('Pilih bank'),
+                  items: banks
+                      .map(
+                        (bank) => DropdownMenuItem<int>(
+                          value: bank.id,
+                          child: Text('${bank.namaBank} (${bank.kodeBank})'),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: saving
+                      ? null
+                      : (value) => setDialogState(() {
+                          selectedBankId = value;
+                          accountValidation = null;
+                        }),
+                ),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton.icon(
+                    onPressed: saving || validatingAccount
+                        ? null
+                        : () async {
+                            Bank? bank;
+                            for (final option in banks) {
+                              if (option.id == selectedBankId) bank = option;
+                            }
+                            if (accountNumber.text.trim().isEmpty ||
+                                bank == null) {
+                              setDialogState(
+                                () => accountValidation =
+                                    'Isi nomor rekening dan pilih bank terlebih dahulu.',
+                              );
+                              return;
+                            }
+                            setDialogState(() {
+                              validatingAccount = true;
+                              accountValidation = null;
+                            });
+                            final result =
+                                await SupplierApiService.validateAccount(
+                                  nomorRek: accountNumber.text.trim(),
+                                  bank: bank.kodeBank,
+                                  namaRek: accountName.text.trim(),
+                                );
+                            if (!dialogContext.mounted) return;
+                            final verifiedName = result.data?['account_name']
+                                ?.toString();
+                            setDialogState(() {
+                              validatingAccount = false;
+                              accountValidation = result.status
+                                  ? '✓ ${verifiedName?.isNotEmpty == true ? verifiedName : 'Rekening valid'}'
+                                  : '✗ ${result.message}';
+                            });
+                          },
+                    icon: validatingAccount
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.verified_outlined),
+                    label: const Text('Validasi rekening'),
+                  ),
+                ),
+                if (accountValidation != null)
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Text(
+                        accountValidation!,
+                        style: TextStyle(
+                          color: accountValidation!.startsWith('✓')
+                              ? AppColors.primaryGreen
+                              : AppColors.error,
+                        ),
+                      ),
+                    ),
+                  ),
+                if (error != null) ...[
+                  const SizedBox(height: 8),
+                  Text(error!, style: const TextStyle(color: AppColors.error)),
+                ],
+              ],
+            ),
           ),
-        ],
+          actions: [
+            TextButton(
+              onPressed: saving
+                  ? null
+                  : () => Navigator.pop(dialogContext, false),
+              child: const Text('Batal'),
+            ),
+            FilledButton(
+              onPressed: saving
+                  ? null
+                  : () async {
+                      if (name.text.trim().isEmpty ||
+                          contact.text.trim().isEmpty ||
+                          position.text.trim().isEmpty ||
+                          accountName.text.trim().isEmpty ||
+                          accountNumber.text.trim().isEmpty ||
+                          selectedBankId == null) {
+                        setDialogState(
+                          () => error =
+                              'Lengkapi data supplier, PIC, rekening, dan bank.',
+                        );
+                        return;
+                      }
+                      setDialogState(() {
+                        saving = true;
+                        error = null;
+                      });
+                      final input = Supplier.fromJson({
+                        ...detail.toJson(),
+                        'name': name.text.trim(),
+                        'karyawan': contact.text.trim(),
+                        'jabatan': position.text.trim(),
+                        'phone': phone.text.trim(),
+                        'alamat': address.text.trim(),
+                        'nama_rek': accountName.text.trim(),
+                        'nomor_rek': accountNumber.text.trim(),
+                        'bank_rek_id': selectedBankId ?? detail.bankRekId,
+                        'is_iscc_certified': isIsccCertified ? 1 : 0,
+                      });
+                      final response = await SupplierApiService.updateSupplier(
+                        id,
+                        input,
+                      );
+                      if (!dialogContext.mounted) return;
+                      if (response.status) {
+                        successMessage = response.message;
+                        Navigator.pop(dialogContext, true);
+                      } else {
+                        setDialogState(() {
+                          saving = false;
+                          error = response.message;
+                        });
+                      }
+                    },
+              child: saving
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Text('Simpan'),
+            ),
+          ],
+        ),
       ),
     );
+    name.dispose();
+    contact.dispose();
+    position.dispose();
+    phone.dispose();
+    address.dispose();
+    accountName.dispose();
+    accountNumber.dispose();
+
+    if (updated == true && mounted) {
+      await _loadSupplierData();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            successMessage?.isNotEmpty == true
+                ? successMessage!
+                : 'Perubahan POO berhasil dikirim.',
+          ),
+        ),
+      );
+    }
   }
 
   @override
@@ -188,31 +453,15 @@ class _SupplierListScreenState extends State<SupplierListScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        backgroundColor: AppColors.primaryGreen,
-        foregroundColor: AppColors.white,
+        backgroundColor: AppColors.background,
+        foregroundColor: AppColors.primaryGreen,
         title: Text(
-          'Kelola Supplier',
+          'Supplier',
           style: AppTextStyles.h5.copyWith(
-            color: AppColors.white,
+            color: AppColors.primaryGreen,
             fontWeight: FontWeight.bold,
           ),
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.add),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => ChangeNotifierProvider(
-                    create: (_) => SupplierFormProvider(),
-                    child: const AddSupplierScreenSimple(),
-                  ),
-                ),
-              ).then((_) => _loadSupplierData());
-            },
-          ),
-        ],
       ),
       body: Column(
         children: [
@@ -234,18 +483,9 @@ class _SupplierListScreenState extends State<SupplierListScreen> {
         ],
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => ChangeNotifierProvider(
-                create: (_) => SupplierFormProvider(),
-                child: const AddSupplierScreenSimple(),
-              ),
-            ),
-          ).then((_) => _loadSupplierData());
-        },
+        onPressed: _addSupplier,
         backgroundColor: AppColors.primaryGreen,
+        tooltip: 'Tambah supplier',
         child: const Icon(Icons.add, color: AppColors.white),
       ),
     );
@@ -368,10 +608,25 @@ class _SupplierListScreenState extends State<SupplierListScreen> {
 
   Widget _buildSupplierList() {
     return ListView.separated(
-      padding: const EdgeInsets.all(16),
-      itemCount: _filteredSuppliers.length,
+      controller: _listScrollController,
+      padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
+      itemCount:
+          _filteredSuppliers.length + (_hasNext || _isLoadingMore ? 1 : 0),
       separatorBuilder: (context, index) => const SizedBox(height: 12),
       itemBuilder: (context, index) {
+        if (index == _filteredSuppliers.length) {
+          if (_hasNext && !_isLoadingMore) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              _loadSupplierData(loadMore: true);
+            });
+          }
+          return const Center(
+            child: Padding(
+              padding: EdgeInsets.all(16),
+              child: CircularProgressIndicator(color: AppColors.primaryGreen),
+            ),
+          );
+        }
         final supplier = _filteredSuppliers[index];
         return _buildSupplierCard(supplier);
       },
@@ -379,179 +634,190 @@ class _SupplierListScreenState extends State<SupplierListScreen> {
   }
 
   Widget _buildSupplierCard(SupplierListItem supplier) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.white,
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 5),
+        onTap: () => showSupplierDetailSheet(context, supplier),
+        child: Container(
+          decoration: BoxDecoration(
+            color: AppColors.white,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: AppColors.borderColor),
           ),
-        ],
-      ),
-      child: Column(
-        children: [
-          // Header
-          Container(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              children: [
-                // Business Icon
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: AppColors.primaryGreen.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Icon(
-                    Icons.store,
-                    color: AppColors.primaryGreen,
-                    size: 24,
-                  ),
-                ),
-                const SizedBox(width: 12),
-
-                // Business Info
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        supplier.name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppTextStyles.bodyLarge.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.textPrimary,
-                        ),
+          child: Column(
+            children: [
+              // Header
+              Container(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    // Business Icon
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: AppColors.primaryGreen.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        supplier.jenisName ?? 'Supplier',
-                        style: AppTextStyles.bodyMedium.copyWith(
-                          color: AppColors.textSecondary,
-                        ),
+                      child: const Icon(
+                        Icons.store,
+                        color: AppColors.primaryGreen,
+                        size: 24,
                       ),
-                    ],
-                  ),
-                ),
-
-                // Status Badge (default to Aktif for real data)
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppColors.primaryGreen.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    'Aktif',
-                    style: AppTextStyles.caption.copyWith(
-                      color: AppColors.primaryGreen,
-                      fontWeight: FontWeight.w600,
                     ),
-                  ),
-                ),
+                    const SizedBox(width: 12),
 
-                // Menu
-                PopupMenuButton(
-                  icon: const Icon(Icons.more_vert, color: AppColors.grey),
-                  onSelected: (value) {
-                    switch (value) {
-                      case 'edit':
-                        _editSupplier(supplier);
-                        break;
-                      case 'delete':
-                        _deleteSupplier(supplier);
-                        break;
-                    }
-                  },
-                  itemBuilder: (context) => [
-                    const PopupMenuItem(
-                      value: 'edit',
-                      child: Row(
+                    // Business Info
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Icon(Icons.edit, size: 18),
-                          SizedBox(width: 8),
-                          Text('Edit'),
+                          Text(
+                            supplier.name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: AppTextStyles.bodyLarge.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            supplier.jenisName ?? 'Supplier',
+                            style: AppTextStyles.bodyMedium.copyWith(
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 3,
+                            ),
+                            decoration: BoxDecoration(
+                              color: supplier.isIsccCertified
+                                  ? AppColors.success.withOpacity(0.1)
+                                  : AppColors.grey.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Text(
+                              'ISCC ${supplier.isIsccCertified ? 'Ya' : 'Tidak'}',
+                              style: AppTextStyles.caption.copyWith(
+                                color: supplier.isIsccCertified
+                                    ? AppColors.success
+                                    : AppColors.textSecondary,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
                         ],
                       ),
                     ),
-                    const PopupMenuItem(
-                      value: 'delete',
-                      child: Row(
-                        children: [
-                          Icon(Icons.delete, size: 18, color: Colors.red),
-                          SizedBox(width: 8),
-                          Text('Hapus', style: TextStyle(color: Colors.red)),
-                        ],
+
+                    // Status Badge (default to Aktif for real data)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.primaryGreen.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        'Aktif',
+                        style: AppTextStyles.caption.copyWith(
+                          color: AppColors.primaryGreen,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
-                  ],
-                ),
-              ],
-            ),
-          ),
 
-          // Divider
-          Container(
-            height: 1,
-            margin: const EdgeInsets.symmetric(horizontal: 16),
-            color: AppColors.grey.withOpacity(0.2),
-          ),
-
-          // Details
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              children: [
-                // Contact Info
-                if (supplier.alamat?.isNotEmpty == true) ...[
-                  Row(
-                    children: [
-                      const Icon(
-                        Icons.location_on,
-                        size: 16,
-                        color: AppColors.grey,
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          supplier.alamat!,
-                          style: AppTextStyles.bodyMedium.copyWith(
-                            color: AppColors.textSecondary,
+                    // Menu
+                    PopupMenuButton(
+                      icon: const Icon(Icons.more_vert, color: AppColors.grey),
+                      onSelected: (value) {
+                        switch (value) {
+                          case 'edit':
+                            _editSupplier(supplier);
+                            break;
+                        }
+                      },
+                      itemBuilder: (context) => [
+                        const PopupMenuItem(
+                          value: 'edit',
+                          child: Row(
+                            children: [
+                              Icon(Icons.edit, size: 18),
+                              SizedBox(width: 8),
+                              Text('Edit'),
+                            ],
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                ],
-
-                // Basic Info
-                Row(
-                  children: [
-                    _buildStatItem(
-                      icon: Icons.tag,
-                      label: 'Kode',
-                      value: supplier.kode ?? '-',
-                    ),
-                    const SizedBox(width: 16),
-                    _buildStatItem(
-                      icon: Icons.category,
-                      label: 'Kategori',
-                      value: supplier.kategoriName ?? '-',
+                      ],
                     ),
                   ],
                 ),
-              ],
-            ),
+              ),
+
+              // Divider
+              Container(
+                height: 1,
+                margin: const EdgeInsets.symmetric(horizontal: 16),
+                color: AppColors.grey.withOpacity(0.2),
+              ),
+
+              // Details
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  children: [
+                    // Contact Info
+                    if (supplier.alamat?.isNotEmpty == true) ...[
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.location_on,
+                            size: 16,
+                            color: AppColors.grey,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              supplier.alamat!,
+                              style: AppTextStyles.bodyMedium.copyWith(
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                    ],
+
+                    // Basic Info
+                    Row(
+                      children: [
+                        _buildStatItem(
+                          icon: Icons.tag,
+                          label: 'Kode',
+                          value: supplier.kode ?? '-',
+                        ),
+                        const SizedBox(width: 16),
+                        _buildStatItem(
+                          icon: Icons.category,
+                          label: 'Kategori',
+                          value: supplier.kategoriName ?? '-',
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }

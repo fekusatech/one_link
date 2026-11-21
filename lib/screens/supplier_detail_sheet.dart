@@ -102,6 +102,10 @@ class _SupplierDetailSheetState extends State<_SupplierDetailSheet> {
               const SizedBox(height: 14),
 
               _sectionTitle('Kontak & Lokasi'),
+              _row(
+                Icons.verified_outlined,
+                'ISCC Certified: ${s.isIsccCertified ? 'Ya' : 'Tidak'}',
+              ),
               if (s.phone != null && s.phone!.isNotEmpty)
                 _row(Icons.phone_outlined, s.phone!),
               _buildWaStatus(),

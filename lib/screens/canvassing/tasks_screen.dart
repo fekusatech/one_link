@@ -345,15 +345,28 @@ class _TasksScreenState extends State<TasksScreen> with WidgetsBindingObserver {
       onRefresh: _load,
       child: ListView(
         controller: _scrollController,
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
         children: [
+          Text(
+            'Perlu ditindaklanjuti',
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+              color: AppColors.textPrimary,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Pantau tugas dan tindak lanjut supplier.',
+            style: TextStyle(color: AppColors.textSecondary),
+          ),
+          const SizedBox(height: 20),
           if (_progress != null)
             Wrap(
               spacing: 8,
               runSpacing: 8,
               children: [
                 _kpi('Total', _progress!.total, AppColors.primaryGreen),
-                _kpi('Selesai', _progress!.completed, AppColors.info),
+                _kpi('Selesai', _progress!.completed, AppColors.primaryGreen),
                 _kpi('Pending', _progress!.pending, AppColors.accentOrange),
                 _kpi('Terlambat', _progress!.overdue, AppColors.error),
               ],
@@ -368,6 +381,12 @@ class _TasksScreenState extends State<TasksScreen> with WidgetsBindingObserver {
             decoration: InputDecoration(
               hintText: 'Cari supplier',
               prefixIcon: const Icon(Icons.search),
+              filled: true,
+              fillColor: AppColors.white,
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: const BorderSide(color: AppColors.borderColor),
+              ),
               suffixIcon: IconButton(
                 icon: const Icon(Icons.filter_list),
                 onPressed: _chooseStatus,
@@ -468,11 +487,12 @@ class _TasksScreenState extends State<TasksScreen> with WidgetsBindingObserver {
   }
 
   Widget _kpi(String label, int value, Color color) => Container(
-    width: 76,
-    padding: const EdgeInsets.all(10),
+    constraints: const BoxConstraints(minWidth: 76),
+    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
     decoration: BoxDecoration(
-      color: color.withValues(alpha: .1),
-      borderRadius: BorderRadius.circular(12),
+      color: AppColors.white,
+      border: Border.all(color: AppColors.borderColor),
+      borderRadius: BorderRadius.circular(10),
     ),
     child: Column(
       children: [
@@ -526,11 +546,26 @@ class _TasksScreenState extends State<TasksScreen> with WidgetsBindingObserver {
   Widget _card(CrmTask task) {
     final canCreateWo = _isCRO && task.status == 'assigned';
     return Card(
+      margin: const EdgeInsets.only(bottom: 10),
+      color: AppColors.white,
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: const BorderSide(color: AppColors.borderColor),
+      ),
       child: Column(
         children: [
           ListTile(
             onTap: () => _showTaskDetail(task),
-            title: Text(task.supplierName),
+            title: Text(
+              task.supplierName,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: AppColors.textPrimary,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
             subtitle: Text(
               '${task.status}${task.overdue ? ' • TERLAMBAT' : ''}'
               '${task.gpsMissing ? ' • GPS tidak tersedia' : ''}'

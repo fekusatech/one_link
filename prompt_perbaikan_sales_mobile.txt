@@ -1,0 +1,128 @@
+Kamu bertugas memperbaiki modul Sales (CRO/RO) di aplikasi Flutter ini (One Link / crm-mobile).
+
+Ada DUA file yang harus kamu baca UTUH dulu sebelum menyentuh kode apapun — jangan cuma skim judul section:
+
+1. `PANDUAN_PERBAIKAN_SALES_MOBILE.md`  ← ini instruksi kerjamu, ikuti persis
+2. `AUDIT_SALES_MOBILE_VS_CRM_REACT.md` ← latar belakang: kenapa perbaikan ini perlu
+
+Panduan itu sudah memuat kontrak API asli (hasil uji live ke production 22 Agu 2026), tabel pemetaan endpoint lama→baru, dan mockup UI. Jadi kamu TIDAK perlu menebak-nebak. Kalau ada yang tidak ada di panduan, TANYA — jangan karang sendiri.
+
+
+=== TIGA ATURAN KERAS (melanggar ini = pekerjaanmu ditolak) ===
+
+1. DILARANG BIKIN DATA PALSU SEBAGAI FALLBACK.
+   Ini sudah dua kali kejadian di project ini dan dua-duanya bikin bug baru ketahuan
+   berminggu-minggu kemudian: skor driver yang di-hardcode, dan `_loadDummyData()` di
+   form supplier yang justru jadi salah satu yang kamu perbaiki sekarang.
+   Kalau API gagal: tampilkan error state jujur + tombol "Coba Lagi". Titik.
+   Jangan menambal dengan angka/list karangan supaya "kelihatan jalan".
+
+2. UI/UX YANG SUDAH ADA JANGAN DIUBAH (untuk Bagian A, B, C).
+   Bagian A–C itu perbaikan data layer, bukan redesign. Yang HARUS tetap sama persis:
+   - Wizard form supplier 3 halaman (Informasi Dasar → Lokasi → Informasi Keuangan)
+   - Indikator progres titik-titik di atas wizard
+   - Tombol Kembali / Selanjutnya / Simpan
+   - Layout SupplierListScreen: AppBar, search field, 2 dropdown filter, kartu
+     supplier, FAB tambah, empty state
+   - Semua warna/spacing/radius: pakai `AppColors` & `AppTextStyles` yang ada,
+     jangan bikin token baru
+   Satu-satunya perubahan bentuk yang diizinkan di Bagian A adalah pemilih PIC
+   (lihat A.7) — dan itupun field-nya harus tetap TERLIHAT sama seperti dropdown
+   yang sekarang.
+   Ide UI/UX baru ada di Bagian D dan itu OPSIONAL — jangan disentuh sebelum A–C
+   selesai dan diuji.
+
+3. JANGAN HARDCODE KREDENSIAL, termasuk untuk keperluan tes.
+   Ambil dari sesi yang sedang login. Pernah ada password ke-commit ke git history
+   di repo ini, jangan diulang.
+
+
+=== LANGKAH 0 — Verifikasi ulang backend (WAJIB, sebelum ngoding) ===
+
+Kontrak API di panduan sudah diverifikasi live, tapi itu tanggal 22 Agu 2026.
+Pastikan masih valid sekarang. Pakai perintah di Lampiran A panduan.
+
+Cek minimal ini dan laporkan hasilnya ke saya:
+- `GET /api/suppliers/dropdowns` — masih mengembalikan 8 key itu? `employees` masih null?
+- `GET /api/suppliers/cities/35` — masih `{id, name}` saja (tanpa `id_provinsi`)?
+- `GET /api/suppliers/employees?limit=2` — masih terpaginasi?
+- `POST /api/suppliers/` — konfirmasi field wajibnya dengan membaca
+  `CreateSupplierRequest` di `~/Project/go-rest-api/src/response/shared/supplier_response.go`
+- `GET /api-supplier/dropdown-options` — pastikan memang masih 404 (kalau ternyata
+  sudah hidup lagi, STOP dan lapor, karena berarti asumsi dasar perbaikan ini berubah)
+
+Kalau ada yang beda dari panduan, LAPOR DULU sebelum lanjut. Jangan diam-diam
+menyesuaikan sendiri.
+
+
+=== LANGKAH 1 — Kerjakan Bagian A (form tambah supplier) ===
+
+Ikuti PANDUAN bagian A.1 s/d A.8 BERURUTAN. Jangan loncat.
+
+Yang paling sering bikin orang gagal di task ini: mengira cukup ganti prefix URL.
+TIDAK CUKUP. Ada 4 jebakan yang bikin app tetap crash walau URL sudah benar —
+semuanya dijelaskan di A.0 panduan:
+  (1) `ApiResponse.status` bertipe bool, Go kirim string "success" → TypeError
+  (2) City/District/Village wajib `id_provinsi`/`id_kota`/`id_kecamatan`,
+      Go cuma kirim {id, name} → FormatException
+  (3) employees sekarang terpaginasi (1658 baris), dulu list utuh
+  (4) payload simpan beda nama field: pic→pic_id, bank_rek→bank_rek_id,
+      price String→angka
+
+Jadi urutan wajibnya: perbaiki model dulu (A.2, A.3, A.5), baru service (A.4),
+baru provider (A.6), baru UI (A.7).
+
+Commit terpisah per langkah, `flutter analyze` harus bersih tiap kali.
+
+
+=== LANGKAH 2 — Bagian B & C ===
+
+Bagian B (permission gate Daftar Supplier) cuma 1 baris, TAPI jalankan dulu query
+SQL di panduan untuk cek siapa yang bakal kehilangan menunya. Laporkan hasil query
+itu ke saya SEBELUM commit — kalau ternyata banyak CRO/RO aktif yang terdampak,
+saya yang putuskan apakah lanjut atau kasih slug-nya dulu lewat RBAC Admin.
+
+Bagian C (PermissionGate) ikuti panduan. `GeuAuthService.getCachedUser()` sudah ada,
+jangan bikin mekanisme role-check baru dan jangan panggil `/api-auth/me` tiap layar
+dibuka.
+
+
+=== YANG HARUS DITANYA DULU, JANGAN DIASUMSIKAN ===
+
+- Bagian A.7: mau pemilih PIC pakai bottom sheet pencarian (rekomendasi panduan),
+  atau opsi minimal (dropdown 50 pertama + item "Cari karyawan lain…")?
+- Bagian A.5: form sekarang cuma bisa TAMBAH supplier. Apakah fitur EDIT supplier
+  (`PUT /api/suppliers/:id`) masuk scope sekarang, atau nanti? Kalau masuk, ingat
+  server bisa balas 200 dengan "Edit submitted for approval" — artinya BELUM
+  tersimpan, dan UI harus bilang jujur soal itu.
+- Bagian D mana yang mau dikerjakan (kalau ada), dan urutannya.
+
+
+=== CARA KERJA ===
+
+- Bahasa Indonesia untuk semua teks yang dilihat user. Pesan error harus untuk orang
+  awam, bukan exception mentah (lihat helper `_friendlyError()` di panduan A.4).
+- Ikuti gaya kode yang sudah ada di sekitarnya — pola service GEU yang sehat bisa
+  dicontoh dari `lib/services/supplier_list_service.dart` dan
+  `lib/services/geu/visit_planner_service.dart`.
+- SEMUA call baru pakai `GeuApiClient` (dio + cookie session + auto-refresh 401).
+  Jangan pakai paket `http` mentah — itu justru salah satu akar masalah yang
+  sedang diperbaiki.
+- Komentar seperlunya dan jelaskan KENAPA, bukan APA. Contoh yang bagus: jelaskan
+  kenapa `gorm:"-"`/nullable itu perlu, bukan menulis ulang isi kode jadi kalimat.
+- Sebelum push: `git fetch origin` lalu `git merge origin/main --no-edit` kalau
+  divergen. JANGAN rebase, JANGAN force-push — ada beberapa orang/agent kerja
+  bareng di repo ini.
+- Format commit: `fix(supplier): <ringkas>` + body yang menjelaskan gejala yang
+  dialami user, bukan cuma daftar file yang diubah.
+
+
+=== JUJUR SOAL HASIL ===
+
+Kalau kamu tidak sempat menguji di device fisik, BILANG APA ADANYA. Jangan tulis
+"sudah dites dan berfungsi" kalau yang kamu jalankan cuma `flutter analyze`.
+Bedakan dengan jelas: "lolos analyze" vs "diuji manual di device" vs
+"diverifikasi lewat curl ke API".
+
+Kalau ada langkah yang kamu lewati atau tidak selesai, sebutkan di akhir laporan.
+Lebih baik lapor ada yang belum beres daripada saya temukan sendiri nanti.

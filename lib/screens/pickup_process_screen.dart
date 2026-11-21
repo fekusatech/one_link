@@ -384,6 +384,7 @@ class _PickupProcessScreenState extends State<PickupProcessScreen> {
         _showSuccessDialog();
       }
     } catch (e) {
+      print('❌ Pickup: Gagal menyelesaikan pickup $suratJalanKode (detail id: $detailId): $e');
       if (mounted) {
         setState(() => _isBusy = false);
         _showErrorSnackbar(e.toString().replaceFirst('Exception: ', ''));

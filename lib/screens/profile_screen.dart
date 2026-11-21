@@ -13,6 +13,7 @@ import 'about_screen.dart';
 import 'diagnosis_screen.dart';
 import 'pickup_history_screen.dart';
 import 'location_tracking_settings_screen.dart';
+import '../widgets/permission_gate.dart';
 import 'canvassing/my_statistic_screen.dart';
 import 'canvassing/my_claims_screen.dart';
 import 'canvassing/visit_history_screen.dart';
@@ -25,6 +26,8 @@ import '../services/update_service.dart';
 import '../services/impersonation_service.dart';
 import '../widgets/force_login_dialog.dart';
 import '../widgets/impersonation_banner.dart';
+import '../widgets/account_switcher_sheet.dart';
+import 'nfc_recovery_card_screen.dart';
 
 enum ProfileRole { driver, cro }
 
@@ -44,6 +47,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool _checkingUpdate = false;
   bool _canImpersonate = false;
   bool _canDeveloperRelogin = false;
+  bool _canWriteNfcCard = false;
   bool _reloggingDeveloper = false;
 
   // CRO Performance Stats
@@ -91,6 +95,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
         roles.any(
           (role) => role.contains('developer') || role.contains('superuser'),
         );
+    final canWriteNfcCard = roles.any((role) {
+      final normalized = role.replaceAll(RegExp(r'[^a-z]'), '');
+      return normalized == 'admin' ||
+          normalized == 'superuser' ||
+          normalized == 'superadmin';
+    });
 
     String? avatar =
         user?['avatar_path'] as String? ?? user?['avatar'] as String?;
@@ -115,6 +125,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _userAvatar = avatar;
         _canImpersonate = canImp;
         _canDeveloperRelogin = canDeveloperRelogin;
+        _canWriteNfcCard = canWriteNfcCard;
       });
     }
 
@@ -231,7 +242,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
           width: size,
           height: size,
           errorBuilder: (ctx, err, stack) {
-            debugPrint('❌ Error loading avatar $avatarUrl: $err');
             return Icon(
               Icons.person,
               size: size * .5,
@@ -498,116 +508,121 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 // ── Main Feature Menu Cards ────────────────────────
                 Container(
                   margin: const EdgeInsets.symmetric(horizontal: 16),
-                  decoration: BoxDecoration(
+                  child: Material(
                     color: AppColors.white,
                     borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Column(
-                    children: [
-                      _buildMenuItem(
-                        icon: Icons.person_outline,
-                        title: 'Informasi Pribadi & Akun',
-                        onTap: () async {
-                          final result = await Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const EditProfileScreen(),
-                            ),
-                          );
-                          if (result == true) _loadUserData();
-                        },
-                      ),
-                      _buildDivider(),
+                    clipBehavior: Clip.antiAlias,
+                    child: Column(
+                      children: [
+                        _buildMenuItem(
+                          icon: Icons.person_outline,
+                          title: 'Informasi Pribadi & Akun',
+                          onTap: () async {
+                            final result = await Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const EditProfileScreen(),
+                              ),
+                            );
+                            if (result == true) _loadUserData();
+                          },
+                        ),
+                        _buildDivider(),
 
-                      // Role Specific Menus
-                      if (isCro) ...[
-                        _buildMenuItem(
-                          icon: Icons.bar_chart_outlined,
-                          title: 'Statistik Saya',
-                          onTap: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const MyStatisticScreen(),
+                        // Role Specific Menus
+                        if (isCro) ...[
+                          _buildMenuItem(
+                            icon: Icons.bar_chart_outlined,
+                            title: 'Statistik Saya',
+                            onTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const MyStatisticScreen(),
+                              ),
                             ),
                           ),
-                        ),
-                        _buildDivider(),
-                        _buildMenuItem(
-                          icon: Icons.map_outlined,
-                          title: 'Riwayat Kunjungan',
-                          onTap: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const VisitHistoryScreen(),
+                          _buildDivider(),
+                          _buildMenuItem(
+                            icon: Icons.map_outlined,
+                            title: 'Riwayat Kunjungan',
+                            onTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const PermissionGate(
+                                  slug: 'crm-read-visit-planner',
+                                  child: VisitHistoryScreen(),
+                                ),
+                              ),
                             ),
                           ),
-                        ),
-                        _buildDivider(),
-                        _buildMenuItem(
-                          icon: Icons.assignment_turned_in_outlined,
-                          title: 'Klaim & Komisi Saya',
-                          onTap: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const MyClaimsScreen(),
+                          _buildDivider(),
+                          _buildMenuItem(
+                            icon: Icons.assignment_turned_in_outlined,
+                            title: 'Klaim & Komisi Saya',
+                            onTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const MyClaimsScreen(),
+                              ),
                             ),
                           ),
-                        ),
-                      ] else ...[
-                        _buildMenuItem(
-                          icon: Icons.local_shipping_outlined,
-                          title: 'Informasi Kendaraan & SIM Driver',
-                          onTap: _showVehicleInfoDialog,
-                        ),
-                        _buildDivider(),
-                        _buildMenuItem(
-                          icon: Icons.history,
-                          title: 'Riwayat Penjemputan',
-                          onTap: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const PickupHistoryScreen(),
+                        ] else ...[
+                          _buildMenuItem(
+                            icon: Icons.local_shipping_outlined,
+                            title: 'Informasi Kendaraan & SIM Driver',
+                            onTap: _showVehicleInfoDialog,
+                          ),
+                          _buildDivider(),
+                          _buildMenuItem(
+                            icon: Icons.history,
+                            title: 'Riwayat Penjemputan',
+                            onTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const PickupHistoryScreen(),
+                              ),
                             ),
                           ),
-                        ),
-                        _buildDivider(),
-                        _buildMenuItem(
-                          icon: Icons.payments_outlined,
-                          title: 'Laporan Uang Jalan & Settlement',
-                          onTap: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) =>
-                                  const DriverSettlementListScreen(),
+                          _buildDivider(),
+                          _buildMenuItem(
+                            icon: Icons.payments_outlined,
+                            title: 'Laporan Uang Jalan & Settlement',
+                            onTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) =>
+                                    const DriverSettlementListScreen(),
+                              ),
                             ),
                           ),
-                        ),
-                        _buildDivider(),
-                        _buildMenuItem(
-                          icon: Icons.verified_user_rounded,
-                          title: 'Penilaian & Rating Berkendara Driver',
-                          iconColor: const Color(0xFF1877F2),
-                          onTap: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const DriverScoreScreen(),
+                          _buildDivider(),
+                          _buildMenuItem(
+                            icon: Icons.verified_user_rounded,
+                            title: 'Penilaian & Rating Berkendara Driver',
+                            iconColor: const Color(0xFF1877F2),
+                            onTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const DriverScoreScreen(),
+                              ),
                             ),
                           ),
-                        ),
-                        _buildDivider(),
-                        _buildMenuItem(
-                          icon: Icons.warning_amber_rounded,
-                          title: 'Laporkan Kendala Armada (Mogok/Emergency)',
-                          iconColor: AppColors.error,
-                          onTap: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const VehicleIssueReportScreen(),
+                          _buildDivider(),
+                          _buildMenuItem(
+                            icon: Icons.warning_amber_rounded,
+                            title: 'Laporkan Kendala Armada (Mogok/Emergency)',
+                            iconColor: AppColors.error,
+                            onTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) =>
+                                    const VehicleIssueReportScreen(),
+                              ),
                             ),
                           ),
-                        ),
+                        ],
                       ],
-                    ],
+                    ),
                   ),
                 ),
                 const SizedBox(height: 14),
@@ -615,115 +630,142 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 // ── App & Security Settings Card ───────────────────
                 Container(
                   margin: const EdgeInsets.symmetric(horizontal: 16),
-                  decoration: BoxDecoration(
+                  child: Material(
                     color: AppColors.white,
                     borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Column(
-                    children: [
-                      if (!isCro) ...[
-                        _buildMenuItem(
-                          icon: Icons.map_outlined,
-                          title: 'Peta Driver & Monitoring',
-                          onTap: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const DriverMapScreen(),
-                            ),
-                          ),
-                        ),
-                        _buildDivider(),
-                        _buildMenuItem(
-                          icon: Icons.my_location_outlined,
-                          title: 'Pengaturan Peta & Alamat GPS',
-                          onTap: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) =>
-                                  const LocationTrackingSettingsScreen(),
-                            ),
-                          ),
-                        ),
-                      ],
-                      _buildDivider(),
-                      if (_canImpersonate) ...[
-                        _buildMenuItem(
-                          icon: Icons.admin_panel_settings_outlined,
-                          title: 'Force Login / Pindah Akun (Admin)',
-                          onTap: () => showDialog(
-                            context: context,
-                            builder: (_) => const ForceLoginDialog(),
-                          ),
-                        ),
-                        _buildDivider(),
-                      ],
-                      if (_canDeveloperRelogin) ...[
-                        _buildMenuItem(
-                          icon: Icons.refresh_rounded,
-                          title: 'Relogin Developer',
-                          subtitle: 'Login ulang tanpa input password',
-                          trailing: _reloggingDeveloper
-                              ? const SizedBox(
-                                  width: 20,
-                                  height: 20,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                  ),
-                                )
-                              : null,
-                          onTap: _reloggingDeveloper ? null : _reloginDeveloper,
-                        ),
-                        _buildDivider(),
-                      ],
-                      ListTile(
-                        leading: const Icon(
-                          Icons.system_update_outlined,
-                          color: AppColors.primaryGreen,
-                        ),
-                        title: Text(
-                          'Cek Pembaruan Aplikasi',
-                          style: AppTextStyles.bodyMedium.copyWith(
-                            color: AppColors.textPrimary,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        trailing: _checkingUpdate
-                            ? const SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                ),
-                              )
-                            : const Icon(
-                                Icons.chevron_right,
-                                color: AppColors.grey,
+                    clipBehavior: Clip.antiAlias,
+                    child: Column(
+                      children: [
+                        if (!isCro) ...[
+                          _buildMenuItem(
+                            icon: Icons.map_outlined,
+                            title: 'Peta Driver & Monitoring',
+                            onTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const DriverMapScreen(),
                               ),
-                        onTap: _checkingUpdate ? null : _checkForUpdate,
-                      ),
-                      _buildDivider(),
-                      _buildMenuItem(
-                        icon: Icons.info_outline,
-                        title: 'Tentang Aplikasi',
-                        onTap: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const AboutScreen(),
+                            ),
+                          ),
+                          _buildDivider(),
+                          _buildMenuItem(
+                            icon: Icons.my_location_outlined,
+                            title: 'Pengaturan Peta & Alamat GPS',
+                            onTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) =>
+                                    const LocationTrackingSettingsScreen(),
+                              ),
+                            ),
+                          ),
+                        ],
+                        _buildDivider(),
+                        _buildMenuItem(
+                          icon: Icons.switch_account_outlined,
+                          title: 'Ganti Akun',
+                          subtitle: 'Switch antar akun tanpa ketik ulang',
+                          onTap: () => AccountSwitcherSheet.show(context),
+                        ),
+                        _buildDivider(),
+                        if (_canImpersonate) ...[
+                          _buildMenuItem(
+                            icon: Icons.admin_panel_settings_outlined,
+                            title: 'Force Login / Pindah Akun (Admin)',
+                            onTap: () => showDialog(
+                              context: context,
+                              builder: (_) => const ForceLoginDialog(),
+                            ),
+                          ),
+                          _buildDivider(),
+                        ],
+                        if (_canWriteNfcCard) ...[
+                          _buildMenuItem(
+                            icon: Icons.nfc,
+                            title: 'Tulis Kartu NFC',
+                            subtitle:
+                                'Kartu pemulihan device lock, aktif 5 hari',
+                            onTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const NfcRecoveryCardScreen(),
+                              ),
+                            ),
+                          ),
+                          _buildDivider(),
+                        ],
+                        if (_canDeveloperRelogin) ...[
+                          _buildMenuItem(
+                            icon: Icons.refresh_rounded,
+                            title: 'Relogin Developer',
+                            subtitle: 'Login ulang tanpa input password',
+                            trailing: _reloggingDeveloper
+                                ? const SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                    ),
+                                  )
+                                : null,
+                            onTap: _reloggingDeveloper
+                                ? null
+                                : _reloginDeveloper,
+                          ),
+                          _buildDivider(),
+                        ],
+                        if (UpdateService.versionChecksEnabled) ...[
+                          ListTile(
+                            leading: const Icon(
+                              Icons.system_update_outlined,
+                              color: AppColors.primaryGreen,
+                            ),
+                            title: Text(
+                              'Cek Pembaruan Aplikasi',
+                              style: AppTextStyles.bodyMedium.copyWith(
+                                color: AppColors.textPrimary,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            trailing: _checkingUpdate
+                                ? const SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                    ),
+                                  )
+                                : const Icon(
+                                    Icons.chevron_right,
+                                    color: AppColors.grey,
+                                  ),
+                            onTap: _checkingUpdate ? null : _checkForUpdate,
+                          ),
+                          _buildDivider(),
+                        ],
+                        _buildMenuItem(
+                          icon: Icons.info_outline,
+                          title: 'Tentang Aplikasi',
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const AboutScreen(),
+                            ),
                           ),
                         ),
-                      ),
-                      _buildDivider(),
-                      _buildMenuItem(
-                        icon: Icons.on_device_training_outlined,
-                        title: 'Diagnosa Koneksi & Sistem',
-                        onTap: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const DiagnosisScreen(),
+                        _buildDivider(),
+                        _buildMenuItem(
+                          icon: Icons.on_device_training_outlined,
+                          title: 'Diagnosa Koneksi & Sistem',
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const DiagnosisScreen(),
+                            ),
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
                 const SizedBox(height: 20),
