@@ -401,6 +401,7 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
   void _showRequestAccessSheet(String conflictToken) {
     final reasonController = TextEditingController();
     bool isSubmitting = false;
+    String? errorMessage;
 
     showModalBottomSheet(
       context: context,
@@ -412,7 +413,10 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
         return StatefulBuilder(
           builder: (sheetContext, setSheetState) {
             Future<void> submit() async {
-              setSheetState(() => isSubmitting = true);
+              setSheetState(() {
+                isSubmitting = true;
+                errorMessage = null;
+              });
               try {
                 await DeviceLockRequestService.submit(
                   conflictToken,
@@ -434,18 +438,24 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
                   ),
                 );
               } catch (e) {
-                // Same in-flight-dismiss case: the request already reached
-                // the backend, so a failure here must still reach the user
-                // even if the sheet is gone by the time it resolves.
-                final messenger = sheetContext.mounted
-                    ? ScaffoldMessenger.of(sheetContext)
-                    : (mounted ? ScaffoldMessenger.of(context) : null);
-                messenger?.showSnackBar(
-                  SnackBar(
-                    content: Text(e.toString().replaceFirst('Exception: ', '')),
-                    backgroundColor: AppColors.error,
-                  ),
-                );
+                final message = e.toString().replaceFirst('Exception: ', '');
+                if (sheetContext.mounted) {
+                  // The sheet is still open: a SnackBar here can render
+                  // underneath a tall/full-height modal sheet, so show the
+                  // error inline in the sheet instead where it's guaranteed
+                  // visible.
+                  setSheetState(() => errorMessage = message);
+                } else if (mounted) {
+                  // Sheet already dismissed (e.g. swiped away mid-submit) —
+                  // no sheet left to show an inline error in, so fall back
+                  // to the login screen's own SnackBar.
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(message),
+                      backgroundColor: AppColors.error,
+                    ),
+                  );
+                }
               } finally {
                 if (sheetContext.mounted) {
                   setSheetState(() => isSubmitting = false);
@@ -476,6 +486,15 @@ class _LoginScreenState extends State<LoginScreen> with WidgetsBindingObserver {
                     'Jelaskan alasan Anda ingin menggunakan perangkat ini. Admin akan meninjau pengajuan ini.',
                     style: AppTextStyles.bodyMedium.copyWith(color: AppColors.grey),
                   ),
+                  if (errorMessage != null) ...[
+                    const SizedBox(height: 12),
+                    Text(
+                      errorMessage!,
+                      style: AppTextStyles.bodyMedium.copyWith(
+                        color: AppColors.error,
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 20),
                   TextFormField(
                     controller: reasonController,
