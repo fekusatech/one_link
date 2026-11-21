@@ -69,6 +69,24 @@ class GeuUser {
   bool hasPermission(String slug) => permissions.contains(slug);
 }
 
+/// Thrown by [GeuAuthService.login] when the server refuses the login
+/// because another device already holds this account's device lock. Carries
+/// the conflict token the user can submit (via [DeviceLockRequestService])
+/// to request access on this device instead.
+///
+/// `toString()` returns exactly [message] — no "Exception: " prefix — so the
+/// existing `e.toString().contains(...)` string matching in `login_screen.dart`
+/// keeps working unchanged for this exception too.
+class DeviceLockConflictException implements Exception {
+  final String message;
+  final String conflictToken;
+
+  DeviceLockConflictException(this.message, this.conflictToken);
+
+  @override
+  String toString() => message;
+}
+
 /// Auth against the new Go REST API (doc.md). Session lives in httpOnly
 /// cookies managed by GeuApiClient; this only caches the profile locally
 /// so the UI knows who's logged in without a network round-trip.
@@ -84,6 +102,12 @@ class GeuAuthService {
   static const _secureKeyPassword = 'geu_cred_password';
   static const _secureKeyAccounts = 'geu_saved_accounts';
   static const _storage = FlutterSecureStorage();
+
+  /// Pulls the device-lock conflict token out of an error body's
+  /// `errors.conflict_token` field, if present — the only error shape the
+  /// backend ever puts an `errors` object on.
+  static String? conflictTokenFrom(Map<String, dynamic> body) =>
+      (body['errors'] as Map?)?['conflict_token'] as String?;
 
   static Future<GeuUser> login(
     String email,
@@ -107,7 +131,12 @@ class GeuAuthService {
 
     final body = res.data as Map<String, dynamic>;
     if (body['status'] != 'success') {
-      throw Exception(body['message'] ?? 'Login gagal');
+      final message = body['message'] ?? 'Login gagal';
+      final conflictToken = conflictTokenFrom(body);
+      if (conflictToken != null && conflictToken.isNotEmpty) {
+        throw DeviceLockConflictException(message, conflictToken);
+      }
+      throw Exception(message);
     }
 
     final data = body['data'] as Map<String, dynamic>;
