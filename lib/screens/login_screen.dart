@@ -8,6 +8,7 @@ import '../constants/app_text_styles.dart';
 import '../config/app_config.dart';
 import '../services/persistent_auth_service.dart';
 import '../services/geu/geu_auth_service.dart';
+import '../services/geu/device_lock_request_service.dart';
 import '../services/auth_debug_service.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -215,12 +216,25 @@ class _LoginScreenState extends State<LoginScreen> {
       );
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(_friendlyLoginError(e)),
-          backgroundColor: AppColors.error,
-        ),
-      );
+      if (e is DeviceLockConflictException) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(_friendlyLoginError(e)),
+            backgroundColor: AppColors.error,
+            action: SnackBarAction(
+              label: 'Ajukan Akses',
+              onPressed: () => _showRequestAccessSheet(e.conflictToken),
+            ),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(_friendlyLoginError(e)),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
     } finally {
       if (mounted) {
         setState(() {
@@ -228,6 +242,140 @@ class _LoginScreenState extends State<LoginScreen> {
         });
       }
     }
+  }
+
+  /// Opens a bottom sheet collecting a reason and submitting the
+  /// device-lock access request tied to [conflictToken] (from
+  /// [DeviceLockConflictException]).
+  void _showRequestAccessSheet(String conflictToken) {
+    final reasonController = TextEditingController();
+    bool isSubmitting = false;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (sheetContext) {
+        return StatefulBuilder(
+          builder: (sheetContext, setSheetState) {
+            Future<void> submit() async {
+              setSheetState(() => isSubmitting = true);
+              try {
+                await DeviceLockRequestService.submit(
+                  conflictToken,
+                  reasonController.text.trim(),
+                );
+                if (!sheetContext.mounted) return;
+                Navigator.of(sheetContext).pop();
+                if (!mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text(
+                      'Pengajuan terkirim, menunggu persetujuan admin.',
+                    ),
+                  ),
+                );
+              } catch (e) {
+                if (!sheetContext.mounted) return;
+                ScaffoldMessenger.of(sheetContext).showSnackBar(
+                  SnackBar(
+                    content: Text(e.toString().replaceFirst('Exception: ', '')),
+                    backgroundColor: AppColors.error,
+                  ),
+                );
+              } finally {
+                if (sheetContext.mounted) {
+                  setSheetState(() => isSubmitting = false);
+                }
+              }
+            }
+
+            return Padding(
+              padding: EdgeInsets.only(
+                left: 24,
+                right: 24,
+                top: 24,
+                bottom: 24 + MediaQuery.of(sheetContext).viewInsets.bottom,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    'Ajukan Akses Perangkat',
+                    style: AppTextStyles.h2.copyWith(
+                      color: AppColors.textPrimary,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Jelaskan alasan Anda ingin menggunakan perangkat ini. Admin akan meninjau pengajuan ini.',
+                    style: AppTextStyles.bodyMedium.copyWith(color: AppColors.grey),
+                  ),
+                  const SizedBox(height: 20),
+                  TextFormField(
+                    controller: reasonController,
+                    maxLines: 4,
+                    enabled: !isSubmitting,
+                    decoration: InputDecoration(
+                      labelText: 'Alasan',
+                      hintText: 'Masukkan alasan pengajuan akses',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: AppColors.borderColor),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(
+                          color: AppColors.primaryGreen,
+                          width: 2,
+                        ),
+                      ),
+                    ),
+                    onChanged: (_) => setSheetState(() {}),
+                  ),
+                  const SizedBox(height: 20),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 56,
+                    child: ElevatedButton(
+                      onPressed:
+                          (isSubmitting || reasonController.text.trim().isEmpty)
+                              ? null
+                              : submit,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primaryGreen,
+                        foregroundColor: AppColors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        elevation: 0,
+                      ),
+                      child: isSubmitting
+                          ? const SizedBox(
+                              height: 24,
+                              width: 24,
+                              child: CircularProgressIndicator(
+                                color: AppColors.white,
+                                strokeWidth: 2,
+                              ),
+                            )
+                          : Text('Kirim Pengajuan', style: AppTextStyles.button),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    ).whenComplete(reasonController.dispose);
   }
 
   @override
