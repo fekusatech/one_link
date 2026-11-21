@@ -267,8 +267,13 @@ class _LoginScreenState extends State<LoginScreen> {
                   conflictToken,
                   reasonController.text.trim(),
                 );
-                if (!sheetContext.mounted) return;
-                Navigator.of(sheetContext).pop();
+                // Sheet may already be gone if the user swiped it away while
+                // the request was in flight — it still fires, so fall back
+                // to the login screen's own context/mounted check to make
+                // sure the confirmation isn't silently dropped.
+                if (sheetContext.mounted) {
+                  Navigator.of(sheetContext).pop();
+                }
                 if (!mounted) return;
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
@@ -278,8 +283,13 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 );
               } catch (e) {
-                if (!sheetContext.mounted) return;
-                ScaffoldMessenger.of(sheetContext).showSnackBar(
+                // Same in-flight-dismiss case: the request already reached
+                // the backend, so a failure here must still reach the user
+                // even if the sheet is gone by the time it resolves.
+                final messenger = sheetContext.mounted
+                    ? ScaffoldMessenger.of(sheetContext)
+                    : (mounted ? ScaffoldMessenger.of(context) : null);
+                messenger?.showSnackBar(
                   SnackBar(
                     content: Text(e.toString().replaceFirst('Exception: ', '')),
                     backgroundColor: AppColors.error,
